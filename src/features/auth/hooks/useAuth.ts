@@ -9,7 +9,17 @@ interface UseAuthResult {
   isLoading: boolean;
 }
 
+// 개발용 임시 우회 스위치. 로컬 .env(커밋되지 않음)에
+// VITE_DEV_BYPASS_AUTH=true 를 넣으면 로그인 없이도 보호된 화면에 진입할 수 있음.
+// import.meta.env.DEV 조건 덕분에 프로덕션 빌드에는 절대 포함되지 않음.
+const DEV_BYPASS_AUTH =
+  import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_AUTH === "true";
+
 export function useAuth(): UseAuthResult {
+  if (DEV_BYPASS_AUTH) {
+    return { isAuthenticated: true, isLoading: false };
+  }
+
   // 스텁: 항상 비로그인 상태로 취급
   return {
     isAuthenticated: false,

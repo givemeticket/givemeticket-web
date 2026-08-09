@@ -1,14 +1,241 @@
-// TODO: 서비스 기능 소개 섹션 + 카카오/네이버 로그인 버튼 UI 구현 예정
-// TODO: 로그인 성공 시 쿼리파라미터 redirect 값을 읽어 해당 경로로 이동시키는 로직 필요
-//   예: const [params] = useSearchParams(); const redirect = params.get("redirect") ?? "/mytickets";
+import { useSearchParams } from "react-router-dom";
+
+// TODO: 실제 로그인 리다이렉트 URL은 백엔드 확정 후 authApi.ts로 옮길 예정
+// (예: `${API_BASE_URL}/api/auth/kakao/login?redirect=...`)
+function handleKakaoLogin() {
+  console.log("TODO: 카카오 로그인 연동");
+}
+
+function handleNaverLogin() {
+  console.log("TODO: 네이버 로그인 연동");
+}
+
+const FEATURES = [
+  {
+    title: "실시간으로 남은 자리를 확인해요",
+    icon: <ClockIcon />,
+  },
+  {
+    title: "신청부터 결제까지 한 번에 끝나요",
+    icon: <CardIcon />,
+  },
+  {
+    title: "취소하면 자리가 바로 풀려요",
+    icon: <RefreshIcon />,
+  },
+];
 
 export function LoginPage() {
+  const [searchParams] = useSearchParams();
+  // 로그인 성공 후 이 값으로 되돌아갈 예정 (현재는 버튼 핸들러에서 미사용, TODO 참고)
+  const redirect = searchParams.get("redirect") ?? "/mytickets";
+  void redirect;
+
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">GiveMeTicket</h1>
-        <p className="mt-2 text-gray-500">로그인 페이지 (구현 예정)</p>
+    <div className="relative min-h-screen overflow-hidden bg-(--ink) text-(--paper)">
+      {/* 배경의 은은한 격자/그라데이션 — 순수 단색 배경에 깊이감만 살짝 */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-40"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 0%, var(--ink-soft), transparent 60%)",
+        }}
+      />
+
+      <div className="relative mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-6 py-16">
+        {/* 워드마크 */}
+        <p className="mb-10 text-sm font-semibold tracking-[0.3em] text-(--muted)">
+          GIVEMETICKET
+        </p>
+
+        {/* 스탬프 히어로 */}
+        <div className="relative mb-10 flex h-40 w-40 items-center justify-center">
+          <span
+            className="ring-anim-1 absolute h-40 w-40 rounded-full border border-(--brand-blue)"
+            aria-hidden="true"
+          />
+          <span
+            className="ring-anim-2 absolute h-40 w-40 rounded-full border border-(--brand-blue)"
+            aria-hidden="true"
+          />
+          <img
+            src="/favicon-transparent-512.png"
+            alt="GiveMeTicket 로고"
+            className="stamp-anim relative h-32 w-32 drop-shadow-[0_8px_24px_rgba(26,142,203,0.35)]"
+          />
+        </div>
+
+        {/* 헤드라인 */}
+        <h1 className="text-balance text-center text-[28px] font-extrabold leading-[1.3] tracking-tight">
+          먼저 온 사람이,
+          <br />
+          자리를 가져갑니다
+        </h1>
+        <p className="mt-3 text-center text-sm leading-relaxed text-(--muted)">
+          선착순 행사 개설부터 신청, 결제까지
+          <br />
+          3초 로그인으로 시작하세요
+        </p>
+
+        {/* 기능 소개 */}
+        <ul className="mt-10 w-full space-y-3">
+          {FEATURES.map((feature) => (
+            <li
+              key={feature.title}
+              className="flex items-center gap-3 rounded-xl border px-4 py-3 text-sm"
+              style={{ borderColor: "var(--line)" }}
+            >
+              <span className="text-(--brand-yellow)">{feature.icon}</span>
+              <span className="text-(--paper)/90">{feature.title}</span>
+            </li>
+          ))}
+        </ul>
+
+        {/* 소셜 로그인 */}
+        <div className="mt-10 flex w-full flex-col items-center">
+          <div className="mb-6 flex w-full items-center gap-3">
+            <span
+              className="h-px flex-1"
+              style={{ backgroundColor: "var(--line)" }}
+            />
+            <p className="text-base font-medium text-(--muted)">시작하기</p>
+            <span
+              className="h-px flex-1"
+              style={{ backgroundColor: "var(--line)" }}
+            />
+          </div>
+          <div className="flex items-center gap-6">
+            <button
+              type="button"
+              onClick={handleKakaoLogin}
+              aria-label="카카오로 시작하기"
+              className="flex h-16 w-16 items-center justify-center rounded-full transition-transform hover:scale-[1.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--brand-yellow) active:scale-[0.97]"
+              style={{ backgroundColor: "#FEE500" }}
+            >
+              <KakaoIcon />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleNaverLogin}
+              aria-label="네이버로 시작하기"
+              className="flex h-16 w-16 items-center justify-center rounded-full transition-transform hover:scale-[1.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.97]"
+              style={{ backgroundColor: "#03C75A" }}
+            >
+              <NaverIcon />
+            </button>
+          </div>
+        </div>
+
+        <p className="mt-6 text-center text-xs text-(--muted)">
+          로그인 시 이용약관 및 개인정보처리방침에 동의하는 것으로 간주돼요
+        </p>
       </div>
     </div>
+  );
+}
+
+// --- 인라인 아이콘: 별도 아이콘 라이브러리 없이 24x24 모노라인으로 직접 정의 ---
+
+function ClockIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M12 7v5l3.5 2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CardIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <rect
+        x="3"
+        y="6"
+        width="18"
+        height="13"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path d="M3 10.5h18" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
+function RefreshIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M18 4v4h-4M6 20v-4h4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function KakaoIcon() {
+  return (
+    <svg
+      width="30"
+      height="30"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M12 4C6.98 4 3 7.24 3 11.24c0 2.58 1.68 4.84 4.2 6.14-.18.66-.68 2.5-.78 2.9-.12.48.18.47.38.34.16-.1 2.5-1.7 3.52-2.4.55.08 1.12.12 1.68.12 5.02 0 9-3.24 9-7.24S17.02 4 12 4Z"
+        fill="#191919"
+      />
+    </svg>
+  );
+}
+
+function NaverIcon() {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="6.5 6.5 11 11.1"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M14.4 6.5v6.1l-4.8-6.1H6.5v11h3.1v-6.1l4.8 6.1h3.1v-11h-3.1Z"
+        fill="white"
+      />
+    </svg>
   );
 }

@@ -1,1 +1,68 @@
 @import "tailwindcss";
+@import "pretendard/dist/web/static/pretendard.css";
+
+:root {
+  --ink: #0b1220;
+  --ink-soft: #131c2e;
+  --paper: #f5f1e6;
+  --brand-blue: #1a8ecb;
+  --brand-blue-dim: #12587e;
+  --brand-yellow: #f4c430;
+  --muted: #8b96ac;
+  --line: rgba(245, 241, 230, 0.08);
+}
+
+body {
+  font-family:
+    "Pretendard",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Apple SD Gothic Neo",
+    "Malgun Gothic",
+    sans-serif;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stamp-anim {
+    animation: stampDown 0.8s cubic-bezier(0.2, 0.85, 0.25, 1.2) both;
+  }
+  .ring-anim-1,
+  .ring-anim-2 {
+    /* 애니메이션 딜레이가 끝나기 전까지는 완전히 숨겨서, 그 사이에 테두리가 비치지 않게 함 */
+    opacity: 0;
+  }
+  .ring-anim-1 {
+    animation: ringPulse 2.6s ease-out 0.6s infinite;
+  }
+  .ring-anim-2 {
+    animation: ringPulse 2.6s ease-out 1.3s infinite;
+  }
+}
+
+@keyframes stampDown {
+  0% {
+    transform: translateY(-56px) scale(1.2) rotate(-10deg);
+    opacity: 0;
+  }
+  55% {
+    transform: translateY(6px) scale(0.95) rotate(3deg);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(-3px) scale(1.02) rotate(-1deg);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes ringPulse {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
