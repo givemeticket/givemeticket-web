@@ -9,6 +9,7 @@
   --brand-blue-dim: #12587e;
   --brand-yellow: #f4c430;
   --muted: #8b96ac;
+  --warn: #e8734a;
   --line: rgba(245, 241, 230, 0.08);
 }
 
@@ -20,6 +21,11 @@ body {
     "Apple SD Gothic Neo",
     "Malgun Gothic",
     sans-serif;
+}
+
+/* Tailwind v3.4+ 부터 Preflight가 버튼에 기본 pointer 커서를 더 이상 넣어주지 않아서 직접 지정 */
+button:not(:disabled) {
+  cursor: pointer;
 }
 
 @media (prefers-reduced-motion: no-preference) {

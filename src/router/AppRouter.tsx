@@ -7,11 +7,13 @@ import { MyCampaignsTab } from "@/features/dashboard/components/MyCampaignsTab";
 import { CampaignCreatePage } from "@/features/campaign/pages/CampaignCreatePage";
 import { CampaignDetailPage } from "@/features/campaign/pages/CampaignDetailPage";
 import { CheckoutPage } from "@/features/application/pages/CheckoutPage";
+import { OAuthCallbackPage } from "@/features/auth/pages/OAuthCallbackPage";
 
 const router = createBrowserRouter([
   // 비로그인도 접근 가능한 라우트
   { path: "/", element: <RootRoute /> },
   { path: "/campaigns/:shortCode", element: <CampaignDetailPage /> },
+  { path: "/oauth/:provider", element: <OAuthCallbackPage /> },
 
   // 로그인 필요한 라우트
   {

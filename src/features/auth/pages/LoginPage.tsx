@@ -1,13 +1,21 @@
 import { useSearchParams } from "react-router-dom";
+import { buildAuthorizeUrl } from "../lib/oauthUrls";
+import {
+  generateState,
+  saveOAuthState,
+  savePostLoginRedirect,
+} from "../lib/oauthSession";
 
-// TODO: 실제 로그인 리다이렉트 URL은 백엔드 확정 후 authApi.ts로 옮길 예정
-// (예: `${API_BASE_URL}/api/auth/kakao/login?redirect=...`)
-function handleKakaoLogin() {
-  console.log("TODO: 카카오 로그인 연동");
+function handleKakaoLogin(redirect: string) {
+  savePostLoginRedirect(redirect);
+  window.location.href = buildAuthorizeUrl("kakao");
 }
 
-function handleNaverLogin() {
-  console.log("TODO: 네이버 로그인 연동");
+function handleNaverLogin(redirect: string) {
+  const state = generateState();
+  saveOAuthState(state);
+  savePostLoginRedirect(redirect);
+  window.location.href = buildAuthorizeUrl("naver", state);
 }
 
 const FEATURES = [
@@ -27,9 +35,7 @@ const FEATURES = [
 
 export function LoginPage() {
   const [searchParams] = useSearchParams();
-  // 로그인 성공 후 이 값으로 되돌아갈 예정 (현재는 버튼 핸들러에서 미사용, TODO 참고)
   const redirect = searchParams.get("redirect") ?? "/mytickets";
-  void redirect;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-(--ink) text-(--paper)">
@@ -107,7 +113,7 @@ export function LoginPage() {
           <div className="flex items-center gap-6">
             <button
               type="button"
-              onClick={handleKakaoLogin}
+              onClick={() => handleKakaoLogin(redirect)}
               aria-label="카카오로 시작하기"
               className="flex h-16 w-16 items-center justify-center rounded-full transition-transform hover:scale-[1.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--brand-yellow) active:scale-[0.97]"
               style={{ backgroundColor: "#FEE500" }}
@@ -117,7 +123,7 @@ export function LoginPage() {
 
             <button
               type="button"
-              onClick={handleNaverLogin}
+              onClick={() => handleNaverLogin(redirect)}
               aria-label="네이버로 시작하기"
               className="flex h-16 w-16 items-center justify-center rounded-full transition-transform hover:scale-[1.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.97]"
               style={{ backgroundColor: "#03C75A" }}

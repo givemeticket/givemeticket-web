@@ -1,8 +1,4 @@
-// TODO: 백엔드 인증 방식(세션/쿠키 vs JWT)이 확정되면 실제 로직으로 교체
-// 현재는 라우팅 골격 확인용 스텁입니다.
-//
-// 실제 구현 시에는 보통 react-query의 useQuery로 "내 정보 조회" API를
-// 호출해서 성공 여부로 로그인 상태를 판단하는 방식을 씁니다.
+import { getAccessToken } from "@/shared/lib/authToken";
 
 interface UseAuthResult {
   isAuthenticated: boolean;
@@ -15,14 +11,16 @@ interface UseAuthResult {
 const DEV_BYPASS_AUTH =
   import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_AUTH === "true";
 
+// TODO: 지금은 "토큰이 저장돼 있는지"만 확인함 (만료/위조 여부는 검사 안 함).
+// 백엔드에 "내 정보 조회" 같은 인증 확인용 API가 생기면, react-query로 그 API를
+// 호출해서 성공 여부로 판단하는 방식으로 교체하는 게 더 정확함.
 export function useAuth(): UseAuthResult {
   if (DEV_BYPASS_AUTH) {
     return { isAuthenticated: true, isLoading: false };
   }
 
-  // 스텁: 항상 비로그인 상태로 취급
   return {
-    isAuthenticated: false,
+    isAuthenticated: Boolean(getAccessToken()),
     isLoading: false,
   };
 }
