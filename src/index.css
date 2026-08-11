@@ -2,15 +2,21 @@
 @import "pretendard/dist/web/static/pretendard.css";
 
 :root {
-  --ink: #0b1220;
-  --ink-soft: #131c2e;
-  --paper: #f5f1e6;
+  --ink: #ffffff; /* 페이지 배경 */
+  --ink-soft: #f4f5f7; /* 카드/서페이스 배경 */
+  --paper: #111827; /* 본문 텍스트 (진한 남색에 가까운 다크) */
   --brand-blue: #1a8ecb;
-  --brand-blue-dim: #12587e;
+  --brand-blue-dim: #0f6f9e;
   --brand-yellow: #f4c430;
-  --muted: #8b96ac;
-  --warn: #e8734a;
-  --line: rgba(245, 241, 230, 0.08);
+  --muted: #6b7280;
+  --warn: #d9622f;
+  --line: rgba(17, 24, 39, 0.1);
+
+  /* 채도 높은 배경(노란 버튼 등) 위에 얹는 텍스트 전용 색상.
+     테마가 바뀌어도 이 조합은 항상 고정 — --ink/--paper처럼 테마에 따라
+     같이 뒤집히면 안 되는 값이라 별도 토큰으로 분리함. */
+  --on-yellow: #1a1305; /* 노란 배경 위 텍스트 */
+  --on-brand: #ffffff; /* 파랑/주황 등 진한 배경 위 텍스트 */
 }
 
 body {

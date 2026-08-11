@@ -18,21 +18,6 @@ function handleNaverLogin(redirect: string) {
   window.location.href = buildAuthorizeUrl("naver", state);
 }
 
-const FEATURES = [
-  {
-    title: "실시간으로 남은 자리를 확인해요",
-    icon: <ClockIcon />,
-  },
-  {
-    title: "신청부터 결제까지 한 번에 끝나요",
-    icon: <CardIcon />,
-  },
-  {
-    title: "취소하면 자리가 바로 풀려요",
-    icon: <RefreshIcon />,
-  },
-];
-
 export function LoginPage() {
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/mytickets";
@@ -73,29 +58,13 @@ export function LoginPage() {
 
         {/* 헤드라인 */}
         <h1 className="text-balance text-center text-[28px] font-extrabold leading-[1.3] tracking-tight">
-          먼저 온 사람이,
-          <br />
-          자리를 가져갑니다
+          선착순 행사를 진행해보세요
         </h1>
         <p className="mt-3 text-center text-sm leading-relaxed text-(--muted)">
           선착순 행사 개설부터 신청, 결제까지
           <br />
           3초 로그인으로 시작하세요
         </p>
-
-        {/* 기능 소개 */}
-        <ul className="mt-10 w-full space-y-3">
-          {FEATURES.map((feature) => (
-            <li
-              key={feature.title}
-              className="flex items-center gap-3 rounded-xl border px-4 py-3 text-sm"
-              style={{ borderColor: "var(--line)" }}
-            >
-              <span className="text-(--brand-yellow)">{feature.icon}</span>
-              <span className="text-(--paper)/90">{feature.title}</span>
-            </li>
-          ))}
-        </ul>
 
         {/* 소셜 로그인 */}
         <div className="mt-10 flex w-full flex-col items-center">
@@ -125,7 +94,7 @@ export function LoginPage() {
               type="button"
               onClick={() => handleNaverLogin(redirect)}
               aria-label="네이버로 시작하기"
-              className="flex h-16 w-16 items-center justify-center rounded-full transition-transform hover:scale-[1.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.97]"
+              className="flex h-16 w-16 items-center justify-center rounded-full transition-transform hover:scale-[1.05] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--brand-blue) active:scale-[0.97]"
               style={{ backgroundColor: "#03C75A" }}
             >
               <NaverIcon />
@@ -142,75 +111,6 @@ export function LoginPage() {
 }
 
 // --- 인라인 아이콘: 별도 아이콘 라이브러리 없이 24x24 모노라인으로 직접 정의 ---
-
-function ClockIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M12 7v5l3.5 2"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function CardIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <rect
-        x="3"
-        y="6"
-        width="18"
-        height="13"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path d="M3 10.5h18" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
-  );
-}
-
-function RefreshIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-      <path
-        d="M18 4v4h-4M6 20v-4h4"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 function KakaoIcon() {
   return (

@@ -11,7 +11,7 @@ export function MyCampaignsTab() {
         <button
           type="button"
           onClick={() => navigate("/campaigns/create")}
-          className="rounded-full px-4 py-2 text-sm font-semibold text-(--ink) transition-transform hover:scale-[1.03] active:scale-[0.97]"
+          className="rounded-full px-4 py-2 text-sm font-semibold text-(--on-yellow) transition-transform hover:scale-[1.03] active:scale-[0.97]"
           style={{ backgroundColor: "var(--brand-yellow)" }}
         >
           + 행사 만들기

@@ -18,3 +18,8 @@ export async function exchangeAuthCode(params: {
   const res = await apiClient.post<TokenResponse>("/api/v1/code", params);
   return res.data.token;
 }
+
+/** 회원탈퇴. 현재 로그인된 유저(토큰 소유자) 본인을 삭제함 */
+export async function withdrawUser(): Promise<void> {
+  await apiClient.delete("/api/v1/users/me");
+}

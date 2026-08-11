@@ -84,7 +84,7 @@ export function OAuthCallbackPage() {
           <button
             type="button"
             onClick={() => navigate("/", { replace: true })}
-            className="rounded-full px-4 py-2 text-sm font-semibold text-(--ink)"
+            className="rounded-full px-4 py-2 text-sm font-semibold text-(--on-yellow)"
             style={{ backgroundColor: "var(--brand-yellow)" }}
           >
             로그인 화면으로 돌아가기
