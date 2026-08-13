@@ -1,0 +1,120 @@
+import { apiClient } from "@/shared/lib/axiosClient";
+
+export type CampaignStatus = "SCHEDULED" | "OPEN" | "CLOSED" | "DELETED";
+export type ViewerRole = "GUEST" | "VIEWER" | "PARTICIPANT" | "OWNER";
+export type ApplicationStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "FAILED"
+  | "CANCELLED"
+  | "UNKNOWN"
+  | "MANUAL_REVIEW";
+export type FailureReason =
+  | "SOLD_OUT"
+  | "PAYMENT_DECLINED"
+  | "PAYMENT_ERROR"
+  | "EXPIRED"
+  | "CAMPAIGN_DELETED"
+  | "USER_WITHDRAWN";
+
+export interface CampaignDetailPart {
+  content?: string;
+  eventAt?: string;
+  eventEndAt?: string;
+  location?: string;
+  address?: string;
+  imageUrl?: string;
+  contact?: string;
+  price?: number;
+}
+
+export interface CampaignDetail {
+  id: number;
+  ownerId: number;
+  shortCode: string;
+  title: string;
+  totalStock: number | null;
+  remainingStock: number;
+  openAt: string;
+  requiresPayment: boolean;
+  status: CampaignStatus;
+  soldOut: boolean;
+  viewerRole: ViewerRole;
+  myApplication: {
+    id: number;
+    status: ApplicationStatus;
+    failureReason?: FailureReason;
+  } | null;
+  confirmedCount: number;
+  detail: CampaignDetailPart | null;
+}
+
+export interface CreateCampaignRequest {
+  title: string;
+  totalStock?: number;
+  /** ISO 8601, UTC 기준 미래 시각 */
+  openAt: string;
+  requiresPayment: boolean;
+}
+
+export interface CreateCampaignResponse {
+  id: number;
+  shortCode: string;
+  title: string;
+  totalStock: number | null;
+  openAt: string;
+  requiresPayment: boolean;
+}
+
+export interface CampaignItem {
+  id: number;
+  shortCode: string;
+  title: string;
+  totalStock: number | null;
+  remainingStock: number;
+  openAt: string;
+  requiresPayment: boolean;
+  status: CampaignStatus;
+  soldOut: boolean;
+  eventAt?: string;
+  location?: string;
+  imageUrl?: string;
+  myApplicationStatus?: ApplicationStatus;
+}
+
+export async function listCampaigns(
+  scope: "owned" | "participated",
+): Promise<CampaignItem[]> {
+  const res = await apiClient.get<{ campaigns: CampaignItem[] }>(
+    `/api/v1/campaigns?scope=${scope}`,
+  );
+  return res.data.campaigns;
+}
+
+export async function createCampaign(
+  payload: CreateCampaignRequest,
+): Promise<CreateCampaignResponse> {
+  const res = await apiClient.post<CreateCampaignResponse>(
+    "/api/v1/campaigns",
+    payload,
+  );
+  return res.data;
+}
+
+export async function getCampaign(shortCode: string): Promise<CampaignDetail> {
+  const res = await apiClient.get<CampaignDetail>(
+    `/api/v1/campaigns/${shortCode}`,
+  );
+  return res.data;
+}
+
+export async function deleteCampaign(campaignId: number): Promise<void> {
+  await apiClient.delete(`/api/v1/campaigns/${campaignId}`);
+}
+
+export async function updateCampaign(
+  campaignId: number,
+  payload: { openAt?: string; totalStock?: number },
+): Promise<void> {
+  await apiClient.patch(`/api/v1/campaigns/${campaignId}`, payload);
+}

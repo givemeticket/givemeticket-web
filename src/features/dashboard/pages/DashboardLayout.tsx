@@ -50,12 +50,18 @@ export function DashboardLayout() {
         </div>
       </header>
 
-      <nav
-        className="mx-auto mt-8 flex max-w-2xl gap-6 border-b px-6"
-        style={{ borderColor: "var(--line)" }}
-      >
+      <nav className="mx-auto mt-8 flex max-w-2xl items-center gap-6 px-6">
         <TabLink to="/mytickets" label="나의 티켓" />
         <TabLink to="/mycampaigns" label="내가 만든 행사" />
+
+        <button
+          type="button"
+          onClick={() => navigate("/campaigns/create")}
+          className="ml-auto mb-2 rounded-full px-4 py-2 text-sm font-semibold text-(--on-yellow) transition-transform hover:scale-[1.03] active:scale-[0.97]"
+          style={{ backgroundColor: "var(--brand-yellow)" }}
+        >
+          + 행사 만들기
+        </button>
       </nav>
 
       <main className="mx-auto max-w-2xl px-6 py-10">

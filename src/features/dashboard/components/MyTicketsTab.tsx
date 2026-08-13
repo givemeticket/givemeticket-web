@@ -1,13 +1,53 @@
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { CampaignCard } from "@/features/campaign/components/CampaignCard";
+import { listCampaigns } from "@/features/campaign/api/campaignApi";
+import { formatDateTimeKo } from "@/shared/lib/formatDate";
 
-// TODO: 내가 신청한 캠페인 목록 조회 API 연동, 카드 클릭 시 /campaigns/:shortCode 로 이동
 export function MyTicketsTab() {
+  const navigate = useNavigate();
+
+  const { data: campaigns, isLoading } = useQuery({
+    queryKey: ["campaigns", "participated"],
+    queryFn: () => listCampaigns("participated"),
+  });
+
+  if (isLoading) {
+    return (
+      <p className="py-16 text-center text-sm text-(--muted)">불러오는 중...</p>
+    );
+  }
+
+  if (!campaigns || campaigns.length === 0) {
+    return (
+      <EmptyState
+        icon={<TicketIcon />}
+        title="아직 신청한 행사가 없어요"
+        description="공유받은 링크로 들어가서 신청하면 여기에 나타나요"
+      />
+    );
+  }
+
   return (
-    <EmptyState
-      icon={<TicketIcon />}
-      title="아직 신청한 행사가 없어요"
-      description="공유받은 링크로 들어가서 신청하면 여기에 나타나요"
-    />
+    <div className="flex flex-col gap-3">
+      {campaigns.map((c) => (
+        <CampaignCard
+          key={c.id}
+          title={c.title}
+          status={c.status}
+          soldOut={c.soldOut}
+          openAtLabel={`${formatDateTimeKo(c.openAt)} 오픈`}
+          remainingStock={c.totalStock != null ? c.remainingStock : undefined}
+          totalStock={c.totalStock ?? undefined}
+          onClick={() =>
+            navigate(`/campaigns/${c.shortCode}`, {
+              state: { from: "mytickets" },
+            })
+          }
+        />
+      ))}
+    </div>
   );
 }
 

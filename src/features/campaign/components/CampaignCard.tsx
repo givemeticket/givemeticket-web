@@ -43,7 +43,7 @@ export function CampaignCard({
   // 매진은 별도 상태가 아니라 OPEN + soldOut 조합이라, 뱃지 표시만 그때 덮어씀
   const meta =
     status === "OPEN" && soldOut
-      ? { label: "마감임박", bg: "var(--warn)", fg: "var(--on-brand)" }
+      ? { label: "매진", bg: "var(--warn)", fg: "var(--on-brand)" }
       : STATUS_META[status];
   const hasStock =
     typeof remainingStock === "number" && typeof totalStock === "number";

@@ -34,6 +34,24 @@ button:not(:disabled) {
   cursor: pointer;
 }
 
+/* 폼 인풋 공통 스타일 — 여러 화면에서 반복 사용 */
+.input {
+  border-radius: 0.75rem;
+  border: 1px solid var(--line);
+  background-color: transparent;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--paper);
+  outline: none;
+}
+.input:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+}
+.input::placeholder {
+  color: var(--muted);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .stamp-anim {
     animation: stampDown 0.8s cubic-bezier(0.2, 0.85, 0.25, 1.2) both;

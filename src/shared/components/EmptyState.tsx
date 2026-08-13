@@ -1,4 +1,3 @@
-import { CampaignCard } from "@/features/campaign/components/CampaignCard";
 import type { ReactNode } from "react";
 
 interface EmptyStateProps {
@@ -25,21 +24,6 @@ export function EmptyState({ icon, title, description }: EmptyStateProps) {
       <p className="max-w-xs text-sm leading-relaxed text-(--muted)">
         {description}
       </p>
-      {/*삭제 필요*/}
-      <CampaignCard
-        title="Example Campaign"
-        status="OPEN"
-        openAtLabel="2026년 8월 31일 PM 12:00"
-        remainingStock={94}
-        totalStock={100}
-        soldOut={true}
-      />
     </div>
   );
 }
-
-// <CampaignCard
-//   title="Example Campaign"
-//   status="SCHEDULED"
-//   openAtLabel="Open at"
-// />

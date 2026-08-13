@@ -1,28 +1,52 @@
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { CampaignCard } from "@/features/campaign/components/CampaignCard";
+import { listCampaigns } from "@/features/campaign/api/campaignApi";
+import { formatDateTimeKo } from "@/shared/lib/formatDate";
 
-// TODO: 내가 생성한 캠페인 목록 API 연동, 카드 클릭 시 /campaigns/:shortCode (관리자 뷰)로 이동
 export function MyCampaignsTab() {
   const navigate = useNavigate();
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => navigate("/campaigns/create")}
-          className="rounded-full px-4 py-2 text-sm font-semibold text-(--on-yellow) transition-transform hover:scale-[1.03] active:scale-[0.97]"
-          style={{ backgroundColor: "var(--brand-yellow)" }}
-        >
-          + 행사 만들기
-        </button>
-      </div>
+  const { data: campaigns, isLoading } = useQuery({
+    queryKey: ["campaigns", "owned"],
+    queryFn: () => listCampaigns("owned"),
+  });
 
+  if (isLoading) {
+    return (
+      <p className="py-16 text-center text-sm text-(--muted)">불러오는 중...</p>
+    );
+  }
+
+  if (!campaigns || campaigns.length === 0) {
+    return (
       <EmptyState
         icon={<PlusIcon />}
         title="아직 만든 행사가 없어요"
         description="첫 행사를 열어서 선착순 신청을 받아보세요"
       />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {campaigns.map((c) => (
+        <CampaignCard
+          key={c.id}
+          title={c.title}
+          status={c.status}
+          soldOut={c.soldOut}
+          openAtLabel={`${formatDateTimeKo(c.openAt)} 오픈`}
+          remainingStock={c.totalStock != null ? c.remainingStock : undefined}
+          totalStock={c.totalStock ?? undefined}
+          onClick={() =>
+            navigate(`/campaigns/${c.shortCode}`, {
+              state: { from: "mycampaigns" },
+            })
+          }
+        />
+      ))}
     </div>
   );
 }

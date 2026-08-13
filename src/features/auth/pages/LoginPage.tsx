@@ -73,7 +73,7 @@ export function LoginPage() {
               className="h-px flex-1"
               style={{ backgroundColor: "var(--line)" }}
             />
-            <p className="text-base font-medium text-(--muted)">시작하기</p>
+            <p className="text-sm font-medium text-(--muted)">시작하기</p>
             <span
               className="h-px flex-1"
               style={{ backgroundColor: "var(--line)" }}
