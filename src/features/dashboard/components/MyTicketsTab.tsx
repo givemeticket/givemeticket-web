@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CampaignCard } from "@/features/campaign/components/CampaignCard";
-import { listCampaigns } from "@/features/campaign/api/campaignApi";
+import { listCampaignsWithStock } from "@/features/campaign/api/campaignApi";
 import { formatDateTimeKo } from "@/shared/lib/formatDate";
 
 export function MyTicketsTab() {
@@ -10,7 +10,7 @@ export function MyTicketsTab() {
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ["campaigns", "participated"],
-    queryFn: () => listCampaigns("participated"),
+    queryFn: () => listCampaignsWithStock("participated"),
   });
 
   if (isLoading) {

@@ -34,11 +34,9 @@ export interface CampaignDetail {
   shortCode: string;
   title: string;
   totalStock: number | null;
-  remainingStock: number;
   openAt: string;
   requiresPayment: boolean;
   status: CampaignStatus;
-  soldOut: boolean;
   viewerRole: ViewerRole;
   myApplication: {
     id: number;
@@ -47,6 +45,12 @@ export interface CampaignDetail {
   } | null;
   confirmedCount: number;
   detail: CampaignDetailPart | null;
+}
+
+export interface CampaignStock {
+  campaignId: number;
+  remainingStock: number;
+  soldOut: boolean;
 }
 
 export interface CreateCampaignRequest {
@@ -68,18 +72,23 @@ export interface CreateCampaignResponse {
 
 export interface CampaignItem {
   id: number;
+  ownerId: number;
   shortCode: string;
   title: string;
   totalStock: number | null;
-  remainingStock: number;
   openAt: string;
   requiresPayment: boolean;
   status: CampaignStatus;
-  soldOut: boolean;
   eventAt?: string;
   location?: string;
   imageUrl?: string;
   myApplicationStatus?: ApplicationStatus;
+}
+
+/** 목록 카드에 재고까지 합쳐서 쓰기 위한 타입 */
+export interface CampaignItemWithStock extends CampaignItem {
+  remainingStock: number;
+  soldOut: boolean;
 }
 
 export async function listCampaigns(
@@ -89,6 +98,27 @@ export async function listCampaigns(
     `/api/v1/campaigns?scope=${scope}`,
   );
   return res.data.campaigns;
+}
+
+/**
+ * 목록 조회 + 각 캠페인의 재고를 합쳐서 반환.
+ * 폴링 없이 호출 시점에 한 번만 가져옴 (새로고침해야 최신화됨).
+ *
+ * TODO: 캠페인이 많아지면 카드 수만큼 /stock 요청이 나가는 구조라 비효율적임.
+ * 나중에 백엔드가 여러 캠페인의 재고를 한 번에 주는 배치 API를 만들면 이걸로 교체.
+ */
+export async function listCampaignsWithStock(
+  scope: "owned" | "participated",
+): Promise<CampaignItemWithStock[]> {
+  const items = await listCampaigns(scope);
+  const stocks = await Promise.all(
+    items.map((item) => getCampaignStock(item.id)),
+  );
+  return items.map((item, index) => ({
+    ...item,
+    remainingStock: stocks[index].remainingStock,
+    soldOut: stocks[index].soldOut,
+  }));
 }
 
 export async function createCampaign(
@@ -104,6 +134,16 @@ export async function createCampaign(
 export async function getCampaign(shortCode: string): Promise<CampaignDetail> {
   const res = await apiClient.get<CampaignDetail>(
     `/api/v1/campaigns/${shortCode}`,
+  );
+  return res.data;
+}
+
+/** 잔여 재고/매진 여부만 따로 조회 — 상세 조회와 분리되어 자주 폴링해도 가벼움 */
+export async function getCampaignStock(
+  campaignId: number,
+): Promise<CampaignStock> {
+  const res = await apiClient.get<CampaignStock>(
+    `/api/v1/campaigns/${campaignId}/stock`,
   );
   return res.data;
 }

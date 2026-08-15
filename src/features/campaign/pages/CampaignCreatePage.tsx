@@ -12,11 +12,15 @@ export function CampaignCreatePage() {
   const [title, setTitle] = useState("");
   const [totalStock, setTotalStock] = useState("");
   const [openAt, setOpenAt] = useState("");
-  const [payment, setPayment] = useState<PaymentOption>("required");
+  const [payment, setPayment] = useState<PaymentOption>("not-required");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const isFormValid = title.trim().length > 0 && openAt.length > 0;
+  const isFormValid =
+    title.trim().length > 0 &&
+    openAt.length > 0 &&
+    totalStock.trim().length > 0 &&
+    Number(totalStock) > 0;
 
   async function handleSubmit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -33,7 +37,7 @@ export function CampaignCreatePage() {
     try {
       const result = await createCampaign({
         title: title.trim(),
-        totalStock: totalStock ? Number(totalStock) : undefined,
+        totalStock: Number(totalStock),
         openAt: openAtDate.toISOString(),
         requiresPayment: payment === "required",
       });
@@ -72,7 +76,7 @@ export function CampaignCreatePage() {
             />
           </Field>
 
-          <Field label="정원" hint="비워두면 제한 없이 진행돼요">
+          <Field label="정원">
             <input
               type="number"
               min={1}
@@ -92,14 +96,14 @@ export function CampaignCreatePage() {
           <Field label="결제 필요 여부">
             <div className="flex gap-2">
               <PaymentToggleButton
-                label="결제 필요"
-                active={payment === "required"}
-                onClick={() => setPayment("required")}
-              />
-              <PaymentToggleButton
                 label="결제 없음"
                 active={payment === "not-required"}
                 onClick={() => setPayment("not-required")}
+              />
+              <PaymentToggleButton
+                label="결제 필요"
+                active={payment === "required"}
+                onClick={() => setPayment("required")}
               />
             </div>
           </Field>

@@ -1,13 +1,15 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import {
   deleteCampaign,
   getCampaign,
+  getCampaignStock,
   updateCampaign,
   type CampaignDetail,
   type CampaignStatus,
+  type CampaignStock,
 } from "../api/campaignApi";
 import {
   applyToCampaign,
@@ -59,6 +61,15 @@ export function CampaignDetailPage() {
     enabled: Boolean(shortCode),
   });
 
+  // 재고는 상세 정보와 분리된 별도 API. 새로고침(=이 페이지 재진입) 시에만 조회하고
+  // 자동 폴링은 하지 않음 — 실시간 자동 갱신은 필요 없다고 확인됨.
+  // 신청/취소/정원수정처럼 사용자가 직접 액션을 했을 때는 그 직후 refetchStock()로 갱신.
+  const { data: stock, refetch: refetchStock } = useQuery({
+    queryKey: ["campaignStock", campaign?.id],
+    queryFn: () => getCampaignStock(campaign!.id),
+    enabled: Boolean(campaign?.id),
+  });
+
   const [actionError, setActionError] = useState("");
   const [isActing, setIsActing] = useState(false);
 
@@ -74,7 +85,7 @@ export function CampaignDetailPage() {
   if (!campaign) return null;
 
   const meta =
-    campaign.soldOut && campaign.status === "OPEN"
+    stock?.soldOut && campaign.status === "OPEN"
       ? { label: "매진", bg: "var(--warn)", fg: "var(--on-brand)" }
       : STATUS_META[campaign.status];
 
@@ -90,7 +101,7 @@ export function CampaignDetailPage() {
       if (result.status === "PENDING") {
         navigate(`/checkout/${result.id}`);
       } else {
-        await refetch();
+        await Promise.all([refetch(), refetchStock()]);
       }
     } catch (e) {
       const code = axios.isAxiosError(e)
@@ -99,6 +110,8 @@ export function CampaignDetailPage() {
       if (code === "SOLD_OUT") setActionError("방금 매진됐어요.");
       else if (code === "ALREADY_APPLIED")
         setActionError("이미 신청한 행사예요.");
+      else if (code === "CAMPAIGN_NOT_OPEN")
+        setActionError("아직 신청 오픈 전이에요.");
       else setActionError("신청 중 문제가 발생했어요.");
     } finally {
       setIsActing(false);
@@ -112,7 +125,7 @@ export function CampaignDetailPage() {
     setActionError("");
     try {
       await cancelApplication(campaign!.myApplication.id);
-      await refetch();
+      await Promise.all([refetch(), refetchStock()]);
     } catch {
       setActionError("취소 중 문제가 발생했어요.");
     } finally {
@@ -171,34 +184,29 @@ export function CampaignDetailPage() {
 
         <div className="mt-4 flex flex-col gap-1 text-sm text-(--muted)">
           {campaign.totalStock != null ? (
-            <p>
-              잔여{" "}
-              <span className="font-semibold text-(--paper)">
-                {campaign.remainingStock} / {campaign.totalStock}
-              </span>
-            </p>
+            <>
+              <p className="text-base font-bold text-(--paper)">
+                {stock ? stock.remainingStock : "-"}개 남음
+              </p>
+              <p className="text-xs">
+                {stock ? campaign.totalStock - stock.remainingStock : "-"} /{" "}
+                {campaign.totalStock}
+              </p>
+            </>
           ) : (
             <p>정원 제한 없음</p>
           )}
-          <p>참여 확정 {campaign.confirmedCount}명</p>
         </div>
 
-        {actionError && (
-          <p className="mt-4 text-xs text-(--warn)">{actionError}</p>
-        )}
-
         <div className="mt-8">
-          {campaign.viewerRole === "GUEST" && (
-            <PrimaryButton onClick={handleApply}>
-              로그인하고 신청하기
-            </PrimaryButton>
-          )}
-
-          {campaign.viewerRole === "VIEWER" && (
+          {(campaign.viewerRole === "GUEST" ||
+            campaign.viewerRole === "VIEWER") && (
             <ApplySection
               campaign={campaign}
+              stock={stock}
               isActing={isActing}
               onApply={handleApply}
+              onCampaignOpened={() => refetch()}
             />
           )}
 
@@ -224,7 +232,9 @@ export function CampaignDetailPage() {
                 setIsActing={setIsActing}
                 setActionError={setActionError}
                 onDelete={handleDelete}
-                onRefetch={refetch}
+                onRefetch={async () => {
+                  await Promise.all([refetch(), refetchStock()]);
+                }}
               />
 
               <div
@@ -246,14 +256,20 @@ export function CampaignDetailPage() {
                 ) : (
                   <ApplySection
                     campaign={campaign}
+                    stock={stock}
                     isActing={isActing}
                     onApply={handleApply}
+                    onCampaignOpened={() => refetch()}
                   />
                 )}
               </div>
             </div>
           )}
         </div>
+
+        {actionError && (
+          <p className="mt-4 text-xs text-(--warn)">{actionError}</p>
+        )}
       </div>
     </div>
   );
@@ -261,20 +277,34 @@ export function CampaignDetailPage() {
 
 function ApplySection({
   campaign,
+  stock,
   isActing,
   onApply,
+  onCampaignOpened,
 }: {
   campaign: CampaignDetail;
+  stock: CampaignStock | undefined;
   isActing: boolean;
   onApply: () => void;
+  onCampaignOpened: () => void;
 }) {
   if (campaign.status === "SCHEDULED") {
-    return <SecondaryButton disabled>아직 신청 오픈 전이에요</SecondaryButton>;
+    return (
+      <CountdownApplyButton
+        openAt={campaign.openAt}
+        isActing={isActing}
+        onClick={onApply}
+        onExpire={onCampaignOpened}
+      />
+    );
   }
   if (campaign.status === "CLOSED" || campaign.status === "DELETED") {
     return <SecondaryButton disabled>종료된 행사예요</SecondaryButton>;
   }
-  if (campaign.soldOut) {
+  if (!stock) {
+    return <SecondaryButton disabled>재고 확인 중...</SecondaryButton>;
+  }
+  if (stock.soldOut) {
     return <SecondaryButton disabled>매진됐어요</SecondaryButton>;
   }
   return (
@@ -371,6 +401,7 @@ function OwnerPanel({
             <span className="text-sm font-medium">정원 (증원만 가능)</span>
             <input
               type="number"
+              min={1}
               value={newTotalStock}
               onChange={(e) => setNewTotalStock(e.target.value)}
               className="input"
@@ -446,6 +477,74 @@ function SecondaryButton({
       {children}
     </button>
   );
+}
+
+function CountdownApplyButton({
+  openAt,
+  isActing,
+  onClick,
+  onExpire,
+}: {
+  openAt: string;
+  isActing: boolean;
+  onClick: () => void;
+  onExpire: () => void;
+}) {
+  const [remainingMs, setRemainingMs] = useState(
+    () => new Date(openAt).getTime() - Date.now(),
+  );
+  // 실제 API를 호출하는 버튼이라, 오픈 직전 광클로 요청이 과도하게 나가지 않도록
+  // 아주 짧은 디바운스만 걸어둠 (isActing 중엔 어차피 막히지만, 응답이 빨리 오면
+  // 바로 또 눌릴 수 있어서 이 정도 여유를 둠)
+  const lastClickAtRef = useRef(0);
+  const DEBOUNCE_MS = 200;
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const next = new Date(openAt).getTime() - Date.now();
+      setRemainingMs(next);
+      if (next <= 0) {
+        clearInterval(timer);
+        onExpire();
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openAt]);
+
+  function handleClick() {
+    const now = Date.now();
+    if (now - lastClickAtRef.current < DEBOUNCE_MS) return;
+    lastClickAtRef.current = now;
+    onClick();
+  }
+
+  const label = isActing
+    ? "처리 중..."
+    : remainingMs <= 0
+      ? "오픈됐어요"
+      : `오픈까지 ${formatCountdown(remainingMs)} 남았어요`;
+
+  return (
+    <PrimaryButton onClick={handleClick} disabled={isActing}>
+      {label}
+    </PrimaryButton>
+  );
+}
+
+function formatCountdown(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+
+  if (days >= 1) {
+    return `${days}일`;
+  }
+
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
 function CenteredMessage({ text }: { text: string }) {

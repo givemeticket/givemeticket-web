@@ -10,10 +10,12 @@ function toDate(raw: string): Date {
   return new Date(hasTimezone ? raw : `${raw}Z`);
 }
 
-/** ISO 문자열 → "8월 20일 20:00" 형태로 표시 */
+/** ISO 문자열 → "8월 20일 20:00" 형태로 표시. 올해가 아니면 연도도 같이 표시 */
 export function formatDateTimeKo(iso: string): string {
   const date = toDate(iso);
+  const isThisYear = date.getFullYear() === new Date().getFullYear();
   const formatted = new Intl.DateTimeFormat("ko-KR", {
+    year: isThisYear ? undefined : "numeric",
     month: "long",
     day: "numeric",
     hour: "2-digit",

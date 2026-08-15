@@ -77,16 +77,16 @@ export function CampaignCard({
           style={{ borderColor: "var(--line)", backgroundColor: meta.bg }}
         >
           <span
-            className="text-2xl font-extrabold leading-none"
+            className="text-center text-base font-extrabold leading-tight"
             style={{ color: meta.fg }}
           >
-            {remainingStock}
+            {remainingStock}개 남음
           </span>
           <span
             className="text-[10px] font-medium opacity-75"
             style={{ color: meta.fg }}
           >
-            / {totalStock}석
+            {(totalStock as number) - (remainingStock as number)} / {totalStock}
           </span>
         </div>
       )}
