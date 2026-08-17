@@ -52,6 +52,15 @@ button:not(:disabled) {
   color: var(--muted);
 }
 
+/* 타임휠 피커의 스크롤 컬럼 - 스크롤바는 숨기고 스크롤 동작만 유지 */
+.hide-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .stamp-anim {
     animation: stampDown 0.8s cubic-bezier(0.2, 0.85, 0.25, 1.2) both;
@@ -66,6 +75,9 @@ button:not(:disabled) {
   }
   .ring-anim-2 {
     animation: ringPulse 2.6s ease-out 1.3s infinite;
+  }
+  .countdown-urgent {
+    animation: countdownPulse 0.9s ease-in-out infinite;
   }
 }
 
@@ -94,5 +106,15 @@ button:not(:disabled) {
   100% {
     transform: scale(1.9);
     opacity: 0;
+  }
+}
+
+@keyframes countdownPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.035);
   }
 }

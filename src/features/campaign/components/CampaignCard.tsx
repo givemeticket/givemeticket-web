@@ -52,7 +52,7 @@ export function CampaignCard({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full overflow-hidden rounded-2xl border text-left shadow-[0_1px_3px_rgba(17,24,39,0.06)] transition-[transform,box-shadow] duration-200 hover:scale-[1.01] hover:shadow-[0_10px_24px_rgba(17,24,39,0.12)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) active:scale-[0.99]"
+      className="flex w-full overflow-hidden rounded-lg border text-left shadow-[0_1px_3px_rgba(17,24,39,0.06)] transition-[transform,box-shadow] duration-200 hover:scale-[1.01] hover:shadow-[0_10px_24px_rgba(17,24,39,0.12)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) active:scale-[0.99]"
       style={{ borderColor: "var(--line)", backgroundColor: "var(--ink-soft)" }}
     >
       {/* 메인 정보 영역 */}

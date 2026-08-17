@@ -2,6 +2,7 @@ import { useState, type ReactNode, type SubmitEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { createCampaign } from "../api/campaignApi";
 import { DateTimePickerField } from "@/shared/components/DateTimePickerField";
+import { nowAsDatetimeLocalValue } from "@/shared/lib/formatDate";
 import { BackButton } from "@/shared/components/BackButton";
 
 type PaymentOption = "required" | "not-required";
@@ -11,7 +12,7 @@ export function CampaignCreatePage() {
 
   const [title, setTitle] = useState("");
   const [totalStock, setTotalStock] = useState("");
-  const [openAt, setOpenAt] = useState("");
+  const [openAt, setOpenAt] = useState(() => nowAsDatetimeLocalValue());
   const [payment, setPayment] = useState<PaymentOption>("not-required");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -59,10 +60,6 @@ export function CampaignCreatePage() {
           <BackButton fallback="/mycampaigns" />
           <h1 className="text-lg font-bold">행사 만들기</h1>
         </div>
-
-        <p className="mt-1 text-sm text-(--muted)">
-          기본 정보만 입력하면 바로 공유 링크가 만들어져요
-        </p>
 
         <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-6">
           <Field label="행사 이름">

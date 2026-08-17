@@ -31,3 +31,10 @@ export function isoToDatetimeLocalValue(iso: string): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
+
+/** 지금 이 순간(로컬 시각)을 "YYYY-MM-DDTHH:mm" 형태로 반환 */
+export function nowAsDatetimeLocalValue(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}

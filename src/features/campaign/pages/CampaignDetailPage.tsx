@@ -439,18 +439,23 @@ function PrimaryButton({
   children,
   onClick,
   disabled,
+  urgent = false,
 }: {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
+  /** 임박 상태 강조 — 배경색을 경고색으로, 미세한 펄스 애니메이션 추가 */
+  urgent?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full rounded-full px-4 py-3 text-sm font-semibold text-(--on-yellow) transition-transform enabled:hover:scale-[1.02] enabled:active:scale-[0.98] disabled:opacity-40"
-      style={{ backgroundColor: "var(--brand-yellow)" }}
+      className={`w-full rounded-full px-4 py-3 text-sm font-semibold transition-transform enabled:hover:scale-[1.02] enabled:active:scale-[0.98] disabled:opacity-40 ${urgent ? "countdown-urgent text-(--on-brand)" : "text-(--on-yellow)"}`}
+      style={{
+        backgroundColor: urgent ? "var(--warn)" : "var(--brand-yellow)",
+      }}
     >
       {children}
     </button>
@@ -525,8 +530,10 @@ function CountdownApplyButton({
       ? "오픈됐어요"
       : `오픈까지 ${formatCountdown(remainingMs)} 남았어요`;
 
+  const isUrgent = remainingMs > 0 && remainingMs <= 60_000;
+
   return (
-    <PrimaryButton onClick={handleClick} disabled={isActing}>
+    <PrimaryButton onClick={handleClick} disabled={isActing} urgent={isUrgent}>
       {label}
     </PrimaryButton>
   );
