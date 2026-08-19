@@ -1,3 +1,5 @@
+import { Avatar } from "@/shared/components/Avatar";
+
 // 행사 목록(나의 티켓 / 내가 만든 행사)에서 공통으로 쓰는 카드.
 // "보딩패스" 스타일 — 오른쪽에 상태 색상으로 채운 스텁을 붙이고,
 // 그 안에 아이콘 대신 잔여 좌석 수를 큼직하게 보여줌.
@@ -14,6 +16,10 @@ interface CampaignCardProps {
   openAtLabel: string;
   remainingStock?: number;
   totalStock?: number;
+  /** 주최자 닉네임 */
+  ownerNickname?: string;
+  /** 주최자 프로필 사진. 동의 안 했으면 null일 수 있음 */
+  ownerProfileImageUrl?: string | null;
   onClick?: () => void;
 }
 
@@ -38,6 +44,8 @@ export function CampaignCard({
   openAtLabel,
   remainingStock,
   totalStock,
+  ownerNickname,
+  ownerProfileImageUrl,
   onClick,
 }: CampaignCardProps) {
   // 매진은 별도 상태가 아니라 OPEN + soldOut 조합이라, 뱃지 표시만 그때 덮어씀
@@ -67,6 +75,14 @@ export function CampaignCard({
         <p className="mt-2 truncate text-base font-semibold text-(--paper)">
           {title}
         </p>
+        {ownerNickname && (
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <Avatar src={ownerProfileImageUrl} name={ownerNickname} size={16} />
+            <span className="truncate text-xs text-(--muted)">
+              {ownerNickname}
+            </span>
+          </div>
+        )}
         <p className="mt-1 text-xs text-(--muted)">{openAtLabel}</p>
       </div>
 

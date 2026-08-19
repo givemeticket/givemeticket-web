@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CampaignCard } from "@/features/campaign/components/CampaignCard";
-import { listCampaignsWithStock } from "@/features/campaign/api/campaignApi";
+import { listCampaigns } from "@/features/campaign/api/campaignApi";
 import { formatDateTimeKo } from "@/shared/lib/formatDate";
 
 export function MyTicketsTab() {
@@ -10,7 +10,7 @@ export function MyTicketsTab() {
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ["campaigns", "participated"],
-    queryFn: () => listCampaignsWithStock("participated"),
+    queryFn: () => listCampaigns("participated"),
   });
 
   if (isLoading) {
@@ -36,10 +36,16 @@ export function MyTicketsTab() {
           key={c.id}
           title={c.title}
           status={c.status}
-          soldOut={c.soldOut}
+          soldOut={c.soldOut ?? false}
           openAtLabel={`${formatDateTimeKo(c.openAt)} 오픈`}
-          remainingStock={c.totalStock != null ? c.remainingStock : undefined}
+          remainingStock={
+            c.totalStock != null && c.remainingStock != null
+              ? c.remainingStock
+              : undefined
+          }
           totalStock={c.totalStock ?? undefined}
+          ownerNickname={c.owner.nickname}
+          ownerProfileImageUrl={c.owner.profileImageUrl}
           onClick={() =>
             navigate(`/campaigns/${c.shortCode}`, {
               state: { from: "mytickets" },

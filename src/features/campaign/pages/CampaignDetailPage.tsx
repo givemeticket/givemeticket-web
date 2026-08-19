@@ -9,7 +9,6 @@ import {
   updateCampaign,
   type CampaignDetail,
   type CampaignStatus,
-  type CampaignStock,
 } from "../api/campaignApi";
 import {
   applyToCampaign,
@@ -22,6 +21,8 @@ import {
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { ChevronLeftIcon } from "@/shared/components/BackButton";
 import { DateTimePickerField } from "@/shared/components/DateTimePickerField";
+import { Avatar } from "@/shared/components/Avatar";
+import { getServerTimeOffset } from "@/shared/lib/serverTime";
 
 /** 어디서 이 페이지로 들어왔는지 — 대시보드 탭에서 카드 클릭 시에만 명시적으로 실어서 넘김.
  * 공유 링크로 직접 들어오거나 주소를 직접 입력한 경우엔 이 값이 없어서 뒤로가기 버튼이 안 보임. */
@@ -84,8 +85,16 @@ export function CampaignDetailPage() {
   }
   if (!campaign) return null;
 
+  // 상세 조회 응답에 실린 재고는 "조회 시점 스냅샷". stock 쿼리가 아직 안 끝났으면
+  // 이 스냅샷을 폴백으로 써서 빈 화면(재고 확인 중...)이 덜 보이게 함.
+  // 이후 갱신(신청/취소 등)은 계속 stock 쿼리가 최신 출처가 됨.
+  const remainingStock =
+    stock?.remainingStock ?? campaign.remainingStock ?? undefined;
+  const soldOut = stock?.soldOut ?? campaign.soldOut ?? false;
+  const hasStockValue = stock !== undefined || campaign.remainingStock !== null;
+
   const meta =
-    stock?.soldOut && campaign.status === "OPEN"
+    soldOut && campaign.status === "OPEN"
       ? { label: "매진", bg: "var(--warn)", fg: "var(--on-brand)" }
       : STATUS_META[campaign.status];
 
@@ -178,19 +187,28 @@ export function CampaignDetailPage() {
           </div>
         </div>
 
-        <p className="mt-1 text-sm text-(--muted)">
-          {formatDateTimeKo(campaign.openAt)} 오픈
-        </p>
+        <div className="mt-1 flex items-center gap-1.5 text-sm text-(--muted)">
+          <Avatar
+            src={campaign.owner.profileImageUrl}
+            name={campaign.owner.nickname}
+            size={16}
+          />
+          <span>
+            {campaign.owner.nickname} · {formatDateTimeKo(campaign.openAt)} 오픈
+          </span>
+        </div>
 
         <div className="mt-4 flex flex-col gap-1 text-sm text-(--muted)">
           {campaign.totalStock != null ? (
             <>
               <p className="text-base font-bold text-(--paper)">
-                {stock ? stock.remainingStock : "-"}개 남음
+                {hasStockValue ? remainingStock : "-"}개 남음
               </p>
               <p className="text-xs">
-                {stock ? campaign.totalStock - stock.remainingStock : "-"} /{" "}
-                {campaign.totalStock}
+                {hasStockValue
+                  ? campaign.totalStock - (remainingStock as number)
+                  : "-"}{" "}
+                / {campaign.totalStock}
               </p>
             </>
           ) : (
@@ -203,7 +221,8 @@ export function CampaignDetailPage() {
             campaign.viewerRole === "VIEWER") && (
             <ApplySection
               campaign={campaign}
-              stock={stock}
+              hasStockValue={hasStockValue}
+              soldOut={soldOut}
               isActing={isActing}
               onApply={handleApply}
               onCampaignOpened={() => refetch()}
@@ -256,7 +275,8 @@ export function CampaignDetailPage() {
                 ) : (
                   <ApplySection
                     campaign={campaign}
-                    stock={stock}
+                    hasStockValue={hasStockValue}
+                    soldOut={soldOut}
                     isActing={isActing}
                     onApply={handleApply}
                     onCampaignOpened={() => refetch()}
@@ -277,13 +297,15 @@ export function CampaignDetailPage() {
 
 function ApplySection({
   campaign,
-  stock,
+  hasStockValue,
+  soldOut,
   isActing,
   onApply,
   onCampaignOpened,
 }: {
   campaign: CampaignDetail;
-  stock: CampaignStock | undefined;
+  hasStockValue: boolean;
+  soldOut: boolean;
   isActing: boolean;
   onApply: () => void;
   onCampaignOpened: () => void;
@@ -301,10 +323,10 @@ function ApplySection({
   if (campaign.status === "CLOSED" || campaign.status === "DELETED") {
     return <SecondaryButton disabled>종료된 행사예요</SecondaryButton>;
   }
-  if (!stock) {
+  if (!hasStockValue) {
     return <SecondaryButton disabled>재고 확인 중...</SecondaryButton>;
   }
-  if (stock.soldOut) {
+  if (soldOut) {
     return <SecondaryButton disabled>매진됐어요</SecondaryButton>;
   }
   return (
@@ -339,6 +361,7 @@ function OwnerPanel({
   );
 
   const shareUrl = `${window.location.origin}/campaigns/${campaign.shortCode}`;
+  const isOpen = campaign.status === "OPEN";
 
   async function handleCopy() {
     await navigator.clipboard.writeText(shareUrl);
@@ -356,10 +379,21 @@ function OwnerPanel({
       });
       setIsEditing(false);
       await onRefetch();
-    } catch {
-      setActionError(
-        "수정 중 문제가 발생했어요. (오픈 시각은 늦추는 방향, 정원은 늘리는 방향으로만 가능해요)",
-      );
+    } catch (e) {
+      const code = axios.isAxiosError(e)
+        ? (e.response?.data as { code?: string })?.code
+        : undefined;
+      if (code === "OPEN_AT_NOT_DELAYABLE") {
+        setActionError(
+          "이미 오픈된 캠페인은 오픈 시각을 앞당길 수 없어요. 그대로 두거나 미루는 것만 가능해요.",
+        );
+      } else if (code === "TOTAL_STOCK_NOT_INCREASABLE") {
+        setActionError(
+          "이미 오픈된 캠페인은 정원을 줄일 수 없어요. 그대로 두거나 늘리는 것만 가능해요.",
+        );
+      } else {
+        setActionError("수정 중 문제가 발생했어요.");
+      }
     } finally {
       setIsActing(false);
     }
@@ -393,15 +427,22 @@ function OwnerPanel({
           style={{ borderColor: "var(--line)" }}
         >
           <DateTimePickerField
-            label="오픈 시각 (지연만 가능)"
+            label={
+              isOpen ? "오픈 시각 (그대로 두거나 미루기만 가능)" : "오픈 시각"
+            }
             value={newOpenAt}
             onChange={setNewOpenAt}
+            // 이미 오픈된 캠페인은 원래 오픈 시각(이미 지난 시각일 수 있음)을 그대로
+            // 유지하는 것도 허용해야 해서, 오늘이 아니라 원래 오픈 시각을 기준으로 함
+            minDate={isOpen ? new Date(campaign.openAt) : undefined}
           />
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">정원 (증원만 가능)</span>
+            <span className="text-sm font-medium">
+              정원{isOpen ? " (그대로 두거나 늘리기만 가능)" : ""}
+            </span>
             <input
               type="number"
-              min={1}
+              min={isOpen ? (campaign.totalStock ?? 1) : 1}
               value={newTotalStock}
               onChange={(e) => setNewTotalStock(e.target.value)}
               className="input"
@@ -495,8 +536,28 @@ function CountdownApplyButton({
   onClick: () => void;
   onExpire: () => void;
 }) {
+  // 오차 측정 전엔 0(로컬 시계 그대로)으로 시작하고, 측정되면 그 값으로 갱신.
+  // 카운트다운이 표시되자마자 살짝 튈 수는 있지만, 정확도가 훨씬 중요한 값이라 감수함.
+  const [offset, setOffset] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    getServerTimeOffset()
+      .then((o) => {
+        if (!cancelled) setOffset(o);
+      })
+      .catch(() => {
+        // 실패하면 그냥 로컬 시계(오차 0)로 계속 진행 — 카운트다운이 안 뜨는 것보단 나음
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const serverNow = () => Date.now() + offset;
+
   const [remainingMs, setRemainingMs] = useState(
-    () => new Date(openAt).getTime() - Date.now(),
+    () => new Date(openAt).getTime() - serverNow(),
   );
   // 실제 API를 호출하는 버튼이라, 오픈 직전 광클로 요청이 과도하게 나가지 않도록
   // 아주 짧은 디바운스만 걸어둠 (isActing 중엔 어차피 막히지만, 응답이 빨리 오면
@@ -506,7 +567,7 @@ function CountdownApplyButton({
 
   useEffect(() => {
     const timer = setInterval(() => {
-      const next = new Date(openAt).getTime() - Date.now();
+      const next = new Date(openAt).getTime() - serverNow();
       setRemainingMs(next);
       if (next <= 0) {
         clearInterval(timer);
@@ -515,7 +576,7 @@ function CountdownApplyButton({
     }, 1000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openAt]);
+  }, [openAt, offset]);
 
   function handleClick() {
     const now = Date.now();

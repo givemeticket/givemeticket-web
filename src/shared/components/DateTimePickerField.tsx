@@ -13,6 +13,9 @@ interface DateTimePickerFieldProps {
   value: string;
   onChange: (value: string) => void;
   hint?: string;
+  /** 선택 가능한 최소 날짜. 기본은 오늘. 이미 지난 날짜를 그대로 유지하는 것도
+   * 허용해야 하는 경우(예: 이미 오픈된 캠페인의 오픈시각을 그대로 두는 것) 오버라이드용 */
+  minDate?: Date;
 }
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -94,6 +97,7 @@ export function DateTimePickerField({
   value,
   onChange,
   hint,
+  minDate,
 }: DateTimePickerFieldProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [viewMonth, setViewMonth] = useState(() => parseValue(value).date);
@@ -125,8 +129,8 @@ export function DateTimePickerField({
   const month = viewMonth.getMonth();
   const firstDayOfWeek = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const minSelectableDate = minDate ? new Date(minDate) : new Date();
+  minSelectableDate.setHours(0, 0, 0, 0);
 
   const cells: (number | null)[] = [
     ...Array(firstDayOfWeek).fill(null),
@@ -203,7 +207,7 @@ export function DateTimePickerField({
               {cells.map((day, idx) => {
                 if (day === null) return <span key={idx} />;
                 const cellDate = new Date(year, month, day);
-                const isPast = cellDate < today;
+                const isPast = cellDate < minSelectableDate;
                 const isSelected = cellDate.getTime() === draftDate.getTime();
                 return (
                   <button
