@@ -4,6 +4,7 @@
 :root {
   --ink: #ffffff; /* 페이지 배경 */
   --ink-soft: #f4f5f7; /* 카드/서페이스 배경 */
+  --deleted: #d8dbe0; /* 삭제됨 카드 전용 - ink-soft보다 한 단계 진한 회색 */
   --paper: #111827; /* 본문 텍스트 (진한 남색에 가까운 다크) */
   --brand-blue: #1a8ecb;
   --brand-blue-dim: #0f6f9e;

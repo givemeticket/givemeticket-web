@@ -34,7 +34,7 @@ const STATUS_META: Record<
   },
   OPEN: { label: "진행중", bg: "var(--brand-yellow)", fg: "var(--on-yellow)" },
   CLOSED: { label: "종료", bg: "var(--ink-soft)", fg: "var(--muted)" },
-  DELETED: { label: "삭제됨", bg: "var(--ink-soft)", fg: "var(--muted)" },
+  DELETED: { label: "삭제됨", bg: "var(--deleted)", fg: "var(--paper)" },
 };
 
 export function CampaignCard({
@@ -55,13 +55,14 @@ export function CampaignCard({
       : STATUS_META[status];
   const hasStock =
     typeof remainingStock === "number" && typeof totalStock === "number";
+  const cardBg = status === "DELETED" ? "var(--deleted)" : "var(--ink-soft)";
 
   return (
     <button
       type="button"
       onClick={onClick}
       className="flex w-full overflow-hidden rounded-lg border text-left shadow-[0_1px_3px_rgba(17,24,39,0.06)] transition-[transform,box-shadow] duration-200 hover:scale-[1.01] hover:shadow-[0_10px_24px_rgba(17,24,39,0.12)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) active:scale-[0.99]"
-      style={{ borderColor: "var(--line)", backgroundColor: "var(--ink-soft)" }}
+      style={{ borderColor: "var(--line)", backgroundColor: cardBg }}
     >
       {/* 메인 정보 영역 */}
       <div className="min-w-0 flex-1 p-4">

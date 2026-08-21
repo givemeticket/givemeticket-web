@@ -137,6 +137,14 @@ export async function deleteCampaign(campaignId: number): Promise<void> {
   await apiClient.delete(`/api/v1/campaigns/${campaignId}`);
 }
 
+/**
+ * 캠페인 종료. 삭제와 달리 이미 확정된 신청은 그대로 유지되고, 취소·환불도 안 함.
+ * 신규 신청만 막힘. 되돌릴 수 없고, 종료 후엔 오픈 시각도 못 바꿈(409 CAMPAIGN_CLOSED).
+ */
+export async function closeCampaign(campaignId: number): Promise<void> {
+  await apiClient.post(`/api/v1/campaigns/${campaignId}/close`);
+}
+
 export async function updateCampaign(
   campaignId: number,
   payload: { openAt?: string; totalStock?: number },
