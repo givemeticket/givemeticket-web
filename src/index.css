@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "pretendard/dist/web/static/pretendard.css";
 
+/* 스크롤바가 나타날 때/없을 때 콘텐츠 너비가 달라지는 걸 방지 —
+   스크롤이 실제로 필요 없는 페이지도 그만큼의 공간을 항상 미리 확보해둠 */
+html {
+  scrollbar-gutter: stable;
+}
+
 :root {
   --ink: #ffffff; /* 페이지 배경 */
   --ink-soft: #f4f5f7; /* 카드/서페이스 배경 */

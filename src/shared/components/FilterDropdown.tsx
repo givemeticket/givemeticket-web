@@ -74,16 +74,14 @@ export function FilterDropdown({
 
       {isOpen && (
         <div
-          className="absolute right-0 top-10 z-20 w-52 rounded-xl border p-3"
+          className="absolute right-0 top-10 z-20 w-fit min-w-40 rounded-xl border p-3"
           style={{
             borderColor: "var(--line)",
             backgroundColor: "var(--ink)",
             boxShadow: "0 10px 24px rgba(17,24,39,0.12)",
           }}
         >
-          <p className="mb-1.5 text-xs font-semibold text-(--muted)">
-            정렬 기준
-          </p>
+          <p className="mb-1.5 text-sm text-(--muted)">정렬 기준</p>
           <div className="flex gap-1.5">
             {sortOptions.map((opt) => {
               const active = opt.value === sortValue;
@@ -92,7 +90,7 @@ export function FilterDropdown({
                   key={opt.value}
                   type="button"
                   onClick={() => handleOptionClick(opt.value)}
-                  className="flex flex-1 items-center justify-between gap-1 rounded-full border px-2.5 py-1.5 text-xs font-medium"
+                  className="flex items-center gap-0.5 rounded-full border px-2.5 py-1.5 text-xs font-medium"
                   style={
                     active
                       ? {
@@ -131,8 +129,8 @@ export function FilterDropdown({
 function SortDirectionIcon({ direction }: { direction: "asc" | "desc" }) {
   return (
     <svg
-      width="14"
-      height="14"
+      width="12"
+      height="12"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"

@@ -16,7 +16,7 @@ import {
 } from "@/features/application/api/applicationApi";
 import { formatDateTimeKo } from "@/shared/lib/formatDate";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { ChevronLeftIcon } from "@/shared/components/BackButton";
+import { BackButton } from "@/shared/components/BackButton";
 import { Avatar } from "@/shared/components/Avatar";
 import { OwnerPanel } from "../components/OwnerPanel";
 import { CountdownApplyButton } from "../components/CountdownApplyButton";
@@ -89,6 +89,13 @@ export function CampaignDetailPage() {
     stock?.remainingStock ?? campaign.remainingStock ?? undefined;
   const soldOut = stock?.soldOut ?? campaign.soldOut ?? false;
   const hasStockValue = stock !== undefined || campaign.remainingStock !== null;
+
+  // myApplication은 값이 있다고 해서 "아직 신청 중"이라는 뜻이 아님 — 취소·실패한
+  // 신청도 status만 바뀐 채로 계속 내려올 수 있어서, 활성 상태인지 따로 확인해야 함
+  const hasActiveApplication =
+    campaign.myApplication != null &&
+    campaign.myApplication.status !== "CANCELLED" &&
+    campaign.myApplication.status !== "FAILED";
 
   const meta =
     soldOut && campaign.status === "OPEN"
@@ -180,16 +187,7 @@ export function CampaignDetailPage() {
     <div className="min-h-screen bg-(--ink) px-6 py-10 text-(--paper)">
       <div className="mx-auto max-w-md">
         <div className="flex items-center gap-1">
-          {cameFrom && (
-            <button
-              type="button"
-              onClick={() => navigate(`/${cameFrom}`)}
-              aria-label="뒤로가기"
-              className="rounded-full p-1 text-(--paper)"
-            >
-              <ChevronLeftIcon />
-            </button>
-          )}
+          {cameFrom && <BackButton fallback={`/${cameFrom}`} />}
 
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <h1 className="truncate text-xl font-bold">{campaign.title}</h1>
@@ -234,7 +232,9 @@ export function CampaignDetailPage() {
 
         <div className="mt-8">
           {(campaign.viewerRole === "GUEST" ||
-            campaign.viewerRole === "VIEWER") && (
+            campaign.viewerRole === "VIEWER" ||
+            (campaign.viewerRole === "PARTICIPANT" &&
+              !hasActiveApplication)) && (
             <ApplySection
               campaign={campaign}
               hasStockValue={hasStockValue}
@@ -245,19 +245,21 @@ export function CampaignDetailPage() {
             />
           )}
 
-          {campaign.viewerRole === "PARTICIPANT" && campaign.myApplication && (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-(--muted)">
-                내 신청 상태:{" "}
-                <span className="font-semibold text-(--paper)">
-                  {campaign.myApplication.status}
-                </span>
-              </p>
-              <SecondaryButton onClick={handleCancel} disabled={isActing}>
-                {isActing ? "처리 중..." : "신청 취소"}
-              </SecondaryButton>
-            </div>
-          )}
+          {campaign.viewerRole === "PARTICIPANT" &&
+            hasActiveApplication &&
+            campaign.myApplication && (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm text-(--muted)">
+                  내 신청 상태:{" "}
+                  <span className="font-semibold text-(--paper)">
+                    {campaign.myApplication.status}
+                  </span>
+                </p>
+                <SecondaryButton onClick={handleCancel} disabled={isActing}>
+                  {isActing ? "처리 중..." : "신청 취소"}
+                </SecondaryButton>
+              </div>
+            )}
 
           {campaign.viewerRole === "OWNER" && (
             <div className="flex flex-col gap-6">
@@ -277,7 +279,7 @@ export function CampaignDetailPage() {
                 className="border-t pt-6"
                 style={{ borderColor: "var(--line)" }}
               >
-                {campaign.myApplication ? (
+                {hasActiveApplication && campaign.myApplication ? (
                   <div className="flex flex-col gap-3">
                     <p className="text-sm text-(--muted)">
                       내 신청 상태:{" "}
