@@ -56,12 +56,14 @@ export function CampaignCard({
   const hasStock =
     typeof remainingStock === "number" && typeof totalStock === "number";
   const cardBg = status === "DELETED" ? "var(--deleted)" : "var(--ink-soft)";
+  const isDeleted = status === "DELETED";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full overflow-hidden rounded-lg border text-left shadow-[0_1px_3px_rgba(17,24,39,0.06)] transition-[transform,box-shadow] duration-200 hover:scale-[1.01] hover:shadow-[0_10px_24px_rgba(17,24,39,0.12)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) active:scale-[0.99]"
+      disabled={isDeleted}
+      className="flex w-full overflow-hidden rounded-lg border text-left shadow-[0_1px_3px_rgba(17,24,39,0.06)] transition-[transform,box-shadow] duration-200 enabled:hover:scale-[1.01] enabled:hover:shadow-[0_10px_24px_rgba(17,24,39,0.12)] enabled:active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) disabled:cursor-default"
       style={{ borderColor: "var(--line)", backgroundColor: cardBg }}
     >
       {/* 메인 정보 영역 */}

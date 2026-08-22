@@ -15,15 +15,19 @@ export function CountdownApplyButton({
   onClick: () => void;
   onExpire: () => void;
 }) {
-  // 오차 측정 전엔 0(로컬 시계 그대로)으로 시작하고, 측정되면 그 값으로 갱신.
-  // 카운트다운이 표시되자마자 살짝 튈 수는 있지만, 정확도가 훨씬 중요한 값이라 감수함.
-  const [offset, setOffset] = useState(0);
+  // offset을 state가 아니라 ref로 들고 있음 — state였다면, 오차 측정 API 응답이
+  // 도착해서 offset이 갱신될 때마다 아래 setInterval 이펙트가 [openAt, offset]
+  // 의존성 때문에 타이머를 통째로 재시작했음. 재시작된 타이머는 그 순간부터 다시
+  // 1초를 꽉 채워야 다음 틱이 오니까, 화면 숫자가 최대 2초 가까이 멈춰있는 것처럼
+  // 보이는 버그가 있었음. ref로 바꾸면 값이 갱신돼도 리렌더/이펙트 재실행이 없어서,
+  // 타이머는 처음 그대로 쭉 이어지고 매 틱마다 그 시점의 최신 오차만 조용히 반영됨.
+  const offsetRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
     getServerTimeOffset()
       .then((o) => {
-        if (!cancelled) setOffset(o);
+        if (!cancelled) offsetRef.current = o;
       })
       .catch(() => {
         // 실패하면 그냥 로컬 시계(오차 0)로 계속 진행 — 카운트다운이 안 뜨는 것보단 나음
@@ -33,7 +37,7 @@ export function CountdownApplyButton({
     };
   }, []);
 
-  const serverNow = () => Date.now() + offset;
+  const serverNow = () => Date.now() + offsetRef.current;
 
   const [remainingMs, setRemainingMs] = useState(
     () => new Date(openAt).getTime() - serverNow(),
@@ -55,7 +59,7 @@ export function CountdownApplyButton({
     }, 1000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openAt, offset]);
+  }, [openAt]);
 
   function handleClick() {
     const now = Date.now();

@@ -1,12 +1,23 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { FilterDropdown } from "@/shared/components/FilterDropdown";
 import { CampaignCard } from "@/features/campaign/components/CampaignCard";
 import { listCampaigns } from "@/features/campaign/api/campaignApi";
 import { formatDateTimeKo } from "@/shared/lib/formatDate";
 
+const SORT_OPTIONS = [
+  { value: "appliedAt", label: "신청 날짜" },
+  { value: "openAt", label: "오픈 날짜" },
+];
+
 export function MyTicketsTab() {
   const navigate = useNavigate();
+  const [showDeleted, setShowDeleted] = useState(false);
+  // TODO: 백엔드가 신청 시각 필드를 목록에 내려주면 실제 정렬 로직 연결
+  const [sortBy, setSortBy] = useState(SORT_OPTIONS[0].value);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ["campaigns", "participated"],
@@ -29,30 +40,54 @@ export function MyTicketsTab() {
     );
   }
 
+  const visibleCampaigns = showDeleted
+    ? campaigns
+    : campaigns.filter((c) => c.status !== "DELETED");
+
   return (
-    <div className="flex flex-col gap-3">
-      {campaigns.map((c) => (
-        <CampaignCard
-          key={c.id}
-          title={c.title}
-          status={c.status}
-          soldOut={c.soldOut ?? false}
-          openAtLabel={`${formatDateTimeKo(c.openAt)} 오픈`}
-          remainingStock={
-            c.totalStock != null && c.remainingStock != null
-              ? c.remainingStock
-              : undefined
-          }
-          totalStock={c.totalStock ?? undefined}
-          ownerNickname={c.owner.nickname}
-          ownerProfileImageUrl={c.owner.profileImageUrl}
-          onClick={() =>
-            navigate(`/campaigns/${c.shortCode}`, {
-              state: { from: "mytickets" },
-            })
-          }
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-end">
+        <FilterDropdown
+          sortOptions={SORT_OPTIONS}
+          sortValue={sortBy}
+          onSortChange={setSortBy}
+          sortDirection={sortDirection}
+          onSortDirectionChange={setSortDirection}
+          showDeleted={showDeleted}
+          onShowDeletedChange={setShowDeleted}
         />
-      ))}
+      </div>
+
+      {visibleCampaigns.length === 0 ? (
+        <p className="py-16 text-center text-sm text-(--muted)">
+          아직 신청한 행사가 없어요
+        </p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {visibleCampaigns.map((c) => (
+            <CampaignCard
+              key={c.id}
+              title={c.title}
+              status={c.status}
+              soldOut={c.soldOut ?? false}
+              openAtLabel={`${formatDateTimeKo(c.openAt)} 오픈`}
+              remainingStock={
+                c.totalStock != null && c.remainingStock != null
+                  ? c.remainingStock
+                  : undefined
+              }
+              totalStock={c.totalStock ?? undefined}
+              ownerNickname={c.owner.nickname}
+              ownerProfileImageUrl={c.owner.profileImageUrl}
+              onClick={() =>
+                navigate(`/campaigns/${c.shortCode}`, {
+                  state: { from: "mytickets" },
+                })
+              }
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { ChevronLeftIcon } from "./BackButton";
 import { WheelColumn, ROW_HEIGHT, WHEEL_PADDING } from "./WheelColumn";
+import {
+  parseDatetimeLocalValue as parseValue,
+  buildDatetimeLocalValueFromParts as toValue,
+} from "@/shared/lib/formatDate";
 
 interface DateTimePickerFieldProps {
   label: string;
@@ -11,28 +15,15 @@ interface DateTimePickerFieldProps {
   /** 선택 가능한 최소 날짜. 기본은 오늘. 이미 지난 날짜를 그대로 유지하는 것도
    * 허용해야 하는 경우(예: 이미 오픈된 캠페인의 오픈시각을 그대로 두는 것) 오버라이드용 */
   minDate?: Date;
+  /** true면 모달을 열 때 현재 value 대신 항상 "오늘/지금"으로 시작함
+   * (예: 캠페인 수정 폼 — 원래 값은 유지하되, 수정하러 들어왔을 때는 현재 시각부터 보여주고 싶은 경우) */
+  resetToNowOnOpen?: boolean;
+  /** 실제로 저장돼 있는 원래 값. resetToNowOnOpen과 함께 쓰면
+   * (1) 달력에 이 날짜를 별도 표시하고 (2) 닫힌 라벨에 되돌리기 버튼을 보여줌 */
+  originalValue?: string;
 }
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
-
-function parseValue(value: string): {
-  date: Date;
-  hour: number;
-  minute: number;
-} {
-  // 값이 없으면(처음 여는 경우) 현재 로컬 시각을 기본값으로 사용
-  const base = value ? new Date(value) : new Date();
-  return {
-    date: new Date(base.getFullYear(), base.getMonth(), base.getDate()),
-    hour: base.getHours(),
-    minute: base.getMinutes(),
-  };
-}
-
-function toValue(date: Date, hour: number, minute: number): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(hour)}:${pad(minute)}`;
-}
 
 function formatDateLabel(value: string): string {
   const d = new Date(value);
@@ -90,6 +81,8 @@ export function DateTimePickerField({
   onChange,
   hint,
   minDate,
+  resetToNowOnOpen = false,
+  originalValue,
 }: DateTimePickerFieldProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [viewMonth, setViewMonth] = useState(() => parseValue(value).date);
@@ -102,7 +95,10 @@ export function DateTimePickerField({
   );
 
   function openModal() {
-    const parsed = parseValue(value);
+    // resetToNowOnOpen이면 원래 값이 뭐였든 상관없이 항상 "지금"부터 보여줌.
+    // 실제 저장된 값(value)은 "확인"을 눌러야만 이걸로 덮어써짐 — 안 누르고
+    // "취소"하면 이 화면에서 뭘 골랐든 기존 value 그대로 유지됨.
+    const parsed = resetToNowOnOpen ? parseValue("") : parseValue(value);
     setViewMonth(parsed.date);
     setDraftDate(parsed.date);
     setDraftHour(parsed.hour);
@@ -124,6 +120,19 @@ export function DateTimePickerField({
   const minSelectableDate = minDate ? new Date(minDate) : new Date();
   minSelectableDate.setHours(0, 0, 0, 0);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // 원래 저장돼 있던 날짜. 오늘이랑 같으면 굳이 표시할 필요 없음(이미 기본 선택 위치니까)
+  const originalDate = originalValue
+    ? (() => {
+        const d = new Date(originalValue);
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      })()
+    : null;
+  const showOriginalMarker =
+    originalDate && originalDate.getTime() !== today.getTime();
+
   const cells: (number | null)[] = [
     ...Array(firstDayOfWeek).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
@@ -135,10 +144,17 @@ export function DateTimePickerField({
     <div className="flex flex-col gap-1.5">
       <span className="text-sm font-medium text-(--paper)">{label}</span>
 
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={openModal}
-        className="input flex items-center gap-2 text-left"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openModal();
+          }
+        }}
+        className="input flex cursor-pointer items-center gap-2 text-left"
       >
         <CalendarIcon />
         <span className="min-w-0 flex-1 truncate text-(--paper)">
@@ -146,7 +162,22 @@ export function DateTimePickerField({
           <span className="mx-1.5 text-(--muted)">·</span>
           {formatTimeLabel(displayValue)}
         </span>
-      </button>
+
+        {originalValue && value !== originalValue && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange(originalValue);
+            }}
+            aria-label="원래 시각으로 되돌리기"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full hover:bg-(--ink-soft)"
+            style={{ color: "var(--muted)" }}
+          >
+            <RevertIcon />
+          </button>
+        )}
+      </div>
 
       {hint && <span className="text-xs text-(--muted)">{hint}</span>}
 
@@ -201,6 +232,10 @@ export function DateTimePickerField({
                 const cellDate = new Date(year, month, day);
                 const isPast = cellDate < minSelectableDate;
                 const isSelected = cellDate.getTime() === draftDate.getTime();
+                const isOriginal =
+                  showOriginalMarker &&
+                  originalDate &&
+                  cellDate.getTime() === originalDate.getTime();
                 return (
                   <button
                     key={idx}
@@ -214,7 +249,12 @@ export function DateTimePickerField({
                             backgroundColor: "var(--brand-blue)",
                             color: "var(--on-brand)",
                           }
-                        : { color: "var(--paper)" }
+                        : isOriginal
+                          ? {
+                              color: "var(--paper)",
+                              boxShadow: "inset 0 0 0 1.5px var(--brand-blue)",
+                            }
+                          : { color: "var(--paper)" }
                     }
                   >
                     {day}
@@ -306,6 +346,33 @@ function CalendarIcon() {
         stroke="var(--brand-blue)"
         strokeWidth="1.6"
         strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function RevertIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M4 4v6h6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.5 15a8 8 0 1 0 2-8.5L4 10"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );

@@ -113,9 +113,12 @@ export function OwnerPanel({
             }
             value={newOpenAt}
             onChange={setNewOpenAt}
-            // 이미 오픈된 캠페인은 원래 오픈 시각(이미 지난 시각일 수 있음)을 그대로
-            // 유지하는 것도 허용해야 해서, 오늘이 아니라 원래 오픈 시각을 기준으로 함
-            minDate={isOpen ? new Date(campaign.openAt) : undefined}
+            // OPEN일 때만 "오늘/지금"부터 시작하고(과거인 원래 오픈 시각을 기본으로
+            // 보여줄 이유가 없음), SCHEDULED는 예전처럼 원래 값 그대로 보여줌.
+            // minDate는 따로 안 넘겨서 기본값(오늘)을 그대로 씀 — 이러면 OPEN이어도
+            // 과거(원래 오픈 시각 포함)는 전부 비활성화되고 오늘부터만 고를 수 있음.
+            resetToNowOnOpen={isOpen}
+            originalValue={isoToDatetimeLocalValue(campaign.openAt)}
           />
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">
