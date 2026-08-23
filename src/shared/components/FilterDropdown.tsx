@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, Filter } from "lucide-react";
 import { ToggleSwitch } from "./ToggleSwitch";
 
 interface SortOption {
@@ -69,7 +70,7 @@ export function FilterDropdown({
           backgroundColor: isOpen ? "var(--ink-soft)" : undefined,
         }}
       >
-        <FilterIcon />
+        <Filter size={16} strokeWidth={1.8} />
       </button>
 
       {isOpen && (
@@ -127,44 +128,9 @@ export function FilterDropdown({
 }
 
 function SortDirectionIcon({ direction }: { direction: "asc" | "desc" }) {
-  return (
-    <svg
-      width="12"
-      height="12"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d={
-          direction === "asc"
-            ? "M12 19V5M6 11l6-6 6 6"
-            : "M12 5v14M6 13l6 6 6-6"
-        }
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function FilterIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M4 6h16M7 12h10M10 18h4"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
+  return direction === "asc" ? (
+    <ArrowUp size={12} strokeWidth={2} />
+  ) : (
+    <ArrowDown size={12} strokeWidth={2} />
   );
 }

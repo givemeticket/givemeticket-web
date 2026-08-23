@@ -1,10 +1,14 @@
 import { useState, type ReactNode } from "react";
 import axios from "axios";
+import { Ban, Pencil, Trash2 } from "lucide-react";
 import { updateCampaign, type CampaignDetail } from "../api/campaignApi";
 import { isoToDatetimeLocalValue } from "@/shared/lib/formatDate";
 import { DateTimePickerField } from "@/shared/components/DateTimePickerField";
 
-// 관리자(개설자) 전용 패널 — 공유 링크 복사, 오픈시각/정원 수정, 종료, 삭제.
+// 관리자(개설자) 전용 패널 — 아이콘 한 줄(수정/종료/삭제).
+// 링크 복사는 역할과 무관하게 누구나 볼 수 있어야 해서 별도 CopyLinkButton으로 분리됨.
+// "수정"만 누르면 그 아래에 인라인 폼이 펼쳐짐. 참여(신청/취소) 관련 UI는
+// 여기 없음 — 상세 페이지의 공통 "신청하기/신청취소" 섹션이 역할과 무관하게 처리함.
 export function OwnerPanel({
   campaign,
   isActing,
@@ -13,6 +17,7 @@ export function OwnerPanel({
   onDelete,
   onClose,
   onRefetch,
+  leadingContent,
 }: {
   campaign: CampaignDetail;
   isActing: boolean;
@@ -21,8 +26,9 @@ export function OwnerPanel({
   onDelete: () => void;
   onClose: () => void;
   onRefetch: () => Promise<unknown>;
+  /** 아이콘 행 맨 앞에 같이 넣을 요소 (예: 누구나 볼 수 있는 링크 복사 버튼) */
+  leadingContent?: ReactNode;
 }) {
-  const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [newOpenAt, setNewOpenAt] = useState(() =>
     isoToDatetimeLocalValue(campaign.openAt),
@@ -31,15 +37,8 @@ export function OwnerPanel({
     campaign.totalStock != null ? String(campaign.totalStock) : "",
   );
 
-  const shareUrl = `${window.location.origin}/campaigns/${campaign.shortCode}`;
   const isOpen = campaign.status === "OPEN";
   const isClosed = campaign.status === "CLOSED";
-
-  async function handleCopy() {
-    await navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
 
   async function handleSaveEdit() {
     setIsActing(true);
@@ -74,35 +73,37 @@ export function OwnerPanel({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div
-        className="flex items-center gap-2 rounded-xl border px-3 py-2.5"
-        style={{
-          borderColor: "var(--line)",
-          backgroundColor: "var(--ink-soft)",
-        }}
-      >
-        <span className="min-w-0 flex-1 truncate text-xs text-(--muted)">
-          {shareUrl}
-        </span>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold text-(--on-brand)"
-          style={{ backgroundColor: "var(--brand-blue)" }}
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        {leadingContent}
+
+        {!isClosed && (
+          <IconButton
+            onClick={() => setIsEditing((v) => !v)}
+            label="수정"
+            active={isEditing}
+          >
+            <Pencil size={17} strokeWidth={1.7} />
+          </IconButton>
+        )}
+
+        {!isClosed && (
+          <IconButton onClick={onClose} label="종료" disabled={isActing}>
+            <Ban size={17} strokeWidth={1.7} />
+          </IconButton>
+        )}
+
+        <IconButton
+          onClick={onDelete}
+          label="삭제"
+          disabled={isActing}
+          tone="warn"
         >
-          {copied ? "복사됨" : "복사"}
-        </button>
+          <Trash2 size={17} strokeWidth={1.7} />
+        </IconButton>
       </div>
 
-      {isClosed ? (
-        <p
-          className="rounded-xl border px-4 py-3 text-xs text-(--muted)"
-          style={{ borderColor: "var(--line)" }}
-        >
-          종료된 행사는 오픈 시각·정원을 바꿀 수 없어요.
-        </p>
-      ) : isEditing ? (
+      {isEditing && (
         <div
           className="flex flex-col gap-3 rounded-xl border p-4"
           style={{ borderColor: "var(--line)" }}
@@ -113,10 +114,9 @@ export function OwnerPanel({
             }
             value={newOpenAt}
             onChange={setNewOpenAt}
-            // OPEN일 때만 "오늘/지금"부터 시작하고(과거인 원래 오픈 시각을 기본으로
-            // 보여줄 이유가 없음), SCHEDULED는 예전처럼 원래 값 그대로 보여줌.
-            // minDate는 따로 안 넘겨서 기본값(오늘)을 그대로 씀 — 이러면 OPEN이어도
-            // 과거(원래 오픈 시각 포함)는 전부 비활성화되고 오늘부터만 고를 수 있음.
+            // 이미 오픈된 캠페인은 원래 오픈 시각(이미 지난 시각일 수 있음)을 그대로
+            // 유지하는 것도 허용해야 해서, 오늘이 아니라 원래 오픈 시각을 기준으로 함
+            minDate={isOpen ? new Date(campaign.openAt) : undefined}
             resetToNowOnOpen={isOpen}
             originalValue={isoToDatetimeLocalValue(campaign.openAt)}
           />
@@ -133,85 +133,60 @@ export function OwnerPanel({
             />
           </label>
           <div className="flex gap-2">
-            <SecondaryButton onClick={() => setIsEditing(false)}>
+            <button
+              type="button"
+              onClick={() => setIsEditing(false)}
+              className="flex-1 rounded-full border px-4 py-2.5 text-sm font-medium"
+              style={{ borderColor: "var(--line)", color: "var(--paper)" }}
+            >
               취소
-            </SecondaryButton>
-            <PrimaryButton onClick={handleSaveEdit} disabled={isActing}>
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveEdit}
+              disabled={isActing}
+              className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold text-(--on-yellow) disabled:opacity-40"
+              style={{ backgroundColor: "var(--brand-yellow)" }}
+            >
               {isActing ? "저장 중..." : "저장"}
-            </PrimaryButton>
+            </button>
           </div>
         </div>
-      ) : (
-        <SecondaryButton onClick={() => setIsEditing(true)}>
-          오픈시각·정원 수정
-        </SecondaryButton>
       )}
-
-      {!isClosed && (
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={isActing}
-          className="rounded-full border px-4 py-3 text-sm font-semibold disabled:opacity-40"
-          style={{ borderColor: "var(--line)", color: "var(--paper)" }}
-        >
-          행사 종료 (신규 신청만 막기)
-        </button>
-      )}
-
-      <button
-        type="button"
-        onClick={onDelete}
-        disabled={isActing}
-        className="rounded-full border px-4 py-3 text-sm font-semibold text-(--warn) transition-transform enabled:hover:scale-[1.01] disabled:opacity-40"
-        style={{ borderColor: "var(--warn)" }}
-      >
-        행사 삭제
-      </button>
     </div>
   );
 }
 
-// TODO: PrimaryButton/SecondaryButton은 CampaignDetailPage.tsx에도 똑같이 있음.
-// 결제 기능을 아예 없애면서 관련 코드를 정리할 때, 이 중복도 shared/components로 합쳐서 같이 정리하면 됨.
-function PrimaryButton({
+function IconButton({
   children,
   onClick,
-  disabled,
+  label,
+  active = false,
+  disabled = false,
+  tone = "default",
 }: {
   children: ReactNode;
-  onClick?: () => void;
+  onClick: () => void;
+  label: string;
+  active?: boolean;
   disabled?: boolean;
+  tone?: "default" | "warn";
 }) {
+  const color =
+    tone === "warn"
+      ? "var(--warn)"
+      : active
+        ? "var(--brand-blue)"
+        : "var(--muted)";
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full rounded-full px-4 py-3 text-sm font-semibold text-(--on-yellow) transition-transform enabled:hover:scale-[1.02] enabled:active:scale-[0.98] disabled:opacity-40"
-      style={{ backgroundColor: "var(--brand-yellow)" }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function SecondaryButton({
-  children,
-  onClick,
-  disabled,
-}: {
-  children: ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="w-full rounded-full border px-4 py-3 text-sm font-semibold disabled:opacity-40"
-      style={{ borderColor: "var(--line)", color: "var(--paper)" }}
+      aria-label={label}
+      title={label}
+      className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-(--ink-soft) disabled:opacity-40"
+      style={{ color, backgroundColor: active ? "var(--ink-soft)" : undefined }}
     >
       {children}
     </button>

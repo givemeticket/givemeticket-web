@@ -1,6 +1,6 @@
 import { Avatar } from "@/shared/components/Avatar";
 
-// 행사 목록(나의 티켓 / 내가 만든 행사)에서 공통으로 쓰는 카드.
+// 행사 목록(나의 티켓 / 나의 행사)에서 공통으로 쓰는 카드.
 // "보딩패스" 스타일 — 오른쪽에 상태 색상으로 채운 스텁을 붙이고,
 // 그 안에 아이콘 대신 잔여 좌석 수를 큼직하게 보여줌.
 
@@ -21,6 +21,9 @@ interface CampaignCardProps {
   /** 주최자 프로필 사진. 동의 안 했으면 null일 수 있음 */
   ownerProfileImageUrl?: string | null;
   onClick?: () => void;
+  /** false면 순수 표시용(클릭/호버 효과 없음) — 상세 페이지에서 티켓 자체를 보여줄 때처럼
+   * 눌러서 어디로 이동할 이유가 없는 경우에 씀 */
+  interactive?: boolean;
 }
 
 const STATUS_META: Record<
@@ -47,6 +50,7 @@ export function CampaignCard({
   ownerNickname,
   ownerProfileImageUrl,
   onClick,
+  interactive = true,
 }: CampaignCardProps) {
   // 매진은 별도 상태가 아니라 OPEN + soldOut 조합이라, 뱃지 표시만 그때 덮어씀
   const meta =
@@ -58,14 +62,8 @@ export function CampaignCard({
   const cardBg = status === "DELETED" ? "var(--deleted)" : "var(--ink-soft)";
   const isDeleted = status === "DELETED";
 
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={isDeleted}
-      className="flex w-full overflow-hidden rounded-lg border text-left shadow-[0_1px_3px_rgba(17,24,39,0.06)] transition-[transform,box-shadow] duration-200 enabled:hover:scale-[1.01] enabled:hover:shadow-[0_10px_24px_rgba(17,24,39,0.12)] enabled:active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) disabled:cursor-default"
-      style={{ borderColor: "var(--line)", backgroundColor: cardBg }}
-    >
+  const content = (
+    <>
       {/* 메인 정보 영역 */}
       <div className="min-w-0 flex-1 p-4">
         <span
@@ -109,6 +107,29 @@ export function CampaignCard({
           </span>
         </div>
       )}
+    </>
+  );
+
+  if (!interactive) {
+    return (
+      <div
+        className="flex w-full overflow-hidden rounded-lg border text-left shadow-[0_1px_3px_rgba(17,24,39,0.06)]"
+        style={{ borderColor: "var(--line)", backgroundColor: cardBg }}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isDeleted}
+      className="flex w-full overflow-hidden rounded-lg border text-left shadow-[0_1px_3px_rgba(17,24,39,0.06)] transition-[transform,box-shadow] duration-200 enabled:hover:scale-[1.01] enabled:hover:shadow-[0_10px_24px_rgba(17,24,39,0.12)] enabled:active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) disabled:cursor-default"
+      style={{ borderColor: "var(--line)", backgroundColor: cardBg }}
+    >
+      {content}
     </button>
   );
 }

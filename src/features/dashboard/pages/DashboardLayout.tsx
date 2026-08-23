@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Plus } from "lucide-react";
 import { useLogout } from "@/features/auth/hooks/useLogout";
 import { withdrawUser } from "@/features/auth/api/authApi";
 import { clearAccessToken } from "@/shared/lib/authToken";
@@ -135,7 +136,7 @@ export function DashboardLayout() {
             className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-(--ink-soft)"
             style={{ color: "var(--muted)" }}
           >
-            <PlusIcon />
+            <Plus size={18} strokeWidth={1.8} />
           </button>
 
           <FilterDropdown
@@ -179,24 +180,5 @@ function TabLink({ to, label }: { to: string; label: string }) {
         </>
       )}
     </NavLink>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M12 5v14M5 12h14"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }

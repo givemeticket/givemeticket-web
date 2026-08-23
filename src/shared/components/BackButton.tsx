@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { ChevronLeft } from "lucide-react";
 
 interface BackButtonProps {
   /** 히스토리가 없을 때(예: 새 탭에서 링크로 바로 진입) 대신 이동할 경로 */
@@ -21,29 +22,15 @@ export function BackButton({ fallback = "/" }: BackButtonProps) {
       type="button"
       onClick={handleClick}
       aria-label="뒤로가기"
-      className="rounded-full p-1 text-(--paper)"
+      className="rounded-full py-1 pr-1 pl-0 text-(--paper)"
     >
       <ChevronLeftIcon />
     </button>
   );
 }
 
+// 기존에 이 이름으로 여러 파일에서 가져다 쓰고 있어서, lucide 아이콘을 이 이름으로
+// 그대로 재수출함 — 다른 파일들을 안 건드려도 되게
 export function ChevronLeftIcon() {
-  return (
-    <svg
-      width="10"
-      height="16"
-      viewBox="0 0 8 14"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M7 1L1 7L7 13"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <ChevronLeft size={16} strokeWidth={2} />;
 }

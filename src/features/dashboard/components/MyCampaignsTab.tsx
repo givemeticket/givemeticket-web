@@ -1,5 +1,6 @@
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { CalendarPlus } from "lucide-react";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CampaignCard } from "@/features/campaign/components/CampaignCard";
 import { listCampaigns } from "@/features/campaign/api/campaignApi";
@@ -25,7 +26,7 @@ export function MyCampaignsTab() {
   if (!campaigns || campaigns.length === 0) {
     return (
       <EmptyState
-        icon={<PlusIcon />}
+        icon={<CalendarPlus size={22} strokeWidth={1.7} />}
         title="아직 만든 행사가 없어요"
         description="첫 행사를 열어서 선착순 신청을 받아보세요"
       />
@@ -69,25 +70,5 @@ export function MyCampaignsTab() {
         />
       ))}
     </div>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M12 8v8M8 12h8"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeftIcon } from "./BackButton";
+import { Calendar, ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
 import { WheelColumn, ROW_HEIGHT, WHEEL_PADDING } from "./WheelColumn";
 import {
   parseDatetimeLocalValue as parseValue,
@@ -156,7 +156,7 @@ export function DateTimePickerField({
         }}
         className="input flex cursor-pointer items-center gap-2 text-left"
       >
-        <CalendarIcon />
+        <Calendar size={18} color="var(--brand-blue)" strokeWidth={1.7} />
         <span className="min-w-0 flex-1 truncate text-(--paper)">
           {formatDateLabel(displayValue)}
           <span className="mx-1.5 text-(--muted)">·</span>
@@ -174,7 +174,7 @@ export function DateTimePickerField({
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full hover:bg-(--ink-soft)"
             style={{ color: "var(--muted)" }}
           >
-            <RevertIcon />
+            <Undo2 size={13} />
           </button>
         )}
       </div>
@@ -202,7 +202,7 @@ export function DateTimePickerField({
                 className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-(--ink-soft)"
                 aria-label="이전 달"
               >
-                <ChevronLeftIcon />
+                <ChevronLeft size={16} />
               </button>
               <span className="text-sm font-semibold text-(--paper)">
                 {year}년 {month + 1}월
@@ -212,9 +212,8 @@ export function DateTimePickerField({
                 onClick={() => setViewMonth(new Date(year, month + 1, 1))}
                 className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-(--ink-soft)"
                 aria-label="다음 달"
-                style={{ transform: "rotate(180deg)" }}
               >
-                <ChevronLeftIcon />
+                <ChevronRight size={16} />
               </button>
             </div>
 
@@ -319,61 +318,5 @@ export function DateTimePickerField({
         </div>
       )}
     </div>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <rect
-        x="3.5"
-        y="5"
-        width="17"
-        height="16"
-        rx="2.5"
-        stroke="var(--brand-blue)"
-        strokeWidth="1.6"
-      />
-      <path d="M3.5 9.5h17" stroke="var(--brand-blue)" strokeWidth="1.6" />
-      <path
-        d="M8 3v3.5M16 3v3.5"
-        stroke="var(--brand-blue)"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function RevertIcon() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M4 4v6h6"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M5.5 15a8 8 0 1 0 2-8.5L4 10"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
