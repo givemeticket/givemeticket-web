@@ -71,14 +71,17 @@ export function CampaignListTab({
     ? [...campaigns]
     : campaigns.filter((c) => c.status !== "DELETED");
 
-  // "신청 날짜"/"만든 날짜"는 서버가 이미 그 순서로 내려주고 있어서(각각 신청최신순,
-  // 만든순) 별도 정렬 없이 그대로 씀. "오픈 날짜"만 프론트에서 직접 정렬함 — openAt은
-  // 이미 목록 응답에 포함돼있어서 별도 API 없이 바로 정렬 가능.
+  // "신청 날짜"/"만든 날짜"는 서버가 이미 내림차순(최신순)으로 내려주고 있어서,
+  // 오름차순으로 바꿀 땐 실제 날짜값 없이도 그 배열을 그대로 뒤집기만 하면 정확한
+  // 결과가 나옴. "오픈 날짜"만 openAt 값으로 직접 정렬함 — 목록 응답에 이미 포함돼
+  // 있어서 별도 API 없이 바로 정렬 가능.
   if (sortBy === "openAt") {
     visibleCampaigns.sort((a, b) => {
       const diff = new Date(a.openAt).getTime() - new Date(b.openAt).getTime();
       return sortDirection === "asc" ? diff : -diff;
     });
+  } else if (sortDirection === "asc") {
+    visibleCampaigns.reverse();
   }
 
   if (visibleCampaigns.length === 0) {
