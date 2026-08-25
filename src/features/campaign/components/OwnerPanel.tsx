@@ -4,6 +4,7 @@ import { Ban, Pencil, Trash2 } from "lucide-react";
 import { updateCampaign, type CampaignDetail } from "../api/campaignApi";
 import { isoToDatetimeLocalValue } from "@/shared/lib/formatDate";
 import { DateTimePickerField } from "@/shared/components/DateTimePickerField";
+import { IconButton } from "@/shared/components/IconButton";
 
 // 관리자(개설자) 전용 패널 — 아이콘 한 줄(수정/종료/삭제).
 // 링크 복사는 역할과 무관하게 누구나 볼 수 있어야 해서 별도 CopyLinkButton으로 분리됨.
@@ -154,41 +155,5 @@ export function OwnerPanel({
         </div>
       )}
     </div>
-  );
-}
-
-function IconButton({
-  children,
-  onClick,
-  label,
-  active = false,
-  disabled = false,
-  tone = "default",
-}: {
-  children: ReactNode;
-  onClick: () => void;
-  label: string;
-  active?: boolean;
-  disabled?: boolean;
-  tone?: "default" | "warn";
-}) {
-  const color =
-    tone === "warn"
-      ? "var(--warn)"
-      : active
-        ? "var(--brand-blue)"
-        : "var(--muted)";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-      className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-(--ink-soft) disabled:opacity-40"
-      style={{ color, backgroundColor: active ? "var(--ink-soft)" : undefined }}
-    >
-      {children}
-    </button>
   );
 }

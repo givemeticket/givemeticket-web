@@ -4,8 +4,7 @@ import { createCampaign } from "../api/campaignApi";
 import { DateTimePickerField } from "@/shared/components/DateTimePickerField";
 import { nowAsDatetimeLocalValue } from "@/shared/lib/formatDate";
 import { BackButton } from "@/shared/components/BackButton";
-
-type PaymentOption = "required" | "not-required";
+import { PrimaryButton } from "@/shared/components/PrimaryButton";
 
 export function CampaignCreatePage() {
   const navigate = useNavigate();
@@ -13,7 +12,6 @@ export function CampaignCreatePage() {
   const [title, setTitle] = useState("");
   const [totalStock, setTotalStock] = useState("");
   const [openAt, setOpenAt] = useState(() => nowAsDatetimeLocalValue());
-  const [payment, setPayment] = useState<PaymentOption>("not-required");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -40,7 +38,6 @@ export function CampaignCreatePage() {
         title: title.trim(),
         totalStock: Number(totalStock),
         openAt: openAtDate.toISOString(),
-        requiresPayment: payment === "required",
       });
       // 생성 즉시 상세 화면(관리자 뷰)으로 이동 — 공유 링크 복사는 그 화면에 있음
       navigate(`/campaigns/${result.shortCode}`, {
@@ -90,33 +87,13 @@ export function CampaignCreatePage() {
             onChange={setOpenAt}
           />
 
-          <Field label="결제 필요 여부">
-            <div className="flex gap-2">
-              <PaymentToggleButton
-                label="결제 없음"
-                active={payment === "not-required"}
-                onClick={() => setPayment("not-required")}
-              />
-              <PaymentToggleButton
-                label="결제 필요"
-                active={payment === "required"}
-                onClick={() => setPayment("required")}
-              />
-            </div>
-          </Field>
-
           {errorMessage && (
             <p className="text-xs text-(--warn)">{errorMessage}</p>
           )}
 
-          <button
-            type="submit"
-            disabled={!isFormValid || isSubmitting}
-            className="mt-2 rounded-full px-4 py-3 text-sm font-semibold text-(--on-yellow) transition-transform enabled:hover:scale-[1.02] enabled:active:scale-[0.98] disabled:opacity-40"
-            style={{ backgroundColor: "var(--brand-yellow)" }}
-          >
+          <PrimaryButton type="submit" disabled={!isFormValid || isSubmitting}>
             {isSubmitting ? "만드는 중..." : "행사 만들기"}
-          </button>
+          </PrimaryButton>
         </form>
       </div>
     </div>
@@ -138,34 +115,5 @@ function Field({
       {children}
       {hint && <span className="text-xs text-(--muted)">{hint}</span>}
     </label>
-  );
-}
-
-function PaymentToggleButton({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors"
-      style={
-        active
-          ? {
-              backgroundColor: "var(--brand-blue)",
-              borderColor: "var(--brand-blue)",
-              color: "var(--on-brand)",
-            }
-          : { borderColor: "var(--line)", color: "var(--muted)" }
-      }
-    >
-      {label}
-    </button>
   );
 }

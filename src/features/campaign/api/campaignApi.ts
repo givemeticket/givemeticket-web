@@ -2,20 +2,8 @@ import { apiClient } from "@/shared/lib/axiosClient";
 
 export type CampaignStatus = "SCHEDULED" | "OPEN" | "CLOSED" | "DELETED";
 export type ViewerRole = "GUEST" | "VIEWER" | "PARTICIPANT" | "OWNER";
-export type ApplicationStatus =
-  | "PENDING"
-  | "CONFIRMED"
-  | "FAILED"
-  | "CANCELLED"
-  | "UNKNOWN"
-  | "MANUAL_REVIEW";
-export type FailureReason =
-  | "SOLD_OUT"
-  | "PAYMENT_DECLINED"
-  | "PAYMENT_ERROR"
-  | "EXPIRED"
-  | "CAMPAIGN_DELETED"
-  | "USER_WITHDRAWN";
+export type ApplicationStatus = "CONFIRMED" | "CANCELLED";
+export type FailureReason = "CAMPAIGN_DELETED" | "USER_WITHDRAWN";
 
 export interface CampaignOwner {
   id: number;
@@ -44,7 +32,6 @@ export interface CampaignDetail {
   remainingStock: number | null;
   soldOut: boolean | null;
   openAt: string;
-  requiresPayment: boolean;
   status: CampaignStatus;
   viewerRole: ViewerRole;
   myApplication: {
@@ -67,7 +54,6 @@ export interface CreateCampaignRequest {
   totalStock?: number;
   /** ISO 8601, UTC 기준 미래 시각 */
   openAt: string;
-  requiresPayment: boolean;
 }
 
 export interface CreateCampaignResponse {
@@ -76,7 +62,6 @@ export interface CreateCampaignResponse {
   title: string;
   totalStock: number | null;
   openAt: string;
-  requiresPayment: boolean;
 }
 
 export interface CampaignItem {
@@ -89,7 +74,6 @@ export interface CampaignItem {
   remainingStock: number | null;
   soldOut: boolean | null;
   openAt: string;
-  requiresPayment: boolean;
   status: CampaignStatus;
   eventAt?: string;
   location?: string;
@@ -97,8 +81,10 @@ export interface CampaignItem {
   myApplicationStatus?: ApplicationStatus;
 }
 
+export type CampaignScope = "owned" | "participated";
+
 export async function listCampaigns(
-  scope: "owned" | "participated",
+  scope: CampaignScope,
 ): Promise<CampaignItem[]> {
   const res = await apiClient.get<{ campaigns: CampaignItem[] }>(
     `/api/v1/campaigns?scope=${scope}`,
@@ -150,4 +136,25 @@ export async function updateCampaign(
   payload: { openAt?: string; totalStock?: number },
 ): Promise<void> {
   await apiClient.patch(`/api/v1/campaigns/${campaignId}`, payload);
+}
+
+export interface ApplyResult {
+  id: number;
+  campaignId: number;
+  userId: number;
+  status: ApplicationStatus;
+}
+
+/** 재고를 잡고 그 자리에서 확정함. 결제 단계 없이 성공하면 바로 CONFIRMED */
+export async function applyToCampaign(
+  campaignId: number,
+): Promise<ApplyResult> {
+  const res = await apiClient.post<ApplyResult>(
+    `/api/v1/campaigns/${campaignId}/apply`,
+  );
+  return res.data;
+}
+
+export async function cancelApplication(applicationId: number): Promise<void> {
+  await apiClient.post(`/api/v1/applications/${applicationId}/cancel`);
 }

@@ -1,24 +1,25 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { motion } from "motion/react";
 import axios from "axios";
-import {
-  closeCampaign,
-  deleteCampaign,
-  getCampaign,
-  getCampaignStock,
-  type CampaignDetail,
-} from "../api/campaignApi";
 import {
   applyToCampaign,
   cancelApplication,
-} from "@/features/application/api/applicationApi";
+  closeCampaign,
+  deleteCampaign,
+  type CampaignDetail,
+  type CampaignItem,
+} from "../api/campaignApi";
 import { formatDateTimeKo } from "@/shared/lib/formatDate";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { Check, Link2 } from "lucide-react";
 import { BackButton } from "@/shared/components/BackButton";
+import { IconButton } from "@/shared/components/IconButton";
+import { PrimaryButton } from "@/shared/components/PrimaryButton";
+import { SecondaryButton } from "@/shared/components/SecondaryButton";
 import { CampaignCard } from "../components/CampaignCard";
 import { OwnerPanel } from "../components/OwnerPanel";
+import { useCampaignDetailData } from "../hooks/useCampaignDetailData";
 import { CountdownApplyButton } from "../components/CountdownApplyButton";
 
 /** 어디서 이 페이지로 들어왔는지 — 대시보드 탭에서 카드 클릭 시에만 명시적으로 실어서 넘김.
@@ -32,56 +33,42 @@ export function CampaignDetailPage() {
   const { isAuthenticated } = useAuth();
 
   const cameFrom = (location.state as { from?: NavigationSource } | null)?.from;
+  // 목록에서 카드를 클릭해서 들어온 경우, 그 카드가 이미 갖고 있던 데이터를 그대로
+  // 넘겨받음. 상세 API 응답을 기다리지 않고 이 데이터로 카드를 즉시 그릴 수 있어서,
+  // "로딩 중엔 카드(layoutId)가 아예 없어서 이동 애니메이션이 짝을 못 찾는" 문제를 피함.
+  const placeholderCampaign = (
+    location.state as { campaign?: CampaignItem } | null
+  )?.campaign;
 
   const {
-    data: campaign,
+    campaign,
+    cardSource,
     isLoading,
     isError,
     error,
     refetch,
-  } = useQuery({
-    queryKey: ["campaign", shortCode],
-    queryFn: () => getCampaign(shortCode!),
-    enabled: Boolean(shortCode),
-  });
-
-  // 재고는 상세 정보와 분리된 별도 API. 새로고침(=이 페이지 재진입) 시에만 조회하고
-  // 자동 폴링은 하지 않음 — 실시간 자동 갱신은 필요 없다고 확인됨.
-  // 신청/취소/정원수정처럼 사용자가 직접 액션을 했을 때는 그 직후 refetchStock()로 갱신.
-  const { data: stock, refetch: refetchStock } = useQuery({
-    queryKey: ["campaignStock", campaign?.id],
-    queryFn: () => getCampaignStock(campaign!.id),
-    enabled: Boolean(campaign?.id),
-  });
+    refetchStock,
+    remainingStock,
+    soldOut,
+    hasStockValue,
+    hasActiveApplication,
+  } = useCampaignDetailData(shortCode, placeholderCampaign);
 
   const [actionError, setActionError] = useState("");
   const [isActing, setIsActing] = useState(false);
 
-  if (isLoading) return <CenteredMessage text="불러오는 중..." />;
-
-  if (isError) {
-    const status = axios.isAxiosError(error)
-      ? error.response?.status
-      : undefined;
-    if (status === 410) return <CenteredMessage text="삭제된 행사예요." />;
-    return <CenteredMessage text="행사를 찾을 수 없어요." />;
+  // 진짜 상세 데이터도, 넘겨받은 목록 데이터도 둘 다 없을 때만 로딩/에러 화면
+  if (!cardSource) {
+    if (isLoading) return <CenteredMessage text="불러오는 중..." />;
+    if (isError) {
+      const status = axios.isAxiosError(error)
+        ? error.response?.status
+        : undefined;
+      if (status === 410) return <CenteredMessage text="삭제된 행사예요." />;
+      return <CenteredMessage text="행사를 찾을 수 없어요." />;
+    }
+    return null;
   }
-  if (!campaign) return null;
-
-  // 상세 조회 응답에 실린 재고는 "조회 시점 스냅샷". stock 쿼리가 아직 안 끝났으면
-  // 이 스냅샷을 폴백으로 써서 빈 화면(재고 확인 중...)이 덜 보이게 함.
-  // 이후 갱신(신청/취소 등)은 계속 stock 쿼리가 최신 출처가 됨.
-  const remainingStock =
-    stock?.remainingStock ?? campaign.remainingStock ?? undefined;
-  const soldOut = stock?.soldOut ?? campaign.soldOut ?? false;
-  const hasStockValue = stock !== undefined || campaign.remainingStock !== null;
-
-  // myApplication은 값이 있다고 해서 "아직 신청 중"이라는 뜻이 아님 — 취소·실패한
-  // 신청도 status만 바뀐 채로 계속 내려올 수 있어서, 활성 상태인지 따로 확인해야 함
-  const hasActiveApplication =
-    campaign.myApplication != null &&
-    campaign.myApplication.status !== "CANCELLED" &&
-    campaign.myApplication.status !== "FAILED";
 
   async function handleApply() {
     if (!isAuthenticated) {
@@ -91,12 +78,8 @@ export function CampaignDetailPage() {
     setIsActing(true);
     setActionError("");
     try {
-      const result = await applyToCampaign(campaign!.id);
-      if (result.status === "PENDING") {
-        navigate(`/checkout/${result.id}`);
-      } else {
-        await Promise.all([refetch(), refetchStock()]);
-      }
+      await applyToCampaign(campaign!.id);
+      await Promise.all([refetch(), refetchStock()]);
     } catch (e) {
       const code = axios.isAxiosError(e)
         ? (e.response?.data as { code?: string })?.code
@@ -165,90 +148,127 @@ export function CampaignDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-(--ink) py-10 text-(--paper)">
-      <div className="mx-auto max-w-2xl px-6">
-        {/* < 티켓정보 */}
-        <div className="flex items-center gap-1">
-          {cameFrom && <BackButton fallback={`/${cameFrom}`} />}
-          <h1 className="text-lg font-bold">티켓정보</h1>
-        </div>
+    <div className="relative min-h-screen py-10 text-(--paper)">
+      {/* 배경색 전용 레이어. 이것도 독립적으로 페이드시켜야 함 — 안 그러면 상세 페이지가
+          사라지는 동안에도 이 불투명한 배경이 화면 전체를 계속 덮고 있어서, 그 밑에서
+          동시에 나타나고 있는 목록 화면이 거의 끝까지 안 보이다가 마지막 순간에야
+          갑자기 드러나는 문제가 생김. 카드의 자식이 아닌 별개 형제 요소라 카드엔 영향 없음. */}
+      <motion.div
+        className="absolute inset-0 -z-10 bg-(--ink)"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+      />
 
-        {/* [캠페인 카드] */}
+      <div className="mx-auto max-w-2xl px-6">
+        {/* 카드 위쪽 — < 티켓정보. 카드와 형제 요소라 카드의 투명도엔 영향 없음 */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+        >
+          <div className="flex items-center gap-1">
+            {cameFrom && <BackButton fallback={`/${cameFrom}`} />}
+            <h1 className="text-lg font-bold">티켓정보</h1>
+          </div>
+        </motion.div>
+
+        {/* [캠페인 카드] — 목록 카드와 같은 layoutId로 이동 애니메이션만 독립적으로 진행.
+            진짜 상세 데이터가 아직이면 넘겨받은 목록 데이터(cardSource)로 즉시 그림 */}
         <div className="mt-4">
           <CampaignCard
-            title={campaign.title}
-            status={campaign.status}
+            title={cardSource.title}
+            status={cardSource.status}
             soldOut={soldOut}
-            openAtLabel={`${formatDateTimeKo(campaign.openAt)} 오픈`}
+            openAtLabel={`${formatDateTimeKo(cardSource.openAt)} 오픈`}
             remainingStock={
-              campaign.totalStock != null && hasStockValue
+              cardSource.totalStock != null && hasStockValue
                 ? remainingStock
                 : undefined
             }
-            totalStock={campaign.totalStock ?? undefined}
-            ownerNickname={campaign.owner.nickname}
-            ownerProfileImageUrl={campaign.owner.profileImageUrl}
+            totalStock={cardSource.totalStock ?? undefined}
+            ownerNickname={cardSource.owner.nickname}
+            ownerProfileImageUrl={cardSource.owner.profileImageUrl}
             interactive={false}
+            layoutId={`campaign-card-${cardSource.id}`}
           />
         </div>
 
-        {/* 링크 복사(누구나) + 관리 아이콘(수정/삭제/종료, 관리자만) — 같은 줄 */}
-        <div className="mt-4">
-          {campaign.viewerRole === "OWNER" ? (
-            <OwnerPanel
-              campaign={campaign}
-              isActing={isActing}
-              setIsActing={setIsActing}
-              setActionError={setActionError}
-              onDelete={handleDelete}
-              onClose={handleClose}
-              onRefetch={async () => {
-                await Promise.all([refetch(), refetchStock()]);
-              }}
-              leadingContent={
-                <CopyLinkButton
-                  url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
-                />
-              }
-            />
+        {/* 카드 아래쪽 — 링크복사/관리 + 신청하기·취소 + 에러 문구. 역시 카드와 형제 요소.
+            여긴 viewerRole/myApplication처럼 진짜 상세 데이터가 있어야만 정확히 그릴 수
+            있어서, campaign(진짜 데이터)이 도착하기 전까진 간단한 대기 문구만 보여줌 */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+        >
+          {!campaign ? (
+            <p className="mt-4 text-sm text-(--muted)">불러오는 중...</p>
           ) : (
-            <div className="flex items-center gap-2">
-              <CopyLinkButton
-                url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
-              />
-            </div>
-          )}
-        </div>
+            <>
+              {/* 링크 복사(누구나) + 관리 아이콘(수정/삭제/종료, 관리자만) — 같은 줄 */}
+              <div className="mt-4">
+                {campaign.viewerRole === "OWNER" ? (
+                  <OwnerPanel
+                    campaign={campaign}
+                    isActing={isActing}
+                    setIsActing={setIsActing}
+                    setActionError={setActionError}
+                    onDelete={handleDelete}
+                    onClose={handleClose}
+                    onRefetch={async () => {
+                      await Promise.all([refetch(), refetchStock()]);
+                    }}
+                    leadingContent={
+                      <CopyLinkButton
+                        url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
+                      />
+                    }
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <CopyLinkButton
+                      url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
+                    />
+                  </div>
+                )}
+              </div>
 
-        {/* 신청하기 / 신청취소 — 역할과 무관하게 공통 처리 (관리자도 신청 가능) */}
-        <div className="mt-6">
-          {hasActiveApplication && campaign.myApplication ? (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-(--muted)">
-                내 신청 상태:{" "}
-                <span className="font-semibold text-(--paper)">
-                  {campaign.myApplication.status}
-                </span>
-              </p>
-              <SecondaryButton onClick={handleCancel} disabled={isActing}>
-                {isActing ? "처리 중..." : "신청 취소"}
-              </SecondaryButton>
-            </div>
-          ) : (
-            <ApplySection
-              campaign={campaign}
-              hasStockValue={hasStockValue}
-              soldOut={soldOut}
-              isActing={isActing}
-              onApply={handleApply}
-              onCampaignOpened={() => refetch()}
-            />
-          )}
-        </div>
+              {/* 신청하기 / 신청취소 — 역할과 무관하게 공통 처리 (관리자도 신청 가능) */}
+              <div className="mt-6">
+                {hasActiveApplication && campaign.myApplication ? (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-sm text-(--muted)">
+                      내 신청 상태:{" "}
+                      <span className="font-semibold text-(--paper)">
+                        {campaign.myApplication.status}
+                      </span>
+                    </p>
+                    <SecondaryButton onClick={handleCancel} disabled={isActing}>
+                      {isActing ? "처리 중..." : "신청 취소"}
+                    </SecondaryButton>
+                  </div>
+                ) : (
+                  <ApplySection
+                    campaign={campaign}
+                    hasStockValue={hasStockValue}
+                    soldOut={soldOut}
+                    isActing={isActing}
+                    onApply={handleApply}
+                    onCampaignOpened={() => refetch()}
+                  />
+                )}
+              </div>
 
-        {actionError && (
-          <p className="mt-4 text-xs text-(--warn)">{actionError}</p>
-        )}
+              {actionError && (
+                <p className="mt-4 text-xs text-(--warn)">{actionError}</p>
+              )}
+            </>
+          )}
+        </motion.div>
       </div>
     </div>
   );
@@ -295,55 +315,6 @@ function ApplySection({
   );
 }
 
-function PrimaryButton({
-  children,
-  onClick,
-  disabled,
-  urgent = false,
-}: {
-  children: ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-  /** 임박 상태 강조 — 배경색을 경고색으로, 미세한 펄스 애니메이션 추가 */
-  urgent?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`w-full rounded-full px-4 py-3 text-sm font-semibold transition-transform enabled:hover:scale-[1.02] enabled:active:scale-[0.98] disabled:opacity-40 ${urgent ? "countdown-urgent text-(--on-brand)" : "text-(--on-yellow)"}`}
-      style={{
-        backgroundColor: urgent ? "var(--warn)" : "var(--brand-yellow)",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function SecondaryButton({
-  children,
-  onClick,
-  disabled,
-}: {
-  children: ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="w-full rounded-full border px-4 py-3 text-sm font-semibold disabled:opacity-40"
-      style={{ borderColor: "var(--line)", color: "var(--paper)" }}
-    >
-      {children}
-    </button>
-  );
-}
-
 function CopyLinkButton({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -354,20 +325,17 @@ function CopyLinkButton({ url }: { url: string }) {
   }
 
   return (
-    <button
-      type="button"
+    <IconButton
       onClick={handleCopy}
-      aria-label={copied ? "복사됨" : "링크 복사"}
-      title={copied ? "복사됨" : "링크 복사"}
-      className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-(--ink-soft)"
-      style={{ color: copied ? "var(--brand-blue)" : "var(--muted)" }}
+      label={copied ? "복사됨" : "링크 복사"}
+      active={copied}
     >
       {copied ? (
         <Check size={17} strokeWidth={1.8} />
       ) : (
         <Link2 size={17} strokeWidth={1.7} />
       )}
-    </button>
+    </IconButton>
   );
 }
 

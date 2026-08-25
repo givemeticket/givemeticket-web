@@ -1,15 +1,13 @@
-import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { motion } from "motion/react";
+import { UserMenu } from "@/features/auth/components/UserMenu";
 import { useLogout } from "@/features/auth/hooks/useLogout";
+import { useMe } from "@/features/auth/hooks/useMe";
 import { withdrawUser } from "@/features/auth/api/authApi";
 import { clearAccessToken } from "@/shared/lib/authToken";
 import { FilterDropdown } from "@/shared/components/FilterDropdown";
-import {
-  getFilterState,
-  setFilterState,
-  type FilterTab,
-} from "../lib/dashboardFilterStore";
+import { useDashboardFilters } from "../hooks/useDashboardFilters";
+import type { FilterTab } from "../lib/dashboardFilterStore";
 
 const SORT_OPTIONS_BY_TAB: Record<
   FilterTab,
@@ -44,37 +42,16 @@ export function DashboardLayout() {
     ? "mycampaigns"
     : "mytickets";
 
-  const [sortBy, setSortByState] = useState(
-    () => getFilterState(activeTab).sortBy,
-  );
-  const [sortDirection, setSortDirectionState] = useState<"asc" | "desc">(
-    () => getFilterState(activeTab).sortDirection,
-  );
-  const [showDeleted, setShowDeletedState] = useState(
-    () => getFilterState(activeTab).showDeleted,
-  );
+  const {
+    sortBy,
+    sortDirection,
+    showDeleted,
+    setSortBy,
+    setSortDirection,
+    setShowDeleted,
+  } = useDashboardFilters(activeTab);
 
-  // 탭을 전환하면, 그 탭에 저장돼있던 값으로 다시 불러옴
-  useEffect(() => {
-    const saved = getFilterState(activeTab);
-    setSortByState(saved.sortBy);
-    setSortDirectionState(saved.sortDirection);
-    setShowDeletedState(saved.showDeleted);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
-
-  function setSortBy(v: string) {
-    setSortByState(v);
-    setFilterState(activeTab, { sortBy: v });
-  }
-  function setSortDirection(v: "asc" | "desc") {
-    setSortDirectionState(v);
-    setFilterState(activeTab, { sortDirection: v });
-  }
-  function setShowDeleted(v: boolean) {
-    setShowDeletedState(v);
-    setFilterState(activeTab, { showDeleted: v });
-  }
+  const { data: me } = useMe();
 
   // TODO: 테스트용 임시 버튼. 실제 회원탈퇴 플로우(확인 모달 디자인, 탈퇴 사유 등)는
   // 나중에 제대로 화면으로 뺄 예정. 지금은 API 동작 확인용.
@@ -97,59 +74,81 @@ export function DashboardLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-(--ink) text-(--paper)">
-      <header className="mx-auto flex max-w-2xl items-center gap-2 px-6 pt-8">
-        <img src="/favicon-transparent-512.png" alt="" className="h-7 w-7" />
-        <span className="text-xs font-semibold tracking-[0.25em] text-(--muted)">
-          GIVEMETICKET
-        </span>
+    <div className="relative min-h-screen text-(--paper)">
+      {/* 배경색 전용 레이어. 독립적으로 페이드시켜야 함 — 안 그러면 이 화면이 사라지는
+          동안에도 불투명한 배경이 화면을 계속 덮어서, 그 밑에서 나타나는 상세 페이지가
+          거의 끝까지 안 보이다가 마지막 순간에 갑자기 드러나는 문제가 생김. */}
+      <motion.div
+        className="absolute inset-0 -z-10 bg-(--ink)"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+      />
 
-        <div className="ml-auto flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleWithdraw}
-            className="text-xs font-medium text-(--muted) hover:text-(--warn)"
-          >
-            회원탈퇴
-          </button>
-          <button
-            type="button"
-            onClick={logout}
-            className="text-xs font-medium text-(--muted) hover:text-(--paper)"
-          >
-            로그아웃
-          </button>
-        </div>
-      </header>
+      {/* 상세 페이지로 이동할 땐 이 레이아웃 전체(헤더/탭/필터)가 사라지는 화면이라,
+          "나머지 요소" 페이드 대상에 포함시킴. main(카드가 들어있는 곳)은 감싸지 않음 —
+          카드는 형제 컴포넌트로 독립적인 이동 애니메이션을 가져야 해서. */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+      >
+        <header className="mx-auto flex max-w-2xl items-center gap-2 px-6 pt-8">
+          <img src="/favicon-transparent-512.png" alt="" className="h-7 w-7" />
+          <span className="text-xs font-semibold tracking-[0.25em] text-(--muted)">
+            GIVEMETICKET
+          </span>
 
-      <nav className="mx-auto mt-8 flex max-w-2xl items-center gap-6 px-6">
-        <div className="relative flex w-36">
-          <TabLink to="/mytickets" label="나의 티켓" />
-          <TabLink to="/mycampaigns" label="나의 행사" />
-        </div>
+          <div className="ml-auto flex items-center">
+            {me && (
+              <UserMenu
+                nickname={me.nickname}
+                profileImageUrl={me.profileImageUrl}
+                onLogout={logout}
+                onWithdraw={handleWithdraw}
+              />
+            )}
+          </div>
+        </header>
 
-        <div className="ml-auto mb-2 flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => navigate("/campaigns/create")}
-            aria-label="행사 만들기"
-            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-(--ink-soft)"
-            style={{ color: "var(--muted)" }}
-          >
-            <Plus size={18} strokeWidth={1.8} />
-          </button>
+        <nav className="mx-auto mt-8 flex max-w-2xl flex-col gap-2 px-6">
+          <div className="flex items-center">
+            <div className="relative flex w-36">
+              <TabLink to="/mytickets" label="나의 티켓" />
+              <TabLink to="/mycampaigns" label="나의 행사" />
+            </div>
 
-          <FilterDropdown
-            sortOptions={SORT_OPTIONS_BY_TAB[activeTab]}
-            sortValue={sortBy}
-            onSortChange={setSortBy}
-            sortDirection={sortDirection}
-            onSortDirectionChange={setSortDirection}
-            showDeleted={showDeleted}
-            onShowDeletedChange={setShowDeleted}
-          />
-        </div>
-      </nav>
+            <button
+              type="button"
+              onClick={() => navigate("/campaigns/create")}
+              className="ml-auto mb-2 rounded-full px-4 py-2 text-sm font-semibold text-(--on-yellow) transition-transform hover:scale-[1.03] active:scale-[0.97]"
+              style={{ backgroundColor: "var(--brand-yellow)" }}
+            >
+              + 행사 추가
+            </button>
+            {/* TODO(임시 비교용): 위 버튼이랑 아이콘 버전 중 뭐가 나은지 비교 중.
+                아이콘 버전으로 되돌리려면 위 button을 지우고 아래로 교체
+                (import { Plus } from "lucide-react"; import { IconButton } from "@/shared/components/IconButton";)
+                <IconButton onClick={() => navigate("/campaigns/create")} label="행사 만들기" size="sm">
+                  <Plus size={18} strokeWidth={1.8} />
+                </IconButton> */}
+          </div>
+
+          <div className="flex items-center justify-end">
+            <FilterDropdown
+              sortOptions={SORT_OPTIONS_BY_TAB[activeTab]}
+              sortValue={sortBy}
+              onSortChange={setSortBy}
+              sortDirection={sortDirection}
+              onSortDirectionChange={setSortDirection}
+              showDeleted={showDeleted}
+              onShowDeletedChange={setShowDeleted}
+            />
+          </div>
+        </nav>
+      </motion.div>
 
       <main className="mx-auto max-w-2xl px-6 pb-10 pt-4">
         <Outlet context={outletContext} />

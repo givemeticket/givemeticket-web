@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
 import { WheelColumn, ROW_HEIGHT, WHEEL_PADDING } from "./WheelColumn";
+import { IconButton } from "./IconButton";
 import {
   parseDatetimeLocalValue as parseValue,
   buildDatetimeLocalValueFromParts as toValue,
@@ -196,25 +197,23 @@ export function DateTimePickerField({
           >
             {/* 월 이동 헤더 */}
             <div className="flex items-center justify-between">
-              <button
-                type="button"
+              <IconButton
                 onClick={() => setViewMonth(new Date(year, month - 1, 1))}
-                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-(--ink-soft)"
-                aria-label="이전 달"
+                label="이전 달"
+                size="sm"
               >
                 <ChevronLeft size={16} />
-              </button>
+              </IconButton>
               <span className="text-sm font-semibold text-(--paper)">
                 {year}년 {month + 1}월
               </span>
-              <button
-                type="button"
+              <IconButton
                 onClick={() => setViewMonth(new Date(year, month + 1, 1))}
-                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-(--ink-soft)"
-                aria-label="다음 달"
+                label="다음 달"
+                size="sm"
               >
                 <ChevronRight size={16} />
-              </button>
+              </IconButton>
             </div>
 
             {/* 요일 헤더 */}

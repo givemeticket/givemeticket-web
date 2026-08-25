@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getServerTimeOffset } from "@/shared/lib/serverTime";
+import { PrimaryButton } from "@/shared/components/PrimaryButton";
 
 // 오픈 전(SCHEDULED) 상태일 때 쓰는 카운트다운 버튼.
 // 서버 시각으로 오차를 보정하고, 클릭하면 실제 신청 API를 그대로 호출함
@@ -77,17 +78,9 @@ export function CountdownApplyButton({
   const isUrgent = remainingMs > 0 && remainingMs <= 60_000;
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={isActing}
-      className={`w-full rounded-full px-4 py-3 text-sm font-semibold transition-transform enabled:hover:scale-[1.02] enabled:active:scale-[0.98] disabled:opacity-40 ${isUrgent ? "countdown-urgent text-(--on-brand)" : "text-(--on-yellow)"}`}
-      style={{
-        backgroundColor: isUrgent ? "var(--warn)" : "var(--brand-yellow)",
-      }}
-    >
+    <PrimaryButton onClick={handleClick} disabled={isActing} urgent={isUrgent}>
       {label}
-    </button>
+    </PrimaryButton>
   );
 }
 

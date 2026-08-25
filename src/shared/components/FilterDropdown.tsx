@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowDown, ArrowUp, Filter } from "lucide-react";
 import { ToggleSwitch } from "./ToggleSwitch";
+import { IconButton } from "./IconButton";
+import { useClickOutside } from "@/shared/hooks/useClickOutside";
 
 interface SortOption {
   value: string;
@@ -18,8 +20,8 @@ interface FilterDropdownProps {
 }
 
 // 필터 아이콘 버튼 하나로 정렬 기준/오름차순·내림차순/삭제 항목 표시 여부를
-// 한 번에 다루는 드롭다운. 지금은 UI만 있고 실제 목록 정렬에는 반영 안 됨
-// (백엔드가 정렬에 필요한 시각 필드를 내려주면 그때 연결 예정).
+// 한 번에 다루는 드롭다운. "오픈 날짜" 정렬만 실제로 목록에 반영됨(신청/만든 날짜는
+// 서버가 이미 그 순서로 내려줘서 별도 정렬이 필요 없음) — CampaignListTab.tsx 참고.
 export function FilterDropdown({
   sortOptions,
   sortValue,
@@ -32,19 +34,7 @@ export function FilterDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    function handleOutside(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleOutside);
-    return () => document.removeEventListener("mousedown", handleOutside);
-  }, [isOpen]);
+  useClickOutside(containerRef, () => setIsOpen(false), isOpen);
 
   // 이미 선택된 기준을 다시 누르면 방향만 뒤집고, 다른 기준을 누르면 그걸로 선택 전환
   function handleOptionClick(value: string) {
@@ -58,20 +48,14 @@ export function FilterDropdown({
 
   return (
     <div className="relative" ref={containerRef}>
-      <button
-        type="button"
+      <IconButton
         onClick={() => setIsOpen((v) => !v)}
-        aria-label="정렬 및 필터"
-        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
-          isOpen ? "" : "hover:bg-(--ink-soft)"
-        }`}
-        style={{
-          color: isOpen ? "var(--brand-blue)" : "var(--muted)",
-          backgroundColor: isOpen ? "var(--ink-soft)" : undefined,
-        }}
+        label="정렬 및 필터"
+        size="sm"
+        active={isOpen}
       >
-        <Filter size={16} strokeWidth={1.8} />
-      </button>
+        <Filter size={18} strokeWidth={1.8} />
+      </IconButton>
 
       {isOpen && (
         <div
