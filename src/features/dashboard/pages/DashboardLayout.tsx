@@ -1,11 +1,12 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
+import { Plus } from "lucide-react";
 import { UserMenu } from "@/features/auth/components/UserMenu";
 import { useLogout } from "@/features/auth/hooks/useLogout";
 import { useMe } from "@/features/auth/hooks/useMe";
 import { withdrawUser } from "@/features/auth/api/authApi";
 import { clearAccessToken } from "@/shared/lib/authToken";
-import { FilterDropdown } from "@/shared/components/FilterDropdown";
+import { InlineSortFilter } from "@/shared/components/InlineSortFilter";
 import { useDashboardFilters } from "../hooks/useDashboardFilters";
 import type { FilterTab } from "../lib/dashboardFilterStore";
 
@@ -113,31 +114,14 @@ export function DashboardLayout() {
           </div>
         </header>
 
-        <nav className="mx-auto mt-8 flex max-w-2xl flex-col gap-2 px-6">
-          <div className="flex items-center">
-            <div className="relative flex w-36">
-              <TabLink to="/mytickets" label="나의 티켓" />
-              <TabLink to="/mycampaigns" label="나의 행사" />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => navigate("/campaigns/create")}
-              className="ml-auto mb-2 rounded-full px-4 py-2 text-sm font-semibold text-(--on-yellow) transition-transform hover:scale-[1.03] active:scale-[0.97]"
-              style={{ backgroundColor: "var(--brand-yellow)" }}
-            >
-              + 행사 추가
-            </button>
-            {/* TODO(임시 비교용): 위 버튼이랑 아이콘 버전 중 뭐가 나은지 비교 중.
-                아이콘 버전으로 되돌리려면 위 button을 지우고 아래로 교체
-                (import { Plus } from "lucide-react"; import { IconButton } from "@/shared/components/IconButton";)
-                <IconButton onClick={() => navigate("/campaigns/create")} label="행사 만들기" size="sm">
-                  <Plus size={18} strokeWidth={1.8} />
-                </IconButton> */}
+        <nav className="mx-auto mt-8 flex max-w-2xl flex-col gap-4 px-6">
+          <div className="relative flex w-36">
+            <TabLink to="/mytickets" label="나의 티켓" />
+            <TabLink to="/mycampaigns" label="나의 행사" />
           </div>
 
-          <div className="flex items-center justify-end">
-            <FilterDropdown
+          <div className="flex items-center justify-between">
+            <InlineSortFilter
               sortOptions={SORT_OPTIONS_BY_TAB[activeTab]}
               sortValue={sortBy}
               onSortChange={setSortBy}
@@ -146,6 +130,18 @@ export function DashboardLayout() {
               showDeleted={showDeleted}
               onShowDeletedChange={setShowDeleted}
             />
+
+            {activeTab === "mycampaigns" && (
+              <button
+                type="button"
+                onClick={() => navigate("/campaigns/create")}
+                className="flex items-center gap-1 rounded-full px-4 py-2 text-[13px] font-semibold text-(--on-yellow) shadow-[0_2px_8px_rgba(17,24,39,0.15)] transition-transform hover:scale-[1.03] active:scale-[0.97]"
+                style={{ backgroundColor: "var(--brand-yellow)" }}
+              >
+                <Plus size={15} strokeWidth={2.5} />
+                행사 추가
+              </button>
+            )}
           </div>
         </nav>
       </motion.div>

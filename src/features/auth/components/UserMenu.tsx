@@ -10,7 +10,8 @@ interface UserMenuProps {
 }
 
 // 헤더에 아바타만 보이고, 누르면 닉네임/회원탈퇴/로그아웃이 드롭다운으로 뜸.
-// FilterDropdown이랑 "바깥 클릭하면 닫기" 패턴이 겹쳐서 useClickOutside 훅으로 공유함.
+// "바깥 클릭하면 닫기" 로직은 useClickOutside 훅으로 분리해서 씀 (다른 드롭다운류
+// 컴포넌트에서도 재사용할 수 있게).
 export function UserMenu({
   nickname,
   profileImageUrl,
