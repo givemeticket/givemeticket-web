@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
+import { Tooltip } from "./Tooltip";
 
 interface IconButtonProps {
   children: ReactNode;
   onClick: () => void;
-  /** aria-label과 title(호버 툴팁)로 동시에 씀 */
+  /** aria-label과 호버 툴팁 문구로 동시에 씀 */
   label: string;
   /** sm=32px(h-8 w-8), md=36px(h-9 w-9). 기본 md */
   size?: "sm" | "md";
@@ -35,16 +36,20 @@ export function IconButton({
         : "var(--muted)";
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      title={label}
-      className={`flex ${sizeClass} shrink-0 items-center justify-center rounded-full transition-colors hover:bg-(--ink-soft) disabled:opacity-40`}
-      style={{ color, backgroundColor: active ? "var(--ink-soft)" : undefined }}
-    >
-      {children}
-    </button>
+    <Tooltip content={label}>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}
+        className={`flex ${sizeClass} shrink-0 items-center justify-center rounded-full transition-colors hover:bg-(--ink-soft) disabled:opacity-40`}
+        style={{
+          color,
+          backgroundColor: active ? "var(--ink-soft)" : undefined,
+        }}
+      >
+        {children}
+      </button>
+    </Tooltip>
   );
 }

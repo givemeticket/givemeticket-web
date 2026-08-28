@@ -124,7 +124,7 @@ export async function deleteCampaign(campaignId: number): Promise<void> {
 }
 
 /**
- * 캠페인 종료. 삭제와 달리 이미 확정된 신청은 그대로 유지되고, 취소·환불도 안 함.
+ * 캠페인 종료. 삭제와 달리 이미 확정된 신청은 그대로 유지되고, 취소도 안 함.
  * 신규 신청만 막힘. 되돌릴 수 없고, 종료 후엔 오픈 시각도 못 바꿈(409 CAMPAIGN_CLOSED).
  */
 export async function closeCampaign(campaignId: number): Promise<void> {
@@ -145,7 +145,7 @@ export interface ApplyResult {
   status: ApplicationStatus;
 }
 
-/** 재고를 잡고 그 자리에서 확정함. 결제 단계 없이 성공하면 바로 CONFIRMED */
+/** 재고를 잡고 그 자리에서 바로 확정함 */
 export async function applyToCampaign(
   campaignId: number,
 ): Promise<ApplyResult> {
@@ -157,4 +157,23 @@ export async function applyToCampaign(
 
 export async function cancelApplication(applicationId: number): Promise<void> {
   await apiClient.post(`/api/v1/applications/${applicationId}/cancel`);
+}
+
+export interface ApplicationDetail {
+  id: number;
+  campaignId: number;
+  userId: number;
+  status: ApplicationStatus;
+  failureReason?: FailureReason;
+  /** 신청한 시각 (ISO 8601) */
+  createdAt: string;
+}
+
+export async function getApplication(
+  applicationId: number,
+): Promise<ApplicationDetail> {
+  const res = await apiClient.get<ApplicationDetail>(
+    `/api/v1/applications/${applicationId}`,
+  );
+  return res.data;
 }

@@ -1,6 +1,13 @@
 import { useState } from "react";
-import { Calendar, ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  CircleAlert,
+  Undo2,
+} from "lucide-react";
 import { WheelColumn, ROW_HEIGHT, WHEEL_PADDING } from "./WheelColumn";
+import { Tooltip } from "./Tooltip";
 import { IconButton } from "./IconButton";
 import {
   parseDatetimeLocalValue as parseValue,
@@ -9,6 +16,8 @@ import {
 
 interface DateTimePickerFieldProps {
   label: string;
+  /** 라벨 옆에 작은 안내 아이콘+툴팁을 붙이고 싶을 때 그 문구 */
+  labelInfo?: string;
   /** datetime-local과 동일한 "YYYY-MM-DDTHH:mm" 형식 (기존 코드와 값 형태를 맞추기 위함) */
   value: string;
   onChange: (value: string) => void;
@@ -78,6 +87,7 @@ const MINUTE_ITEMS = Array.from({ length: 60 }, (_, i) => ({
 // "확인"을 눌러야 값이 반영됨.
 export function DateTimePickerField({
   label,
+  labelInfo,
   value,
   onChange,
   hint,
@@ -143,7 +153,14 @@ export function DateTimePickerField({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium text-(--paper)">{label}</span>
+      <span className="flex items-center gap-1 text-sm font-medium text-(--paper)">
+        {label}
+        {labelInfo && (
+          <Tooltip content={labelInfo}>
+            <CircleAlert size={14} strokeWidth={2} className="text-(--muted)" />
+          </Tooltip>
+        )}
+      </span>
 
       <div
         role="button"

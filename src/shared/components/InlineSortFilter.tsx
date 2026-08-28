@@ -11,22 +11,22 @@ interface InlineSortFilterProps {
   onSortChange: (value: string) => void;
   sortDirection: "asc" | "desc";
   onSortDirectionChange: (direction: "asc" | "desc") => void;
-  showDeleted: boolean;
-  onShowDeletedChange: (checked: boolean) => void;
+  /** true면 만료(삭제됨/종료됨)된 행사만, false면 만료 안 된 행사만 보여줌 */
+  showExpiredOnly: boolean;
+  onShowExpiredOnlyChange: (checked: boolean) => void;
 }
 
-// 정렬 기준/방향 + 삭제 행사 표시를 드롭다운 없이 가로로 펼쳐서 항상 보이게 하는
-// 대시보드 목록용 필터 UI. "삭제 행사 표시"도 토글 스위치가 아니라 정렬 버튼들이랑
-// 똑같은 알약 버튼 디자인으로 통일함(선택=파란 배경, 아니면 테두리만) — 방향
-// 화살표만 없을 뿐.
+// 정렬 기준/방향 + 만료 행사만 보기를 드롭다운 없이 가로로 펼쳐서 항상 보이게 하는
+// 대시보드 목록용 필터 UI. "만료" 버튼도 정렬 버튼들이랑 똑같은 알약 버튼 디자인으로
+// 통일함(선택=파란 배경, 아니면 테두리만).
 export function InlineSortFilter({
   sortOptions,
   sortValue,
   onSortChange,
   sortDirection,
   onSortDirectionChange,
-  showDeleted,
-  onShowDeletedChange,
+  showExpiredOnly,
+  onShowExpiredOnlyChange,
 }: InlineSortFilterProps) {
   // 이미 선택된 기준을 다시 누르면 방향만 뒤집고, 다른 기준을 누르면
   // 그걸로 선택 전환하면서 방향은 내림차순으로 초기화
@@ -73,11 +73,11 @@ export function InlineSortFilter({
 
       <button
         type="button"
-        onClick={() => onShowDeletedChange(!showDeleted)}
+        onClick={() => onShowExpiredOnlyChange(!showExpiredOnly)}
         className={pillClass}
-        style={showDeleted ? activeStyle : inactiveStyle}
+        style={showExpiredOnly ? activeStyle : inactiveStyle}
       >
-        삭제 행사
+        만료
       </button>
     </div>
   );

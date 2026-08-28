@@ -72,14 +72,24 @@ export function CountdownApplyButton({
   const label = isActing
     ? "처리 중..."
     : remainingMs <= 0
-      ? "오픈됐어요"
+      ? "신청하기"
       : `오픈까지 ${formatCountdown(remainingMs)} 남았어요`;
 
   const isUrgent = remainingMs > 0 && remainingMs <= 60_000;
 
+  // 카운트다운 텍스트 길이가 계속 바뀌면서(며칠 단위 -> 시:분:초 단위 -> "신청하기")
+  // 버튼 크기도 같이 늘었다 줄었다 하면 산만해 보임. "오픈까지 00:00:00 남았어요"
+  // (가장 긴 경우)를 안 보이게 같은 자리에 겹쳐서, 그 텍스트 크기만큼 버튼 너비를
+  // 항상 확보해둠 — CSS Grid로 두 텍스트를 같은 칸에 겹쳐두면, 그 칸의 크기는
+  // 둘 중 더 큰 쪽(안 보이는 최대 길이 텍스트)에 맞춰짐.
   return (
     <PrimaryButton onClick={handleClick} disabled={isActing} urgent={isUrgent}>
-      {label}
+      <span className="grid">
+        <span className="invisible col-start-1 row-start-1" aria-hidden="true">
+          오픈까지 00:00:00 남았어요
+        </span>
+        <span className="col-start-1 row-start-1">{label}</span>
+      </span>
     </PrimaryButton>
   );
 }

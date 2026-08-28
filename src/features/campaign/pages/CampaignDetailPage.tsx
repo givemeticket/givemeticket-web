@@ -52,6 +52,7 @@ export function CampaignDetailPage() {
     soldOut,
     hasStockValue,
     hasActiveApplication,
+    myApplicationDetail,
   } = useCampaignDetailData(shortCode, placeholderCampaign);
 
   const [actionError, setActionError] = useState("");
@@ -113,7 +114,7 @@ export function CampaignDetailPage() {
   async function handleDelete() {
     if (
       !confirm(
-        "정말 삭제하시겠어요? 신청자가 있어도 전부 취소·환불되고, 되돌릴 수 없어요.",
+        "정말 삭제하시겠어요? 신청자가 있어도 전부 취소되고, 되돌릴 수 없어요.",
       )
     )
       return;
@@ -131,7 +132,7 @@ export function CampaignDetailPage() {
   async function handleClose() {
     if (
       !confirm(
-        "신청을 종료하시겠어요? 새 신청만 막히고, 이미 확정된 신청은 취소·환불 없이 그대로 유지돼요. 되돌릴 수 없어요.",
+        "신청을 종료하시겠어요? 새 신청만 막히고, 이미 확정된 신청은 그대로 유지돼요. 되돌릴 수 없어요.",
       )
     )
       return;
@@ -216,7 +217,6 @@ export function CampaignDetailPage() {
                     campaign={campaign}
                     isActing={isActing}
                     setIsActing={setIsActing}
-                    setActionError={setActionError}
                     onDelete={handleDelete}
                     onClose={handleClose}
                     onRefetch={async () => {
@@ -238,13 +238,15 @@ export function CampaignDetailPage() {
               </div>
 
               {/* 신청하기 / 신청취소 — 역할과 무관하게 공통 처리 (관리자도 신청 가능) */}
-              <div className="mt-6">
+              <div className="mt-6 flex justify-center">
                 {hasActiveApplication && campaign.myApplication ? (
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col items-center gap-3">
                     <p className="text-sm text-(--muted)">
-                      내 신청 상태:{" "}
+                      신청시각:{" "}
                       <span className="font-semibold text-(--paper)">
-                        {campaign.myApplication.status}
+                        {myApplicationDetail
+                          ? formatDateTimeKo(myApplicationDetail.createdAt)
+                          : "불러오는 중..."}
                       </span>
                     </p>
                     <SecondaryButton onClick={handleCancel} disabled={isActing}>

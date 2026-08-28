@@ -1,56 +1,18 @@
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import { Plus } from "lucide-react";
 import { UserMenu } from "@/features/auth/components/UserMenu";
 import { useLogout } from "@/features/auth/hooks/useLogout";
 import { useMe } from "@/features/auth/hooks/useMe";
 import { withdrawUser } from "@/features/auth/api/authApi";
 import { clearAccessToken } from "@/shared/lib/authToken";
-import { InlineSortFilter } from "@/shared/components/InlineSortFilter";
-import { useDashboardFilters } from "../hooks/useDashboardFilters";
-import type { FilterTab } from "../lib/dashboardFilterStore";
 
-const SORT_OPTIONS_BY_TAB: Record<
-  FilterTab,
-  { value: string; label: string }[]
-> = {
-  mytickets: [
-    { value: "appliedAt", label: "신청 날짜" },
-    { value: "openAt", label: "오픈 날짜" },
-  ],
-  mycampaigns: [
-    { value: "createdAt", label: "만든 날짜" },
-    { value: "openAt", label: "오픈 날짜" },
-  ],
-};
-
-/** 탭(MyTicketsTab, MyCampaignsTab)이 useOutletContext로 받아가는 값 */
-export interface DashboardOutletContext {
-  sortBy: string;
-  sortDirection: "asc" | "desc";
-  showDeleted: boolean;
-}
-
-// /mytickets, /mycampaigns 두 라우트가 공유하는 레이아웃.
-// 정렬/삭제표시 필터를 탭 바로 옆(같은 줄)에 두려면 이 상태를 탭 컴포넌트가 아니라
-// 여기서 관리해야 해서, 탭에는 Outlet context로 필요한 값만 내려줌.
+// /mytickets, /mycampaigns 두 라우트가 공유하는 레이아웃 — 헤더+탭만 담당.
+// 정렬/삭제표시 필터와 행사추가 버튼은 CampaignListTab이 각자 직접 관리함
+// (예전엔 탭 전환 시 안 흔들리게 하려고 여기 뒀었는데, 탭 전환 자체가 이미
+// 애니메이션 없이 순간적으로 바뀌게 되어있어서 그 우려가 실익이 없었음).
 export function DashboardLayout() {
   const logout = useLogout();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const activeTab: FilterTab = location.pathname.startsWith("/mycampaigns")
-    ? "mycampaigns"
-    : "mytickets";
-
-  const {
-    sortBy,
-    sortDirection,
-    showDeleted,
-    setSortBy,
-    setSortDirection,
-    setShowDeleted,
-  } = useDashboardFilters(activeTab);
 
   const { data: me } = useMe();
 
@@ -68,12 +30,6 @@ export function DashboardLayout() {
     }
   }
 
-  const outletContext: DashboardOutletContext = {
-    sortBy,
-    sortDirection,
-    showDeleted,
-  };
-
   return (
     <div className="relative min-h-screen text-(--paper)">
       {/* 배경색 전용 레이어. 독립적으로 페이드시켜야 함 — 안 그러면 이 화면이 사라지는
@@ -87,7 +43,7 @@ export function DashboardLayout() {
         transition={{ duration: 0.3, ease: "easeInOut" }}
       />
 
-      {/* 상세 페이지로 이동할 땐 이 레이아웃 전체(헤더/탭/필터)가 사라지는 화면이라,
+      {/* 상세 페이지로 이동할 땐 이 레이아웃 전체(헤더/탭)가 사라지는 화면이라,
           "나머지 요소" 페이드 대상에 포함시킴. main(카드가 들어있는 곳)은 감싸지 않음 —
           카드는 형제 컴포넌트로 독립적인 이동 애니메이션을 가져야 해서. */}
       <motion.div
@@ -114,40 +70,16 @@ export function DashboardLayout() {
           </div>
         </header>
 
-        <nav className="mx-auto mt-8 flex max-w-2xl flex-col gap-4 px-6">
+        <nav className="mx-auto mt-8 flex max-w-2xl px-6">
           <div className="relative flex w-36">
             <TabLink to="/mytickets" label="나의 티켓" />
             <TabLink to="/mycampaigns" label="나의 행사" />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <InlineSortFilter
-              sortOptions={SORT_OPTIONS_BY_TAB[activeTab]}
-              sortValue={sortBy}
-              onSortChange={setSortBy}
-              sortDirection={sortDirection}
-              onSortDirectionChange={setSortDirection}
-              showDeleted={showDeleted}
-              onShowDeletedChange={setShowDeleted}
-            />
-
-            {activeTab === "mycampaigns" && (
-              <button
-                type="button"
-                onClick={() => navigate("/campaigns/create")}
-                className="flex items-center gap-1 rounded-full px-4 py-2 text-[13px] font-semibold text-(--on-yellow) shadow-[0_2px_8px_rgba(17,24,39,0.15)] transition-transform hover:scale-[1.03] active:scale-[0.97]"
-                style={{ backgroundColor: "var(--brand-yellow)" }}
-              >
-                <Plus size={15} strokeWidth={2.5} />
-                행사 추가
-              </button>
-            )}
           </div>
         </nav>
       </motion.div>
 
       <main className="mx-auto max-w-2xl px-6 pb-10 pt-4">
-        <Outlet context={outletContext} />
+        <Outlet />
       </main>
     </div>
   );
@@ -158,7 +90,7 @@ function TabLink({ to, label }: { to: string; label: string }) {
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `relative flex-1 pb-3 text-center text-sm font-medium transition-colors ${
+        `relative flex-1 pb-2.5 text-center text-sm font-medium transition-colors ${
           isActive ? "text-(--paper)" : "text-(--muted) hover:text-(--paper)/80"
         }`
       }

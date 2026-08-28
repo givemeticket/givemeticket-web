@@ -61,7 +61,7 @@ export function LoginPage() {
           선착순 행사를 진행해보세요
         </h1>
         <p className="mt-3 text-center text-sm leading-relaxed text-(--muted)">
-          선착순 행사 개설부터 신청, 결제까지
+          선착순 행사 개설부터 신청까지
           <br />
           3초 로그인으로 시작하세요
         </p>

@@ -8,15 +8,20 @@ export type FilterTab = "mytickets" | "mycampaigns";
 export interface FilterState {
   sortBy: string;
   sortDirection: "asc" | "desc";
-  showDeleted: boolean;
+  /** true면 만료(삭제됨/종료됨)된 행사만, false면 그 반대(만료 안 된 것만) */
+  showExpiredOnly: boolean;
 }
 
 const store: Record<FilterTab, FilterState> = {
-  mytickets: { sortBy: "appliedAt", sortDirection: "desc", showDeleted: false },
+  mytickets: {
+    sortBy: "appliedAt",
+    sortDirection: "desc",
+    showExpiredOnly: false,
+  },
   mycampaigns: {
     sortBy: "createdAt",
     sortDirection: "desc",
-    showDeleted: false,
+    showExpiredOnly: false,
   },
 };
 

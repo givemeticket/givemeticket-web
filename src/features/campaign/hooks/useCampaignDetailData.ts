@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  getApplication,
   getCampaign,
   getCampaignStock,
   type CampaignItem,
@@ -31,12 +32,15 @@ export function useCampaignDetailData(
 
   // 카드를 그리는 데 필요한 정보는 진짜 상세 데이터든, 넘겨받은 목록 데이터든 형태가
   // 거의 같아서(title/status/openAt/owner/totalStock 등) 뭐가 있든 그걸로 카드를 그림.
-  // 카드에 필요한 정보는 목록이든 상세든 같은 값이라 실시간으로 최신화할 필요가 없음.
-  // 오히려 애니메이션이 진행되는 도중 진짜 데이터가 도착해서 카드의 props가 바뀌면,
-  // layoutId가 있는 요소는 그 순간 다시 위치를 측정하면서 이동 애니메이션이 중간에
-  // 순간이동하는 문제가 생김. 그래서 넘겨받은 데이터가 있으면(=목록에서 들어온 경우)
-  // 계속 그걸 우선하고, 없을 때만(=공유 링크로 직접 들어온 경우) 진짜 데이터를 씀.
-  const cardSource = placeholderCampaign ?? campaign ?? null;
+  // 진짜 데이터(campaign)를 우선하고, 아직 로딩 중일 때만(=상세 API 응답 도착 전) 넘겨받은
+  // 데이터로 임시로 채움. 한때는 반대로(넘겨받은 데이터를 계속 우선) 했었는데, 그러면
+  // 수정/신청 등으로 실제 값이 바뀌어도 화면에 영원히 반영이 안 되는 문제가 있었음
+  // (수정해도 카드에 안 뜨고, 새로고침해도 안 뜨고, 뒤로갔다 재진입해야만 뜨는 버그 —
+  // location.state는 새로고침해도 브라우저 히스토리에 남아있어서였음). 그 반대 우선순위는
+  // "애니메이션 도중 데이터가 바뀌면 이동 애니메이션이 꼬인다"는 문제 때문이었는데, 그건
+  // 이후 다른 근본 원인들(CSS transform 충돌, layoutId 항상 부여 등)을 고치면서 이미
+  // 해결된 상태라 이 우회로 자체가 불필요해짐.
+  const cardSource = campaign ?? placeholderCampaign ?? null;
 
   // 지금 보고 있는 캠페인 id를 기록해둠. 뒤로가기로 목록에 돌아가면, 목록이 이 값을
   // 읽어서 "얘가 방금 여기서 돌아온 카드구나"를 판단해 개별 페이드를 안 줌
@@ -67,6 +71,14 @@ export function useCampaignDetailData(
     campaign?.myApplication != null &&
     campaign.myApplication.status !== "CANCELLED";
 
+  // 신청 시각(createdAt)은 상세 조회 응답에 안 실려있어서, 신청 건 자체를 별도로
+  // 한 번 더 조회해야 함. 활성 신청이 있을 때만 조회함.
+  const { data: myApplicationDetail } = useQuery({
+    queryKey: ["application", campaign?.myApplication?.id],
+    queryFn: () => getApplication(campaign!.myApplication!.id),
+    enabled: hasActiveApplication,
+  });
+
   return {
     campaign,
     cardSource,
@@ -80,5 +92,6 @@ export function useCampaignDetailData(
     soldOut,
     hasStockValue,
     hasActiveApplication,
+    myApplicationDetail,
   };
 }

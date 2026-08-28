@@ -10,7 +10,7 @@ export function CampaignCreatePage() {
   const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
-  const [totalStock, setTotalStock] = useState("");
+  const [totalStock, setTotalStock] = useState("1");
   const [openAt, setOpenAt] = useState(() => nowAsDatetimeLocalValue());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -51,49 +51,63 @@ export function CampaignCreatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-(--ink) px-6 py-10 text-(--paper)">
-      <div className="mx-auto max-w-md">
+    <div className="min-h-screen bg-(--ink) py-10 text-(--paper)">
+      <div className="mx-auto max-w-2xl px-6">
         <div className="flex items-center gap-1">
           <BackButton fallback="/mycampaigns" />
-          <h1 className="text-lg font-bold">행사 만들기</h1>
+          <h1 className="text-lg font-bold">행사 추가</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-6">
+        <form
+          onSubmit={handleSubmit}
+          className="mt-8 flex flex-col gap-6 rounded-2xl border p-6"
+          style={{ borderColor: "var(--line)" }}
+        >
           <Field label="행사 이름">
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="예: 여름 정기 세미나"
+              placeholder="GIVEMETICKET 캠페인"
               maxLength={100}
               className="input"
             />
           </Field>
 
-          <Field label="정원">
-            <input
-              type="number"
-              min={1}
-              value={totalStock}
-              onChange={(e) => setTotalStock(e.target.value)}
-              placeholder="예: 50"
-              className="input"
-            />
-          </Field>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <Field label="정원">
+                <input
+                  type="number"
+                  min={1}
+                  value={totalStock}
+                  onChange={(e) => setTotalStock(e.target.value)}
+                  className="input"
+                />
+              </Field>
+            </div>
 
-          <DateTimePickerField
-            label="신청 오픈 시각"
-            value={openAt}
-            onChange={setOpenAt}
-          />
+            <div className="flex-1">
+              <DateTimePickerField
+                label="신청 오픈 시각"
+                value={openAt}
+                onChange={setOpenAt}
+              />
+            </div>
+          </div>
 
           {errorMessage && (
             <p className="text-xs text-(--warn)">{errorMessage}</p>
           )}
 
-          <PrimaryButton type="submit" disabled={!isFormValid || isSubmitting}>
-            {isSubmitting ? "만드는 중..." : "행사 만들기"}
-          </PrimaryButton>
+          <div className="self-end">
+            <PrimaryButton
+              type="submit"
+              disabled={!isFormValid || isSubmitting}
+            >
+              {isSubmitting ? "저장 중..." : "저장"}
+            </PrimaryButton>
+          </div>
         </form>
       </div>
     </div>

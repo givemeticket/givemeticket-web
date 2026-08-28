@@ -43,6 +43,17 @@ export function UserMenu({
             boxShadow: "0 10px 24px rgba(17,24,39,0.12)",
           }}
         >
+          {/* 말풍선 꼬리 — 45도 회전시킨 작은 정사각형. 왼쪽/위쪽 테두리만 패널이랑
+              같은 색으로 줘서, 회전했을 때 그 두 변만 위쪽을 향하게(패널에서 이어지는
+              모서리처럼) 만듦 */}
+          <div
+            className="absolute -top-1.5 right-3 h-3 w-3 rotate-45 rounded-xs border-l border-t"
+            style={{
+              backgroundColor: "var(--ink)",
+              borderColor: "var(--line)",
+            }}
+          />
+
           <p className="truncate px-2.5 py-1.5 text-sm font-medium text-(--paper)">
             {nickname}님
           </p>
