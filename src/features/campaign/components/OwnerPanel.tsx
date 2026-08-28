@@ -1,11 +1,10 @@
 import { useState, type ReactNode } from "react";
 import axios from "axios";
-import { Ban, CircleAlert, Pencil, Trash2 } from "lucide-react";
+import { Ban, Pencil, Trash2 } from "lucide-react";
 import { updateCampaign, type CampaignDetail } from "../api/campaignApi";
 import { isoToDatetimeLocalValue } from "@/shared/lib/formatDate";
-import { DateTimePickerField } from "@/shared/components/DateTimePickerField";
+import { CampaignFormFields } from "./CampaignFormFields";
 import { IconButton } from "@/shared/components/IconButton";
-import { Tooltip } from "@/shared/components/Tooltip";
 import { PrimaryButton } from "@/shared/components/PrimaryButton";
 import { SecondaryButton } from "@/shared/components/SecondaryButton";
 
@@ -32,6 +31,7 @@ export function OwnerPanel({
   leadingContent?: ReactNode;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [newTitle, setNewTitle] = useState(campaign.title);
   const [newOpenAt, setNewOpenAt] = useState(() =>
     isoToDatetimeLocalValue(campaign.openAt),
   );
@@ -45,11 +45,31 @@ export function OwnerPanel({
   const isOpen = campaign.status === "OPEN";
   const isClosed = campaign.status === "CLOSED";
 
+  // 취소 눌렀을 때 폼을 원래 값으로 되돌림. 이게 없으면, 이름을 바꿔놓고 저장 안 하고
+  // 취소했다가 다시 수정을 열었을 때 아까 바꿨던(저장 안 된) 값이 그대로 남아있게 됨 —
+  // state는 컴포넌트가 계속 마운트돼있는 한 알아서 안 사라지기 때문
+  function resetForm() {
+    setNewTitle(campaign.title);
+    setNewOpenAt(isoToDatetimeLocalValue(campaign.openAt));
+    setNewTotalStock(
+      campaign.totalStock != null ? String(campaign.totalStock) : "",
+    );
+    setEditError("");
+  }
+
   async function handleSaveEdit() {
+    // title은 오픈 여부와 무관하게 항상 수정 가능하지만, 공백만 있는 값은 서버가
+    // 400으로 거부하니 미리 걸러줌
+    if (!newTitle.trim()) {
+      setEditError("행사 이름을 입력해주세요.");
+      return;
+    }
+
     setIsActing(true);
     setEditError("");
     try {
       await updateCampaign(campaign.id, {
+        title: newTitle.trim(),
         openAt: new Date(newOpenAt).toISOString(),
         totalStock: newTotalStock ? Number(newTotalStock) : undefined,
       });
@@ -59,7 +79,10 @@ export function OwnerPanel({
       const code = axios.isAxiosError(e)
         ? (e.response?.data as { code?: string })?.code
         : undefined;
-      if (code === "OPEN_AT_NOT_FUTURE") {
+      // OPEN_AT_NOT_FUTURE(단순히 현재 시각보다 이전)랑 OPEN_AT_NOT_DELAYABLE(이미
+      // 오픈된 상태에서 원래 오픈 시각보다 이전으로 되돌리려 함) 둘 다, 공통적으로
+      // "요청한 시각이 허용된 최소 시각보다 이전"이라는 같은 문제라 같은 메시지로 처리함
+      if (code === "OPEN_AT_NOT_FUTURE" || code === "OPEN_AT_NOT_DELAYABLE") {
         setEditError(
           "오픈 시각은 기존 설정 유지 또는 미래로만 설정할 수 있어요.",
         );
@@ -84,7 +107,10 @@ export function OwnerPanel({
 
         {!isClosed && (
           <IconButton
-            onClick={() => setIsEditing((v) => !v)}
+            onClick={() => {
+              if (isEditing) resetForm();
+              setIsEditing((v) => !v);
+            }}
             label="수정"
             active={isEditing}
           >
@@ -113,49 +139,26 @@ export function OwnerPanel({
           className="flex flex-col gap-3 rounded-xl border p-4"
           style={{ borderColor: "var(--line)" }}
         >
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="flex flex-col gap-1.5">
-                <span className="flex items-center gap-1 text-sm font-medium">
-                  정원
-                  {isOpen && (
-                    <Tooltip content="정원 유지 또는 증원만 가능합니다.">
-                      <CircleAlert
-                        size={14}
-                        strokeWidth={2}
-                        className="text-(--muted)"
-                      />
-                    </Tooltip>
-                  )}
-                </span>
-                <input
-                  type="number"
-                  min={isOpen ? (campaign.totalStock ?? 1) : 1}
-                  value={newTotalStock}
-                  onChange={(e) => setNewTotalStock(e.target.value)}
-                  className="input"
-                />
-              </label>
-            </div>
-
-            <div className="flex-1">
-              <DateTimePickerField
-                label="신청 오픈 시각"
-                labelInfo={
-                  isOpen
-                    ? "오픈 시각 유지 또는 미래로만 설정할 수 있습니다."
-                    : undefined
-                }
-                value={newOpenAt}
-                onChange={setNewOpenAt}
-                // 이미 오픈된 캠페인은 원래 오픈 시각(이미 지난 시각일 수 있음)을 그대로
-                // 유지하는 것도 허용해야 해서, 오늘이 아니라 원래 오픈 시각을 기준으로 함
-                minDate={isOpen ? new Date(campaign.openAt) : undefined}
-                resetToNowOnOpen={isOpen}
-                originalValue={isoToDatetimeLocalValue(campaign.openAt)}
-              />
-            </div>
-          </div>
+          <CampaignFormFields
+            title={newTitle}
+            onTitleChange={setNewTitle}
+            totalStock={newTotalStock}
+            onTotalStockChange={setNewTotalStock}
+            totalStockMin={isOpen ? (campaign.totalStock ?? 1) : 1}
+            totalStockInfo={
+              isOpen ? "정원 유지 또는 증원만 가능합니다." : undefined
+            }
+            openAt={newOpenAt}
+            onOpenAtChange={setNewOpenAt}
+            // 이미 오픈된 캠페인은 원래 오픈 시각(이미 지난 시각일 수 있음)을 그대로
+            // 유지하는 것도 허용해야 해서, 오늘이 아니라 원래 오픈 시각을 기준으로 함
+            openAtMinDate={isOpen ? new Date(campaign.openAt) : undefined}
+            openAtResetToNowOnOpen={isOpen}
+            openAtOriginalValue={isoToDatetimeLocalValue(campaign.openAt)}
+            openAtInfo={
+              isOpen ? "오픈 시각 유지 또는 미래만 가능합니다." : undefined
+            }
+          />
           <div className="flex items-center justify-between gap-2">
             {editError ? (
               <p className="text-left text-xs text-(--warn)">{editError}</p>
@@ -163,10 +166,18 @@ export function OwnerPanel({
               <span />
             )}
             <div className="flex gap-2">
-              <SecondaryButton onClick={() => setIsEditing(false)}>
+              <SecondaryButton
+                onClick={() => {
+                  resetForm();
+                  setIsEditing(false);
+                }}
+              >
                 취소
               </SecondaryButton>
-              <PrimaryButton onClick={handleSaveEdit} disabled={isActing}>
+              <PrimaryButton
+                onClick={handleSaveEdit}
+                disabled={isActing || !newTitle.trim()}
+              >
                 {isActing ? "저장 중..." : "저장"}
               </PrimaryButton>
             </div>

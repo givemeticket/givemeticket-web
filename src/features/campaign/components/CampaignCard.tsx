@@ -21,6 +21,9 @@ interface CampaignCardProps {
   ownerNickname?: string;
   /** 주최자 프로필 사진. 동의 안 했으면 null일 수 있음 */
   ownerProfileImageUrl?: string | null;
+  /** 행사 썸네일. 아직 등록 기능이 없어서 항상 비어있지만(null), API 스펙에
+   * 맞춰 nullable로 받아두고, 없으면 플레이스홀더(gray_logo.png)로 채움 */
+  imageUrl?: string | null;
   onClick?: () => void;
   /** false면 순수 표시용(클릭/호버 효과 없음) — 상세 페이지에서 티켓 자체를 보여줄 때처럼
    * 눌러서 어디로 이동할 이유가 없는 경우에 씀 */
@@ -60,6 +63,7 @@ export function CampaignCard({
   totalStock,
   ownerNickname,
   ownerProfileImageUrl,
+  imageUrl,
   onClick,
   interactive = true,
   layoutId,
@@ -77,8 +81,15 @@ export function CampaignCard({
 
   const content = (
     <>
+      {/* 썸네일 — 등록된 게 없으면(아직 등록 기능 자체가 없어서 항상 이 경우) 플레이스홀더 */}
+      <img
+        src={imageUrl || "/gray_logo.png"}
+        alt=""
+        className="m-3 h-25.5 w-25.5 shrink-0 rounded-lg object-cover"
+      />
+
       {/* 메인 정보 영역 */}
-      <div className="min-w-0 flex-1 p-4">
+      <div className="min-w-0 flex-1 py-4 pr-4">
         <span
           className="inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold"
           style={{ backgroundColor: meta.bg, color: meta.fg }}

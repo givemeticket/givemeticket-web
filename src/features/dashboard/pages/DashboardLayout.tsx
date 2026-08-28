@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { UserMenu } from "@/features/auth/components/UserMenu";
@@ -5,6 +6,7 @@ import { useLogout } from "@/features/auth/hooks/useLogout";
 import { useMe } from "@/features/auth/hooks/useMe";
 import { withdrawUser } from "@/features/auth/api/authApi";
 import { clearAccessToken } from "@/shared/lib/authToken";
+import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 
 // /mytickets, /mycampaigns 두 라우트가 공유하는 레이아웃 — 헤더+탭만 담당.
 // 정렬/삭제표시 필터와 행사추가 버튼은 CampaignListTab이 각자 직접 관리함
@@ -13,14 +15,13 @@ import { clearAccessToken } from "@/shared/lib/authToken";
 export function DashboardLayout() {
   const logout = useLogout();
   const navigate = useNavigate();
+  const [isWithdrawConfirmOpen, setIsWithdrawConfirmOpen] = useState(false);
 
   const { data: me } = useMe();
 
-  // TODO: 테스트용 임시 버튼. 실제 회원탈퇴 플로우(확인 모달 디자인, 탈퇴 사유 등)는
+  // TODO: 테스트용 임시 버튼. 실제 회원탈퇴 플로우(탈퇴 사유 입력 등)는
   // 나중에 제대로 화면으로 뺄 예정. 지금은 API 동작 확인용.
   async function handleWithdraw() {
-    if (!confirm("정말 탈퇴하시겠어요? 되돌릴 수 없어요.")) return;
-
     try {
       await withdrawUser();
       clearAccessToken();
@@ -64,7 +65,7 @@ export function DashboardLayout() {
                 nickname={me.nickname}
                 profileImageUrl={me.profileImageUrl}
                 onLogout={logout}
-                onWithdraw={handleWithdraw}
+                onWithdraw={() => setIsWithdrawConfirmOpen(true)}
               />
             )}
           </div>
@@ -81,6 +82,19 @@ export function DashboardLayout() {
       <main className="mx-auto max-w-2xl px-6 pb-10 pt-4">
         <Outlet />
       </main>
+
+      <ConfirmDialog
+        isOpen={isWithdrawConfirmOpen}
+        title="정말 탈퇴하시겠어요?"
+        description="되돌릴 수 없어요."
+        confirmLabel="탈퇴"
+        danger
+        onConfirm={() => {
+          setIsWithdrawConfirmOpen(false);
+          handleWithdraw();
+        }}
+        onCancel={() => setIsWithdrawConfirmOpen(false)}
+      />
     </div>
   );
 }

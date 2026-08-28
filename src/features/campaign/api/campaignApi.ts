@@ -133,7 +133,7 @@ export async function closeCampaign(campaignId: number): Promise<void> {
 
 export async function updateCampaign(
   campaignId: number,
-  payload: { openAt?: string; totalStock?: number },
+  payload: { title?: string; openAt?: string; totalStock?: number },
 ): Promise<void> {
   await apiClient.patch(`/api/v1/campaigns/${campaignId}`, payload);
 }

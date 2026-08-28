@@ -7,8 +7,9 @@ import {
   Undo2,
 } from "lucide-react";
 import { WheelColumn, ROW_HEIGHT, WHEEL_PADDING } from "./WheelColumn";
-import { Tooltip } from "./Tooltip";
 import { IconButton } from "./IconButton";
+import { Tooltip } from "./Tooltip";
+import { Modal } from "./Modal";
 import {
   parseDatetimeLocalValue as parseValue,
   buildDatetimeLocalValueFromParts as toValue,
@@ -199,140 +200,129 @@ export function DateTimePickerField({
 
       {hint && <span className="text-xs text-(--muted)">{hint}</span>}
 
-      {isOpen && (
+      <Modal isOpen={isOpen} onClose={() => setIsOpen(false)}>
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6"
-          onClick={() => setIsOpen(false)}
+          className="w-full max-w-xs rounded-2xl border p-4"
+          style={{ backgroundColor: "var(--ink)", borderColor: "var(--line)" }}
         >
-          <div
-            className="w-full max-w-xs rounded-2xl border p-4"
-            style={{
-              backgroundColor: "var(--ink)",
-              borderColor: "var(--line)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* 월 이동 헤더 */}
-            <div className="flex items-center justify-between">
-              <IconButton
-                onClick={() => setViewMonth(new Date(year, month - 1, 1))}
-                label="이전 달"
-                size="sm"
-              >
-                <ChevronLeft size={16} />
-              </IconButton>
-              <span className="text-sm font-semibold text-(--paper)">
-                {year}년 {month + 1}월
-              </span>
-              <IconButton
-                onClick={() => setViewMonth(new Date(year, month + 1, 1))}
-                label="다음 달"
-                size="sm"
-              >
-                <ChevronRight size={16} />
-              </IconButton>
-            </div>
+          {/* 월 이동 헤더 */}
+          <div className="flex items-center justify-between">
+            <IconButton
+              onClick={() => setViewMonth(new Date(year, month - 1, 1))}
+              label="이전 달"
+              size="sm"
+            >
+              <ChevronLeft size={16} />
+            </IconButton>
+            <span className="text-sm font-semibold text-(--paper)">
+              {year}년 {month + 1}월
+            </span>
+            <IconButton
+              onClick={() => setViewMonth(new Date(year, month + 1, 1))}
+              label="다음 달"
+              size="sm"
+            >
+              <ChevronRight size={16} />
+            </IconButton>
+          </div>
 
-            {/* 요일 헤더 */}
-            <div className="mt-3 grid grid-cols-7 gap-1 text-center text-xs text-(--muted)">
-              {WEEKDAYS.map((w) => (
-                <span key={w}>{w}</span>
-              ))}
-            </div>
+          {/* 요일 헤더 */}
+          <div className="mt-3 grid grid-cols-7 gap-1 text-center text-xs text-(--muted)">
+            {WEEKDAYS.map((w) => (
+              <span key={w}>{w}</span>
+            ))}
+          </div>
 
-            {/* 날짜 그리드 */}
-            <div className="mt-1 grid grid-cols-7 gap-1">
-              {cells.map((day, idx) => {
-                if (day === null) return <span key={idx} />;
-                const cellDate = new Date(year, month, day);
-                const isPast = cellDate < minSelectableDate;
-                const isSelected = cellDate.getTime() === draftDate.getTime();
-                const isOriginal =
-                  showOriginalMarker &&
-                  originalDate &&
-                  cellDate.getTime() === originalDate.getTime();
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    disabled={isPast}
-                    onClick={() => setDraftDate(cellDate)}
-                    className="aspect-square rounded-full text-sm disabled:opacity-30"
-                    style={
-                      isSelected
+          {/* 날짜 그리드 */}
+          <div className="mt-1 grid grid-cols-7 gap-1">
+            {cells.map((day, idx) => {
+              if (day === null) return <span key={idx} />;
+              const cellDate = new Date(year, month, day);
+              const isPast = cellDate < minSelectableDate;
+              const isSelected = cellDate.getTime() === draftDate.getTime();
+              const isOriginal =
+                showOriginalMarker &&
+                originalDate &&
+                cellDate.getTime() === originalDate.getTime();
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  disabled={isPast}
+                  onClick={() => setDraftDate(cellDate)}
+                  className="aspect-square rounded-full text-sm disabled:opacity-30"
+                  style={
+                    isSelected
+                      ? {
+                          backgroundColor: "var(--brand-blue)",
+                          color: "var(--on-brand)",
+                        }
+                      : isOriginal
                         ? {
-                            backgroundColor: "var(--brand-blue)",
-                            color: "var(--on-brand)",
+                            color: "var(--paper)",
+                            boxShadow: "inset 0 0 0 1.5px var(--brand-blue)",
                           }
-                        : isOriginal
-                          ? {
-                              color: "var(--paper)",
-                              boxShadow: "inset 0 0 0 1.5px var(--brand-blue)",
-                            }
-                          : { color: "var(--paper)" }
-                    }
-                  >
-                    {day}
-                  </button>
-                );
-              })}
-            </div>
+                        : { color: "var(--paper)" }
+                  }
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
 
-            {/* 시간 타임휠 */}
-            <div className="relative mt-4 flex justify-center gap-1">
-              <div
-                className="pointer-events-none absolute inset-x-3 rounded-xl"
-                style={{
-                  top: WHEEL_PADDING,
-                  height: ROW_HEIGHT,
-                  backgroundColor: "var(--ink-soft)",
-                  boxShadow: "inset 0 0 0 1.5px var(--brand-blue)",
-                }}
-              />
-              <WheelColumn
-                items={MERIDIEM_ITEMS}
-                selectedValue={meridiem}
-                onChange={(m) => setDraftHour(to24Hour(hour12, m as 0 | 1))}
-                circular={false}
-              />
-              <WheelColumn
-                items={HOUR_ITEMS}
-                selectedValue={hour12}
-                onChange={(h) => setDraftHour(to24Hour(h, meridiem))}
-                circular={false}
-              />
-              <span className="flex items-center text-sm text-(--muted)">
-                :
-              </span>
-              <WheelColumn
-                items={MINUTE_ITEMS}
-                selectedValue={draftMinute}
-                onChange={setDraftMinute}
-              />
-            </div>
+          {/* 시간 타임휠 */}
+          <div className="relative mt-4 flex justify-center gap-1">
+            <div
+              className="pointer-events-none absolute inset-x-3 rounded-xl"
+              style={{
+                top: WHEEL_PADDING,
+                height: ROW_HEIGHT,
+                backgroundColor: "var(--ink-soft)",
+                boxShadow: "inset 0 0 0 1.5px var(--brand-blue)",
+              }}
+            />
+            <WheelColumn
+              items={MERIDIEM_ITEMS}
+              selectedValue={meridiem}
+              onChange={(m) => setDraftHour(to24Hour(hour12, m as 0 | 1))}
+              circular={false}
+            />
+            <WheelColumn
+              items={HOUR_ITEMS}
+              selectedValue={hour12}
+              onChange={(h) => setDraftHour(to24Hour(h, meridiem))}
+              circular={false}
+            />
+            <span className="flex items-center text-sm text-(--muted)">:</span>
+            <WheelColumn
+              items={MINUTE_ITEMS}
+              selectedValue={draftMinute}
+              onChange={setDraftMinute}
+            />
+          </div>
 
-            {/* 액션 버튼 */}
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="flex-1 rounded-full border px-4 py-2.5 text-sm font-medium"
-                style={{ borderColor: "var(--line)", color: "var(--paper)" }}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirm}
-                className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold text-(--on-yellow)"
-                style={{ backgroundColor: "var(--brand-yellow)" }}
-              >
-                확인
-              </button>
-            </div>
+          {/* 액션 버튼 */}
+          <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="flex-1 rounded-full border px-4 py-2.5 text-sm font-medium"
+              style={{ borderColor: "var(--line)", color: "var(--paper)" }}
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              className="flex-1 rounded-full px-4 py-2.5 text-sm font-semibold text-(--on-yellow)"
+              style={{ backgroundColor: "var(--brand-yellow)" }}
+            >
+              확인
+            </button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

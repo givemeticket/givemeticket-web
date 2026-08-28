@@ -1,7 +1,7 @@
-import { useState, type ReactNode, type SubmitEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { createCampaign } from "../api/campaignApi";
-import { DateTimePickerField } from "@/shared/components/DateTimePickerField";
+import { CampaignFormFields } from "../components/CampaignFormFields";
 import { nowAsDatetimeLocalValue } from "@/shared/lib/formatDate";
 import { BackButton } from "@/shared/components/BackButton";
 import { PrimaryButton } from "@/shared/components/PrimaryButton";
@@ -63,38 +63,14 @@ export function CampaignCreatePage() {
           className="mt-8 flex flex-col gap-6 rounded-2xl border p-6"
           style={{ borderColor: "var(--line)" }}
         >
-          <Field label="행사 이름">
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="GIVEMETICKET 캠페인"
-              maxLength={100}
-              className="input"
-            />
-          </Field>
-
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Field label="정원">
-                <input
-                  type="number"
-                  min={1}
-                  value={totalStock}
-                  onChange={(e) => setTotalStock(e.target.value)}
-                  className="input"
-                />
-              </Field>
-            </div>
-
-            <div className="flex-1">
-              <DateTimePickerField
-                label="신청 오픈 시각"
-                value={openAt}
-                onChange={setOpenAt}
-              />
-            </div>
-          </div>
+          <CampaignFormFields
+            title={title}
+            onTitleChange={setTitle}
+            totalStock={totalStock}
+            onTotalStockChange={setTotalStock}
+            openAt={openAt}
+            onOpenAtChange={setOpenAt}
+          />
 
           {errorMessage && (
             <p className="text-xs text-(--warn)">{errorMessage}</p>
@@ -105,29 +81,11 @@ export function CampaignCreatePage() {
               type="submit"
               disabled={!isFormValid || isSubmitting}
             >
-              {isSubmitting ? "저장 중..." : "저장"}
+              {isSubmitting ? "추가 중..." : "추가"}
             </PrimaryButton>
           </div>
         </form>
       </div>
     </div>
-  );
-}
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: ReactNode;
-}) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium text-(--paper)">{label}</span>
-      {children}
-      {hint && <span className="text-xs text-(--muted)">{hint}</span>}
-    </label>
   );
 }

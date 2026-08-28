@@ -21,6 +21,7 @@ import { CampaignCard } from "../components/CampaignCard";
 import { OwnerPanel } from "../components/OwnerPanel";
 import { useCampaignDetailData } from "../hooks/useCampaignDetailData";
 import { CountdownApplyButton } from "../components/CountdownApplyButton";
+import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 
 /** 어디서 이 페이지로 들어왔는지 — 대시보드 탭에서 카드 클릭 시에만 명시적으로 실어서 넘김.
  * 공유 링크로 직접 들어오거나 주소를 직접 입력한 경우엔 이 값이 없어서 뒤로가기 버튼이 안 보임. */
@@ -43,6 +44,7 @@ export function CampaignDetailPage() {
   const {
     campaign,
     cardSource,
+    cardImageUrl,
     isLoading,
     isError,
     error,
@@ -57,6 +59,12 @@ export function CampaignDetailPage() {
 
   const [actionError, setActionError] = useState("");
   const [isActing, setIsActing] = useState(false);
+  // "취소/삭제/종료"는 되돌릴 수 없거나 영향이 커서 확인창을 거침. 어떤 액션을
+  // 확인 중인지만 여기 담아두고, 실제 실행은 확인 버튼을 눌러야 함 (버튼 onClick에서
+  // 바로 confirm()을 부르던 예전 방식과 달리, 다이얼로그가 뜬 뒤 비동기로 결정됨)
+  const [confirmAction, setConfirmAction] = useState<
+    "cancel" | "delete" | "close" | null
+  >(null);
 
   // 진짜 상세 데이터도, 넘겨받은 목록 데이터도 둘 다 없을 때만 로딩/에러 화면
   if (!cardSource) {
@@ -85,7 +93,7 @@ export function CampaignDetailPage() {
       const code = axios.isAxiosError(e)
         ? (e.response?.data as { code?: string })?.code
         : undefined;
-      if (code === "SOLD_OUT") setActionError("방금 매진됐어요.");
+      if (code === "SOLD_OUT") setActionError("남은 티켓이 없어요.");
       else if (code === "ALREADY_APPLIED")
         setActionError("이미 신청한 행사예요.");
       else if (code === "CAMPAIGN_NOT_OPEN")
@@ -98,7 +106,6 @@ export function CampaignDetailPage() {
 
   async function handleCancel() {
     if (!campaign!.myApplication) return;
-    if (!confirm("신청을 취소하시겠어요?")) return;
     setIsActing(true);
     setActionError("");
     try {
@@ -112,12 +119,6 @@ export function CampaignDetailPage() {
   }
 
   async function handleDelete() {
-    if (
-      !confirm(
-        "정말 삭제하시겠어요? 신청자가 있어도 전부 취소되고, 되돌릴 수 없어요.",
-      )
-    )
-      return;
     setIsActing(true);
     setActionError("");
     try {
@@ -130,12 +131,6 @@ export function CampaignDetailPage() {
   }
 
   async function handleClose() {
-    if (
-      !confirm(
-        "신청을 종료하시겠어요? 새 신청만 막히고, 이미 확정된 신청은 그대로 유지돼요. 되돌릴 수 없어요.",
-      )
-    )
-      return;
     setIsActing(true);
     setActionError("");
     try {
@@ -192,6 +187,7 @@ export function CampaignDetailPage() {
             totalStock={cardSource.totalStock ?? undefined}
             ownerNickname={cardSource.owner.nickname}
             ownerProfileImageUrl={cardSource.owner.profileImageUrl}
+            imageUrl={cardImageUrl}
             interactive={false}
             layoutId={`campaign-card-${cardSource.id}`}
           />
@@ -217,8 +213,8 @@ export function CampaignDetailPage() {
                     campaign={campaign}
                     isActing={isActing}
                     setIsActing={setIsActing}
-                    onDelete={handleDelete}
-                    onClose={handleClose}
+                    onDelete={() => setConfirmAction("delete")}
+                    onClose={() => setConfirmAction("close")}
                     onRefetch={async () => {
                       await Promise.all([refetch(), refetchStock()]);
                     }}
@@ -249,18 +245,25 @@ export function CampaignDetailPage() {
                           : "불러오는 중..."}
                       </span>
                     </p>
-                    <SecondaryButton onClick={handleCancel} disabled={isActing}>
-                      {isActing ? "처리 중..." : "신청 취소"}
-                    </SecondaryButton>
+                    {campaign.status !== "CLOSED" && (
+                      <SecondaryButton
+                        onClick={() => setConfirmAction("cancel")}
+                        disabled={isActing}
+                      >
+                        {isActing ? "처리 중..." : "신청 취소"}
+                      </SecondaryButton>
+                    )}
                   </div>
                 ) : (
                   <ApplySection
                     campaign={campaign}
                     hasStockValue={hasStockValue}
-                    soldOut={soldOut}
                     isActing={isActing}
                     onApply={handleApply}
-                    onCampaignOpened={() => refetch()}
+                    onCampaignOpened={() => {
+                      refetch();
+                      setActionError("");
+                    }}
                   />
                 )}
               </div>
@@ -272,6 +275,40 @@ export function CampaignDetailPage() {
           )}
         </motion.div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmAction !== null}
+        title={
+          confirmAction === "delete"
+            ? "정말 삭제하시겠어요?"
+            : confirmAction === "close"
+              ? "신청을 종료하시겠어요?"
+              : "신청을 취소하시겠어요?"
+        }
+        description={
+          confirmAction === "delete"
+            ? "신청자가 있어도 전부 취소되고, 되돌릴 수 없어요."
+            : confirmAction === "close"
+              ? "새 신청만 막히고, 이미 확정된 신청은 그대로 유지돼요. 되돌릴 수 없어요."
+              : undefined
+        }
+        confirmLabel={
+          confirmAction === "delete"
+            ? "삭제"
+            : confirmAction === "close"
+              ? "종료"
+              : "취소하기"
+        }
+        danger={confirmAction === "delete"}
+        onConfirm={() => {
+          const action = confirmAction;
+          setConfirmAction(null);
+          if (action === "delete") handleDelete();
+          else if (action === "close") handleClose();
+          else if (action === "cancel") handleCancel();
+        }}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   );
 }
@@ -279,14 +316,12 @@ export function CampaignDetailPage() {
 function ApplySection({
   campaign,
   hasStockValue,
-  soldOut,
   isActing,
   onApply,
   onCampaignOpened,
 }: {
   campaign: CampaignDetail;
   hasStockValue: boolean;
-  soldOut: boolean;
   isActing: boolean;
   onApply: () => void;
   onCampaignOpened: () => void;
@@ -307,9 +342,8 @@ function ApplySection({
   if (!hasStockValue) {
     return <SecondaryButton disabled>재고 확인 중...</SecondaryButton>;
   }
-  if (soldOut) {
-    return <SecondaryButton disabled>매진됐어요</SecondaryButton>;
-  }
+  // 매진 표시가 있어도 신청 버튼 자체는 막지 않음 — 취소표가 나올 수 있어서.
+  // 실제로 여전히 매진이면 handleApply의 catch에서 SOLD_OUT 에러로 안내됨
   return (
     <PrimaryButton onClick={onApply} disabled={isActing}>
       {isActing ? "처리 중..." : "신청하기"}

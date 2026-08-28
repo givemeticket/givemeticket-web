@@ -134,6 +134,7 @@ export function CampaignListTab({
               totalStock={c.totalStock ?? undefined}
               ownerNickname={c.owner.nickname}
               ownerProfileImageUrl={c.owner.profileImageUrl}
+              imageUrl={c.imageUrl}
               // layoutId는 이제 항상(처음부터) 줌 — Framer Motion이 기준점을 미리
               // 알고 있어야 하기 때문. 실제로 이동해야 하는 카드인지는 animateMove로만 구분함
               layoutId={`campaign-card-${c.id}`}

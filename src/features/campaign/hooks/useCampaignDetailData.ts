@@ -42,6 +42,13 @@ export function useCampaignDetailData(
   // 해결된 상태라 이 우회로 자체가 불필요해짐.
   const cardSource = campaign ?? placeholderCampaign ?? null;
 
+  // imageUrl은 CampaignItem(목록 데이터)이면 최상위에, CampaignDetail(진짜 상세 데이터)이면
+  // detail.imageUrl 안에 있어서 위치가 서로 다름. 카드에 넘길 때 어느 쪽이든 통일해서 씀
+  const cardImageUrl =
+    cardSource && "detail" in cardSource
+      ? cardSource.detail?.imageUrl
+      : cardSource?.imageUrl;
+
   // 지금 보고 있는 캠페인 id를 기록해둠. 뒤로가기로 목록에 돌아가면, 목록이 이 값을
   // 읽어서 "얘가 방금 여기서 돌아온 카드구나"를 판단해 개별 페이드를 안 줌
   useEffect(() => {
@@ -82,6 +89,7 @@ export function useCampaignDetailData(
   return {
     campaign,
     cardSource,
+    cardImageUrl,
     isLoading,
     isError,
     error,
