@@ -1,23 +1,20 @@
 import { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Avatar } from "@/shared/components/Avatar";
 import { useClickOutside } from "@/shared/hooks/useClickOutside";
 
 interface UserMenuProps {
-  nickname: string;
-  profileImageUrl?: string | null;
+  /** null이면 비로그인 상태 — 드롭다운에 로그인 버튼만 뜸 */
+  me: { nickname: string; profileImageUrl?: string | null } | null;
   onLogout: () => void;
   onWithdraw: () => void;
 }
 
-// 헤더에 아바타만 보이고, 누르면 닉네임/회원탈퇴/로그아웃이 드롭다운으로 뜸.
-// "바깥 클릭하면 닫기" 로직은 useClickOutside 훅으로 분리해서 씀 (다른 드롭다운류
-// 컴포넌트에서도 재사용할 수 있게).
-export function UserMenu({
-  nickname,
-  profileImageUrl,
-  onLogout,
-  onWithdraw,
-}: UserMenuProps) {
+// 헤더에 아바타만 보이고, 누르면 드롭다운이 뜸. 로그인 상태면 닉네임/로그아웃/회원탈퇴,
+// 비로그인 상태면 로그인 버튼만 보여줌. "바깥 클릭하면 닫기" 로직은 useClickOutside
+// 훅으로 분리해서 씀 (다른 드롭다운류 컴포넌트에서도 재사용할 수 있게).
+export function UserMenu({ me, onLogout, onWithdraw }: UserMenuProps) {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -31,7 +28,7 @@ export function UserMenu({
         aria-label="내 계정 메뉴"
         className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-(--ink-soft)"
       >
-        <Avatar src={profileImageUrl} name={nickname} size={24} />
+        <Avatar src={me?.profileImageUrl} name={me?.nickname} size={24} />
       </button>
 
       {isOpen && (
@@ -54,35 +51,50 @@ export function UserMenu({
             }}
           />
 
-          <p className="truncate px-2.5 py-1.5 text-sm font-medium text-(--paper)">
-            {nickname}님
-          </p>
+          {me ? (
+            <>
+              <p className="truncate px-2.5 py-1.5 text-sm font-medium text-(--paper)">
+                {me.nickname}님
+              </p>
 
-          <div
-            className="my-1 border-t"
-            style={{ borderColor: "var(--line)" }}
-          />
+              <div
+                className="my-1 border-t"
+                style={{ borderColor: "var(--line)" }}
+              />
 
-          <button
-            type="button"
-            onClick={() => {
-              setIsOpen(false);
-              onLogout();
-            }}
-            className="w-full rounded-lg px-2.5 py-1.5 text-left text-sm text-(--muted) hover:bg-(--ink-soft) hover:text-(--paper)"
-          >
-            로그아웃
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsOpen(false);
-              onWithdraw();
-            }}
-            className="w-full rounded-lg px-2.5 py-1.5 text-left text-sm text-(--muted) hover:bg-(--ink-soft) hover:text-(--warn)"
-          >
-            회원탈퇴
-          </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onLogout();
+                }}
+                className="w-full rounded-lg px-2.5 py-1.5 text-left text-sm text-(--muted) hover:bg-(--ink-soft) hover:text-(--paper)"
+              >
+                로그아웃
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onWithdraw();
+                }}
+                className="w-full rounded-lg px-2.5 py-1.5 text-left text-sm text-(--muted) hover:bg-(--ink-soft) hover:text-(--warn)"
+              >
+                회원탈퇴
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
+                navigate("/");
+              }}
+              className="w-full rounded-lg px-2.5 py-1.5 text-left text-sm font-medium text-(--paper) hover:bg-(--ink-soft)"
+            >
+              로그인
+            </button>
+          )}
         </div>
       )}
     </div>

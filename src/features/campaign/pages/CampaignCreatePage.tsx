@@ -51,7 +51,7 @@ export function CampaignCreatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-(--ink) py-10 text-(--paper)">
+    <div className="min-h-screen bg-(--ink) pt-8 pb-10 text-(--paper)">
       <div className="mx-auto max-w-2xl px-6">
         <div className="flex items-center gap-1">
           <BackButton fallback="/mycampaigns" />

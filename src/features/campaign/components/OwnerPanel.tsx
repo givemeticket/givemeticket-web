@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { Ban, Pencil, Trash2 } from "lucide-react";
+import { Ban, Pencil, Trash2, Users } from "lucide-react";
 import { type CampaignDetail } from "../api/campaignApi";
 import { IconButton } from "@/shared/components/IconButton";
 
@@ -15,7 +15,6 @@ export function OwnerPanel({
   onDelete,
   onClose,
   leadingContent,
-  cameFrom,
 }: {
   campaign: CampaignDetail;
   isActing: boolean;
@@ -23,9 +22,6 @@ export function OwnerPanel({
   onClose: () => void;
   /** 아이콘 행 맨 앞에 같이 넣을 요소 (예: 누구나 볼 수 있는 링크 복사 버튼) */
   leadingContent?: ReactNode;
-  /** 지금 상세 페이지의 "어디서 왔는지" 값. 수정 페이지로 넘어갈 때 같이 실어보내서,
-   * 저장 후 돌아왔을 때도 뒤로가기 버튼이 계속 보이게 함 */
-  cameFrom?: string;
 }) {
   const navigate = useNavigate();
   const isClosed = campaign.status === "CLOSED";
@@ -34,13 +30,16 @@ export function OwnerPanel({
     <div className="flex items-center gap-2">
       {leadingContent}
 
+      <IconButton
+        onClick={() => navigate(`/campaigns/${campaign.shortCode}/applicants`)}
+        label="신청자 목록"
+      >
+        <Users size={17} strokeWidth={1.7} />
+      </IconButton>
+
       {!isClosed && (
         <IconButton
-          onClick={() =>
-            navigate(`/campaigns/${campaign.shortCode}/edit`, {
-              state: { from: cameFrom },
-            })
-          }
+          onClick={() => navigate(`/campaigns/${campaign.shortCode}/edit`)}
           label="수정"
         >
           <Pencil size={17} strokeWidth={1.7} />

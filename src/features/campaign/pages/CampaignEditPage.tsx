@@ -1,5 +1,5 @@
 import { useState, type SubmitEvent } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import {
@@ -48,10 +48,6 @@ export function CampaignEditPage() {
 
 function CampaignEditForm({ campaign }: { campaign: CampaignDetail }) {
   const navigate = useNavigate();
-  const location = useLocation();
-  // OwnerPanel의 "수정" 아이콘이 이 페이지로 넘어올 때 실어보낸 값 — 저장 후 상세
-  // 페이지로 돌아갈 때도 그대로 다시 실어보내야, 그쪽의 뒤로가기 버튼이 계속 보임
-  const cameFrom = (location.state as { from?: string } | null)?.from;
 
   const [title, setTitle] = useState(campaign.title);
   const [totalStock, setTotalStock] = useState(
@@ -78,10 +74,12 @@ function CampaignEditForm({ campaign }: { campaign: CampaignDetail }) {
         openAt: new Date(openAt).toISOString(),
         totalStock: totalStock ? Number(totalStock) : undefined,
       });
-      navigate(`/campaigns/${campaign.shortCode}`, {
-        replace: true,
-        state: { from: cameFrom },
-      });
+      // 새 히스토리 항목을 만드는 대신, navigate(-1)로 원래 있던 상세 페이지
+      // 항목으로 그냥 돌아감. replace로 새로 만들면 그 밑에 원래 상세 페이지
+      // 항목이 그대로 남아있어서, 뒤로가기를 두 번 눌러야 목록으로 가는 문제가 있었음.
+      // 원래 항목으로 돌아가는 거라 그 항목의 state(뒤로가기 버튼 판단용 from 값
+      // 등)도 자동으로 그대로 살아남 — 따로 안 실어날라도 됨.
+      navigate(-1);
     } catch (e) {
       const code = axios.isAxiosError(e)
         ? (e.response?.data as { code?: string })?.code
@@ -107,7 +105,7 @@ function CampaignEditForm({ campaign }: { campaign: CampaignDetail }) {
   }
 
   return (
-    <div className="min-h-screen bg-(--ink) py-10 text-(--paper)">
+    <div className="min-h-screen bg-(--ink) pt-8 pb-10 text-(--paper)">
       <div className="mx-auto max-w-2xl px-6">
         <div className="flex items-center gap-1">
           <BackButton fallback={`/campaigns/${campaign.shortCode}`} />

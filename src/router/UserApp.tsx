@@ -8,11 +8,13 @@ import {
 import { AnimatePresence, LayoutGroup } from "motion/react";
 import { RootRoute } from "./RootRoute";
 import { ProtectedRoute } from "./ProtectedRoute";
+import { UserAppShell } from "./UserAppShell";
 import { DashboardLayout } from "@/features/dashboard/pages/DashboardLayout";
 import { MyTicketsTab } from "@/features/dashboard/components/MyTicketsTab";
 import { MyCampaignsTab } from "@/features/dashboard/components/MyCampaignsTab";
 import { CampaignCreatePage } from "@/features/campaign/pages/CampaignCreatePage";
 import { CampaignEditPage } from "@/features/campaign/pages/CampaignEditPage";
+import { CampaignApplicantsPage } from "@/features/campaign/pages/CampaignApplicantsPage";
 import { CampaignDetailPage } from "@/features/campaign/pages/CampaignDetailPage";
 import { OAuthCallbackPage } from "@/features/auth/pages/OAuthCallbackPage";
 
@@ -41,9 +43,9 @@ function getAnimationKey(pathname: string): string {
   return pathname;
 }
 
-// 앱 전체를 감싸는 루트 레이아웃. 스크롤 저장/복원은 페이지가 바뀔 때마다 사라지고
-// 새로 생기면 안 되고(그러면 "떠나는 순간 저장"이 제대로 안 됨), 앱이 켜져있는 내내
-// 딱 하나만 존재해야 해서 여기(모든 라우트의 공통 조상)에 딱 한 번만 둠.
+// UserAppShell 밑에서 페이지 전환을 담당하는 레이아웃. 스크롤 저장/복원은 페이지가
+// 바뀔 때마다 사라지고 새로 생기면 안 되고(그러면 "떠나는 순간 저장"이 제대로 안 됨),
+// 이 레이아웃 밑 라우트들이 켜져있는 내내 딱 하나만 존재해야 해서 여기에 딱 한 번만 둠.
 //
 // 여기서는 일부러 자체적인 페이드/이동 애니메이션을 걸지 않음 — 여기서 페이지 전체를
 // 감싸서 애니메이션을 걸면, 그 안에 있는 "detail로 이어지는 카드"까지 투명도가 같이
@@ -105,35 +107,53 @@ function RootLayout() {
 }
 
 const router = createBrowserRouter([
-  {
-    element: <RootLayout />,
-    children: [
-      // 비로그인도 접근 가능한 라우트
-      { path: "/", element: <RootRoute /> },
-      { path: "/campaigns/:shortCode", element: <CampaignDetailPage /> },
-      { path: "/oauth/:provider", element: <OAuthCallbackPage /> },
+  // 로그인 화면(비로그인 시 "/") / OAuth 콜백은 UserAppShell(고정 헤더) 바깥에 둠 —
+  // 이 두 화면엔 로고+아바타 헤더가 뜨면 안 되므로.
+  { path: "/", element: <RootRoute /> },
+  { path: "/oauth/:provider", element: <OAuthCallbackPage /> },
 
-      // 로그인 필요한 라우트
+  {
+    // 로고+아바타 고정 헤더. 리액트 라우터 중첩 레이아웃이라, 아래 자식 라우트가
+    // 아무리 바뀌어도 이 컴포넌트 자체는 리마운트 안 됨 — 그래서 헤더가 페이지 전환
+    // 애니메이션의 영향을 전혀 안 받고 항상 고정으로 보임.
+    element: <UserAppShell />,
+    children: [
       {
-        element: <ProtectedRoute />,
+        element: <RootLayout />,
         children: [
+          // 비로그인도 접근 가능한 라우트
+          { path: "/campaigns/:shortCode", element: <CampaignDetailPage /> },
+
+          // 로그인 필요한 라우트
           {
-            // path 없는 레이아웃 라우트: URL에 세그먼트를 추가하지 않고
-            // /mytickets, /mycampaigns 두 라우트에 탭 UI만 공유시킴
-            element: <DashboardLayout />,
+            element: <ProtectedRoute />,
             children: [
-              { path: "/mytickets", element: <MyTicketsTab /> },
-              { path: "/mycampaigns", element: <MyCampaignsTab /> },
+              {
+                // path 없는 레이아웃 라우트: URL에 세그먼트를 추가하지 않고
+                // /mytickets, /mycampaigns 두 라우트에 탭 UI만 공유시킴
+                element: <DashboardLayout />,
+                children: [
+                  { path: "/mytickets", element: <MyTicketsTab /> },
+                  { path: "/mycampaigns", element: <MyCampaignsTab /> },
+                ],
+              },
+              { path: "/campaigns/create", element: <CampaignCreatePage /> },
+              {
+                path: "/campaigns/:shortCode/edit",
+                element: <CampaignEditPage />,
+              },
+              {
+                path: "/campaigns/:shortCode/applicants",
+                element: <CampaignApplicantsPage />,
+              },
             ],
           },
-          { path: "/campaigns/create", element: <CampaignCreatePage /> },
-          { path: "/campaigns/:shortCode/edit", element: <CampaignEditPage /> },
-        ],
-      },
 
-      {
-        path: "*",
-        element: <div className="p-8">페이지를 찾을 수 없어요</div>,
+          {
+            path: "*",
+            element: <div className="p-8">페이지를 찾을 수 없어요</div>,
+          },
+        ],
       },
     ],
   },

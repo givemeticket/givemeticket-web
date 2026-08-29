@@ -3,7 +3,10 @@ import { apiClient } from "@/shared/lib/axiosClient";
 export type CampaignStatus = "SCHEDULED" | "OPEN" | "CLOSED" | "DELETED";
 export type ViewerRole = "GUEST" | "VIEWER" | "PARTICIPANT" | "OWNER";
 export type ApplicationStatus = "CONFIRMED" | "CANCELLED";
-export type FailureReason = "CAMPAIGN_DELETED" | "USER_WITHDRAWN";
+export type FailureReason =
+  | "CAMPAIGN_DELETED"
+  | "USER_WITHDRAWN"
+  | "CANCELLED_BY_OWNER";
 
 export interface CampaignOwner {
   id: number;
@@ -176,4 +179,40 @@ export async function getApplication(
     `/api/v1/applications/${applicationId}`,
   );
   return res.data;
+}
+
+export interface Applicant {
+  applicationId: number;
+  userId: number;
+  nickname: string;
+  profileImageUrl?: string;
+  status: ApplicationStatus;
+  /** 자리를 잡은(확정된) 시각. 취소했다가 다시 신청하면 이 값이 갱신됨 */
+  appliedAt: string;
+}
+
+export interface CampaignApplicantsResult {
+  campaignId: number;
+  totalCount: number;
+  applicants: Applicant[];
+}
+
+/** 개설자 전용. 확정(CONFIRMED) 상태인 신청자만, 신청한 순서(=선착순 순서)대로 내려옴 */
+export async function getCampaignApplicants(
+  campaignId: number,
+): Promise<CampaignApplicantsResult> {
+  const res = await apiClient.get<CampaignApplicantsResult>(
+    `/api/v1/campaigns/${campaignId}/applications`,
+  );
+  return res.data;
+}
+
+/** 개설자가 신청자 한 명을 강제로 취소(내보냄). 종료된 행사에서도 가능 */
+export async function cancelApplicantByOwner(
+  campaignId: number,
+  applicationId: number,
+): Promise<void> {
+  await apiClient.post(
+    `/api/v1/campaigns/${campaignId}/applications/${applicationId}/cancel`,
+  );
 }

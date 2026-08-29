@@ -144,7 +144,7 @@ export function CampaignDetailPage() {
   }
 
   return (
-    <div className="relative min-h-screen py-10 text-(--paper)">
+    <div className="relative min-h-screen pt-8 pb-10 text-(--paper)">
       {/* 배경색 전용 레이어. 이것도 독립적으로 페이드시켜야 함 — 안 그러면 상세 페이지가
           사라지는 동안에도 이 불투명한 배경이 화면 전체를 계속 덮고 있어서, 그 밑에서
           동시에 나타나고 있는 목록 화면이 거의 끝까지 안 보이다가 마지막 순간에야
@@ -214,7 +214,6 @@ export function CampaignDetailPage() {
                     isActing={isActing}
                     onDelete={() => setConfirmAction("delete")}
                     onClose={() => setConfirmAction("close")}
-                    cameFrom={cameFrom}
                     leadingContent={
                       <CopyLinkButton
                         url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
