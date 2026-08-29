@@ -1,189 +1,66 @@
-import { useState, type ReactNode } from "react";
-import axios from "axios";
+import type { ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import { Ban, Pencil, Trash2 } from "lucide-react";
-import { updateCampaign, type CampaignDetail } from "../api/campaignApi";
-import { isoToDatetimeLocalValue } from "@/shared/lib/formatDate";
-import { CampaignFormFields } from "./CampaignFormFields";
+import { type CampaignDetail } from "../api/campaignApi";
 import { IconButton } from "@/shared/components/IconButton";
-import { PrimaryButton } from "@/shared/components/PrimaryButton";
-import { SecondaryButton } from "@/shared/components/SecondaryButton";
 
 // 관리자(개설자) 전용 패널 — 아이콘 한 줄(수정/종료/삭제).
 // 링크 복사는 역할과 무관하게 누구나 볼 수 있어야 해서 별도 CopyLinkButton으로 분리됨.
-// "수정"만 누르면 그 아래에 인라인 폼이 펼쳐짐. 참여(신청/취소) 관련 UI는
+// "수정"은 예전엔 여기 인라인 폼이 펼쳐지는 방식이었는데, "행사 추가"랑 동일하게
+// 별도 페이지(CampaignEditPage)로 이동하는 방식으로 바꿈. 참여(신청/취소) 관련 UI는
 // 여기 없음 — 상세 페이지의 공통 "신청하기/신청취소" 섹션이 역할과 무관하게 처리함.
 export function OwnerPanel({
   campaign,
   isActing,
-  setIsActing,
   onDelete,
   onClose,
-  onRefetch,
   leadingContent,
+  cameFrom,
 }: {
   campaign: CampaignDetail;
   isActing: boolean;
-  setIsActing: (v: boolean) => void;
   onDelete: () => void;
   onClose: () => void;
-  onRefetch: () => Promise<unknown>;
   /** 아이콘 행 맨 앞에 같이 넣을 요소 (예: 누구나 볼 수 있는 링크 복사 버튼) */
   leadingContent?: ReactNode;
+  /** 지금 상세 페이지의 "어디서 왔는지" 값. 수정 페이지로 넘어갈 때 같이 실어보내서,
+   * 저장 후 돌아왔을 때도 뒤로가기 버튼이 계속 보이게 함 */
+  cameFrom?: string;
 }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [newTitle, setNewTitle] = useState(campaign.title);
-  const [newOpenAt, setNewOpenAt] = useState(() =>
-    isoToDatetimeLocalValue(campaign.openAt),
-  );
-  const [newTotalStock, setNewTotalStock] = useState(
-    campaign.totalStock != null ? String(campaign.totalStock) : "",
-  );
-  // 수정 폼 전용 에러. 삭제/종료 에러(setActionError, 부모가 관리)랑 분리해서 이
-  // 패널 안에만 표시함 — 수정 중 문제는 폼 바로 근처에서 바로 보이는 게 자연스러워서.
-  const [editError, setEditError] = useState("");
-
-  const isOpen = campaign.status === "OPEN";
+  const navigate = useNavigate();
   const isClosed = campaign.status === "CLOSED";
 
-  // 취소 눌렀을 때 폼을 원래 값으로 되돌림. 이게 없으면, 이름을 바꿔놓고 저장 안 하고
-  // 취소했다가 다시 수정을 열었을 때 아까 바꿨던(저장 안 된) 값이 그대로 남아있게 됨 —
-  // state는 컴포넌트가 계속 마운트돼있는 한 알아서 안 사라지기 때문
-  function resetForm() {
-    setNewTitle(campaign.title);
-    setNewOpenAt(isoToDatetimeLocalValue(campaign.openAt));
-    setNewTotalStock(
-      campaign.totalStock != null ? String(campaign.totalStock) : "",
-    );
-    setEditError("");
-  }
-
-  async function handleSaveEdit() {
-    // title은 오픈 여부와 무관하게 항상 수정 가능하지만, 공백만 있는 값은 서버가
-    // 400으로 거부하니 미리 걸러줌
-    if (!newTitle.trim()) {
-      setEditError("행사 이름을 입력해주세요.");
-      return;
-    }
-
-    setIsActing(true);
-    setEditError("");
-    try {
-      await updateCampaign(campaign.id, {
-        title: newTitle.trim(),
-        openAt: new Date(newOpenAt).toISOString(),
-        totalStock: newTotalStock ? Number(newTotalStock) : undefined,
-      });
-      setIsEditing(false);
-      await onRefetch();
-    } catch (e) {
-      const code = axios.isAxiosError(e)
-        ? (e.response?.data as { code?: string })?.code
-        : undefined;
-      // OPEN_AT_NOT_FUTURE(단순히 현재 시각보다 이전)랑 OPEN_AT_NOT_DELAYABLE(이미
-      // 오픈된 상태에서 원래 오픈 시각보다 이전으로 되돌리려 함) 둘 다, 공통적으로
-      // "요청한 시각이 허용된 최소 시각보다 이전"이라는 같은 문제라 같은 메시지로 처리함
-      if (code === "OPEN_AT_NOT_FUTURE" || code === "OPEN_AT_NOT_DELAYABLE") {
-        setEditError(
-          "오픈 시각은 기존 설정 유지 또는 미래로만 설정할 수 있어요.",
-        );
-      } else if (code === "TOTAL_STOCK_NOT_INCREASABLE") {
-        setEditError(
-          "이미 오픈된 캠페인은 정원을 줄일 수 없어요. 그대로 두거나 늘리는 것만 가능해요.",
-        );
-      } else if (code === "CAMPAIGN_CLOSED") {
-        setEditError("종료된 캠페인은 오픈 시각을 바꿀 수 없어요.");
-      } else {
-        setEditError("수정 중 문제가 발생했어요.");
-      }
-    } finally {
-      setIsActing(false);
-    }
-  }
-
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        {leadingContent}
+    <div className="flex items-center gap-2">
+      {leadingContent}
 
-        {!isClosed && (
-          <IconButton
-            onClick={() => {
-              if (isEditing) resetForm();
-              setIsEditing((v) => !v);
-            }}
-            label="수정"
-            active={isEditing}
-          >
-            <Pencil size={17} strokeWidth={1.7} />
-          </IconButton>
-        )}
-
-        {!isClosed && (
-          <IconButton onClick={onClose} label="종료" disabled={isActing}>
-            <Ban size={17} strokeWidth={1.7} />
-          </IconButton>
-        )}
-
+      {!isClosed && (
         <IconButton
-          onClick={onDelete}
-          label="삭제"
-          disabled={isActing}
-          tone="warn"
+          onClick={() =>
+            navigate(`/campaigns/${campaign.shortCode}/edit`, {
+              state: { from: cameFrom },
+            })
+          }
+          label="수정"
         >
-          <Trash2 size={17} strokeWidth={1.7} />
+          <Pencil size={17} strokeWidth={1.7} />
         </IconButton>
-      </div>
-
-      {isEditing && (
-        <div
-          className="flex flex-col gap-3 rounded-xl border p-4"
-          style={{ borderColor: "var(--line)" }}
-        >
-          <CampaignFormFields
-            title={newTitle}
-            onTitleChange={setNewTitle}
-            totalStock={newTotalStock}
-            onTotalStockChange={setNewTotalStock}
-            totalStockMin={isOpen ? (campaign.totalStock ?? 1) : 1}
-            totalStockInfo={
-              isOpen ? "정원 유지 또는 증원만 가능합니다." : undefined
-            }
-            openAt={newOpenAt}
-            onOpenAtChange={setNewOpenAt}
-            // 이미 오픈된 캠페인은 원래 오픈 시각(이미 지난 시각일 수 있음)을 그대로
-            // 유지하는 것도 허용해야 해서, 오늘이 아니라 원래 오픈 시각을 기준으로 함
-            openAtMinDate={isOpen ? new Date(campaign.openAt) : undefined}
-            openAtResetToNowOnOpen={isOpen}
-            openAtOriginalValue={isoToDatetimeLocalValue(campaign.openAt)}
-            openAtInfo={
-              isOpen ? "오픈 시각 유지 또는 미래만 가능합니다." : undefined
-            }
-          />
-          <div className="flex items-center justify-between gap-2">
-            {editError ? (
-              <p className="text-left text-xs text-(--warn)">{editError}</p>
-            ) : (
-              <span />
-            )}
-            <div className="flex gap-2">
-              <SecondaryButton
-                onClick={() => {
-                  resetForm();
-                  setIsEditing(false);
-                }}
-              >
-                취소
-              </SecondaryButton>
-              <PrimaryButton
-                onClick={handleSaveEdit}
-                disabled={isActing || !newTitle.trim()}
-              >
-                {isActing ? "저장 중..." : "저장"}
-              </PrimaryButton>
-            </div>
-          </div>
-        </div>
       )}
+
+      {!isClosed && (
+        <IconButton onClick={onClose} label="종료" disabled={isActing}>
+          <Ban size={17} strokeWidth={1.7} />
+        </IconButton>
+      )}
+
+      <IconButton
+        onClick={onDelete}
+        label="삭제"
+        disabled={isActing}
+        tone="warn"
+      >
+        <Trash2 size={17} strokeWidth={1.7} />
+      </IconButton>
     </div>
   );
 }

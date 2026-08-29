@@ -212,12 +212,9 @@ export function CampaignDetailPage() {
                   <OwnerPanel
                     campaign={campaign}
                     isActing={isActing}
-                    setIsActing={setIsActing}
                     onDelete={() => setConfirmAction("delete")}
                     onClose={() => setConfirmAction("close")}
-                    onRefetch={async () => {
-                      await Promise.all([refetch(), refetchStock()]);
-                    }}
+                    cameFrom={cameFrom}
                     leadingContent={
                       <CopyLinkButton
                         url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
