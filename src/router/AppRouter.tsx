@@ -14,6 +14,7 @@ import { MyCampaignsTab } from "@/features/dashboard/components/MyCampaignsTab";
 import { CampaignCreatePage } from "@/features/campaign/pages/CampaignCreatePage";
 import { CampaignDetailPage } from "@/features/campaign/pages/CampaignDetailPage";
 import { OAuthCallbackPage } from "@/features/auth/pages/OAuthCallbackPage";
+import { AdminHome } from "@/features/admin/pages/AdminHome";
 
 // 경로별 스크롤 위치를 직접 관리 (sessionStorage — 새로고침해도 유지되면 좋아서).
 // 리액트 라우터의 <ScrollRestoration> 대신 직접 저장/복원함 — 페이지 전환
@@ -137,6 +138,24 @@ const router = createBrowserRouter([
   },
 ]);
 
+// 어드민 전용 라우터 — 일반 사용자 라우터(RootLayout, 페이지 전환 애니메이션 등)랑
+// 완전히 무관하게 별도로 둠. 지금은 도메인 연결 확인용 임시 화면 하나뿐.
+const adminRouter = createBrowserRouter([
+  { path: "*", element: <AdminHome /> },
+]);
+
 export function AppRouter() {
+  // admin.givemeticket.site 같은 서브도메인이면 완전히 별도의 라우터 트리(어드민 전용)를
+  // 씀 — 지금은 도메인 연결 테스트용으로 "관리자화면" 텍스트만 뜨는 임시 화면이지만,
+  // 나중에 실제 어드민 기능이 생겨도 여기(adminRouter)에만 라우트를 추가하면 되고,
+  // 일반 사용자 라우터(router)랑 완전히 분리돼있어서 서로 영향 안 줌.
+  const isAdminHost =
+    typeof window !== "undefined" &&
+    window.location.hostname.startsWith("admin.");
+
+  if (isAdminHost) {
+    return <RouterProvider router={adminRouter} />;
+  }
+
   return <RouterProvider router={router} />;
 }
