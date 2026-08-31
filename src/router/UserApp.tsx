@@ -17,6 +17,7 @@ import { CampaignEditPage } from "@/features/campaign/pages/CampaignEditPage";
 import { CampaignApplicantsPage } from "@/features/campaign/pages/CampaignApplicantsPage";
 import { CampaignDetailPage } from "@/features/campaign/pages/CampaignDetailPage";
 import { OAuthCallbackPage } from "@/features/auth/pages/OAuthCallbackPage";
+import { beginPageTransition } from "@/shared/lib/pageTransitionStore";
 
 // 경로별 스크롤 위치를 직접 관리 (sessionStorage — 새로고침해도 유지되면 좋아서).
 // 리액트 라우터의 <ScrollRestoration> 대신 직접 저장/복원함 — 페이지 전환
@@ -85,6 +86,11 @@ function RootLayout() {
 
     if (leavingPathname === arrivingPathname) return;
 
+    // 헤더(로고/아바타)처럼 특정 페이지에 속하지 않는 요소도 전환 중엔 클릭이
+    // 막혀야 해서, 여기(진짜 전환이 감지되는 지점)에서 전역 신호를 켬(가장 긴
+    // 애니메이션 4초 뒤 자동으로 꺼짐 — pageTransitionStore.ts 참고).
+    beginPageTransition();
+
     // 떠나는 페이지의 스크롤 위치를 저장 — 아직 화면이 안 바뀐 시점이라 window.scrollY가
     // 정확히 그 페이지 기준 값임
     saveScrollPosition(leavingPathname);
@@ -94,12 +100,22 @@ function RootLayout() {
       window.scrollTo(0, getScrollPosition(arrivingPathname));
     }, 400);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [location.pathname]);
 
   return (
     <LayoutGroup>
-      <AnimatePresence mode="popLayout" initial={false}>
+      {/* initial={false}를 뺐음 — 이 prop이 "AnimatePresence가 맨 처음 마운트될 때
+          이미 있던 자식엔 진입 애니메이션 재생 안 함"이라는 뜻인데, 그 억제 효과가
+          하위의 다른 motion 요소들(카드, 필터 줄 등)한테까지 새어나가서, 새로고침
+          직후 "진짜 페이지 전환(다른 키로의 전환)을 한 번도 안 겪은 상태"인 동안엔
+          탭을 아무리 전환해도 카드 진입 애니메이션이 아예 시작을 안 하는 버그가
+          있었음(로그로 확인함). 상세 페이지 등 진짜 전환을 한 번 거치면 그 이후론
+          정상 작동해서, "새로고침 직후 vs 아닌 경우"로 동작이 갈리는 비일관성이 있었음.
+          제거하면 최초 페이지 로드 때도 살짝 페이드인되는 정도의 트레이드오프만 생김. */}
+      <AnimatePresence mode="popLayout">
         {element && <div key={animationKey}>{element}</div>}
       </AnimatePresence>
     </LayoutGroup>

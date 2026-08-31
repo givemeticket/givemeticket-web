@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   getApplication,
@@ -6,7 +5,6 @@ import {
   getCampaignStock,
   type CampaignItem,
 } from "../api/campaignApi";
-import { markTransitioningCampaign } from "../lib/transitioningCampaignStore";
 
 /**
  * 캠페인 상세 페이지가 필요로 하는 데이터를 여러 소스(진짜 상세 API, 목록에서
@@ -48,12 +46,6 @@ export function useCampaignDetailData(
     cardSource && "detail" in cardSource
       ? cardSource.detail?.imageUrl
       : cardSource?.imageUrl;
-
-  // 지금 보고 있는 캠페인 id를 기록해둠. 뒤로가기로 목록에 돌아가면, 목록이 이 값을
-  // 읽어서 "얘가 방금 여기서 돌아온 카드구나"를 판단해 개별 페이드를 안 줌
-  useEffect(() => {
-    if (cardSource) markTransitioningCampaign(cardSource.id);
-  }, [cardSource]);
 
   // 재고는 상세 정보와 분리된 별도 API. 새로고침(=이 페이지 재진입) 시에만 조회하고
   // 자동 폴링은 하지 않음 — 실시간 자동 갱신은 필요 없다고 확인됨.

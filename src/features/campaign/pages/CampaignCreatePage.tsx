@@ -1,12 +1,21 @@
-import { useState, type SubmitEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { createCampaign } from "../api/campaignApi";
 import { CampaignFormFields } from "../components/CampaignFormFields";
 import { nowAsDatetimeLocalValue } from "@/shared/lib/formatDate";
 import { BackButton } from "@/shared/components/BackButton";
 import { PrimaryButton } from "@/shared/components/PrimaryButton";
+import { AnimatedPageBackground } from "@/shared/components/AnimatedPageBackground";
+import { clearTransitioningCampaign } from "../lib/transitioningCampaignStore";
 
 export function CampaignCreatePage() {
+  // 마운트될 때마다 저장소를 비움 — 이 화면엔 캠페인 카드 자체가 없어서, 예전
+  // 상세 페이지 방문 때 저장된 값이 여기를 거쳐 목록으로 돌아갈 때까지 계속 남아있다가
+  // 엉뚱하게 소비되며 짝 없는 카드가 잠깐 나타났다 사라지는 문제가 있었음.
+  useEffect(() => {
+    clearTransitioningCampaign();
+  }, []);
+
   const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
@@ -51,8 +60,8 @@ export function CampaignCreatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-(--ink) pt-8 pb-10 text-(--paper)">
-      <div className="mx-auto max-w-2xl px-6">
+    <AnimatedPageBackground>
+      <div className="mx-auto max-w-2xl px-6 pt-8 pb-10">
         <div className="flex items-center gap-1">
           <BackButton fallback="/mycampaigns" />
           <h1 className="text-lg font-bold">행사 추가</h1>
@@ -86,6 +95,6 @@ export function CampaignCreatePage() {
           </div>
         </form>
       </div>
-    </div>
+    </AnimatedPageBackground>
   );
 }

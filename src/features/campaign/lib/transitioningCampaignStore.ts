@@ -12,9 +12,38 @@ export function markTransitioningCampaign(id: number | null) {
   transitioningCampaignId = id;
 }
 
+/** 카드가 없는 화면(행사 추가/수정/신청자 목록 등)에 진입할 때 호출함. 안 그러면,
+ * 상세 페이지 방문 시 저장된 값이 "관련 없는 다음 목록 방문"까지 계속 남아있다가,
+ * 엉뚱하게 소비되면서 짝 없는 카드가 잠깐 나타났다 사라지는 문제가 있었음. */
+export function clearTransitioningCampaign() {
+  transitioningCampaignId = null;
+}
+
 /** 한 번 읽으면 초기화됨 — 관련 없는 다음 방문에 옛날 값이 남아있지 않도록 */
 export function consumeTransitioningCampaignId(): number | null {
   const id = transitioningCampaignId;
   transitioningCampaignId = null;
   return id;
+}
+
+// 상세 페이지가 "수정"/"신청자 목록"처럼 카드 없는 화면으로 떠났다가, 뒤로가기로
+// 다시 돌아왔을 때를 표시하는 별도 저장소. shortCode 기준인 이유: 상세 페이지가
+// 막 마운트된 시점엔 아직 API 응답이 안 와서 숫자 id를 모르고, URL의 shortCode만
+// 바로 알 수 있어서. 이게 필요한 이유: 상세 페이지의 카드는 원래 항상 layoutId를
+// 갖고 있어야(목록이랑 짝지어지려고) 하는데, "카드 없는 화면에서 막 돌아온" 경우엔
+// 짝(그 화면엔 카드가 없었음)이 없어서, layoutId만 든 채로 아무 페이드 없이
+// 순간적으로 나타나버리는 문제가 있었음.
+let leftToNonCardPageForShortCode: string | null = null;
+
+export function markLeftToNonCardPage(shortCode: string) {
+  leftToNonCardPageForShortCode = shortCode;
+}
+
+/** 한 번 읽으면 초기화됨 */
+export function consumeLeftToNonCardPage(shortCode: string): boolean {
+  if (leftToNonCardPageForShortCode === shortCode) {
+    leftToNonCardPageForShortCode = null;
+    return true;
+  }
+  return false;
 }

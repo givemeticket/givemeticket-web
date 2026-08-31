@@ -1,9 +1,13 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { useLocation, useNavigate, Outlet } from "react-router-dom";
 import { motion } from "motion/react";
+import { resetFilterState, type FilterTab } from "../lib/dashboardFilterStore";
 
 // /mytickets, /mycampaigns 두 라우트가 공유하는 레이아웃 — 탭만 담당.
 // 헤더(로고+아바타)는 이제 UserAppShell이 전역으로 고정 처리함 (여기서 빠짐).
 // 정렬/삭제표시 필터와 행사추가 버튼은 CampaignListTab이 각자 직접 관리함.
+// 전환 중 클릭 차단도 UserAppShell이 전역으로 처리함(예전엔 여기서 useIsPresent()로
+// 개별 처리했는데, 탭 전환처럼 AnimatePresence 키가 안 바뀌는 전환은 못 잡는 빈틈이
+// 있었음 — pageTransitionStore.ts 참고).
 export function DashboardLayout() {
   return (
     <div className="relative flow-root min-h-screen text-(--paper)">
@@ -15,7 +19,7 @@ export function DashboardLayout() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
+        transition={{ duration: 4, ease: "easeInOut" }}
       />
 
       {/* 상세 페이지로 이동할 땐 이 탭이 사라지는 화면이라, "나머지 요소" 페이드
@@ -25,12 +29,12 @@ export function DashboardLayout() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
+        transition={{ duration: 4, ease: "easeInOut" }}
       >
         <nav className="mx-auto mt-8 flex max-w-2xl px-6">
           <div className="relative flex w-36">
-            <TabLink to="/mytickets" label="나의 티켓" />
-            <TabLink to="/mycampaigns" label="나의 행사" />
+            <TabLink to="/mytickets" tab="mytickets" label="나의 티켓" />
+            <TabLink to="/mycampaigns" tab="mycampaigns" label="나의 행사" />
           </div>
         </nav>
       </motion.div>
@@ -42,27 +46,44 @@ export function DashboardLayout() {
   );
 }
 
-function TabLink({ to, label }: { to: string; label: string }) {
+function TabLink({
+  to,
+  tab,
+  label,
+}: {
+  to: string;
+  tab: FilterTab;
+  label: string;
+}) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isActive = location.pathname === to;
+
+  function handleClick() {
+    if (isActive) return; // 이미 있는 탭을 다시 눌렀을 땐 리셋 안 함
+    // navigate() 직전에 동기적으로 리셋함 — 이펙트(useLayoutEffect 등)에서 하면,
+    // 같은 전환으로 새로 마운트되는 CampaignListTab의 렌더링이 그 이펙트보다 먼저
+    // 일어나서 리셋 전의 낡은 값을 읽어가 버림 (BackButton에서 겪었던 것과 같은
+    // 타이밍 문제). 여기서 직접 하면 그 문제가 없음.
+    resetFilterState(tab);
+    navigate(to);
+  }
+
   return (
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        `relative flex-1 pb-2.5 text-center text-sm font-medium transition-colors ${
-          isActive ? "text-(--paper)" : "text-(--muted) hover:text-(--paper)/80"
-        }`
-      }
+    <button
+      type="button"
+      onClick={handleClick}
+      className={`relative flex-1 pb-2.5 text-center text-sm font-medium transition-colors ${
+        isActive ? "text-(--paper)" : "text-(--muted) hover:text-(--paper)/80"
+      }`}
     >
-      {({ isActive }) => (
-        <>
-          {label}
-          {isActive && (
-            <span
-              className="absolute inset-x-0 -bottom-px h-0.5 rounded-full"
-              style={{ backgroundColor: "var(--brand-blue)" }}
-            />
-          )}
-        </>
+      {label}
+      {isActive && (
+        <span
+          className="absolute inset-x-0 -bottom-px h-0.5 rounded-full"
+          style={{ backgroundColor: "var(--brand-blue)" }}
+        />
       )}
-    </NavLink>
+    </button>
   );
 }

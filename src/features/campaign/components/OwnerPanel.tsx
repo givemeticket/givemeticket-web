@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Ban, Pencil, Trash2, Users } from "lucide-react";
 import { type CampaignDetail } from "../api/campaignApi";
 import { IconButton } from "@/shared/components/IconButton";
+import { markLeftToNonCardPage } from "../lib/transitioningCampaignStore";
 
 // 관리자(개설자) 전용 패널 — 아이콘 한 줄(수정/종료/삭제).
 // 링크 복사는 역할과 무관하게 누구나 볼 수 있어야 해서 별도 CopyLinkButton으로 분리됨.
@@ -15,6 +17,7 @@ export function OwnerPanel({
   onDelete,
   onClose,
   leadingContent,
+  onBeforeNavigateToNonCardPage,
 }: {
   campaign: CampaignDetail;
   isActing: boolean;
@@ -22,6 +25,12 @@ export function OwnerPanel({
   onClose: () => void;
   /** 아이콘 행 맨 앞에 같이 넣을 요소 (예: 누구나 볼 수 있는 링크 복사 버튼) */
   leadingContent?: ReactNode;
+  /** "수정"/"신청자 목록"처럼, 캠페인 카드 자체가 없는 페이지로 이동하기 직전에
+   * 호출됨. 상세 페이지가 이걸로 "이번 전환은 카드 layoutId 짝짓기를 기대하면 안
+   * 된다"는 걸 미리 알고, 카드를 그냥 페이드로 처리하게 함 — 안 그러면 짝 없는
+   * layoutId만 든 채로 방치되다가 그 화면의 다른 요소들 페이드가 다 끝난 뒤에야
+   * 뒤늦게 사라지는 문제가 있었음 */
+  onBeforeNavigateToNonCardPage?: () => void;
 }) {
   const navigate = useNavigate();
   const isClosed = campaign.status === "CLOSED";
@@ -31,7 +40,13 @@ export function OwnerPanel({
       {leadingContent}
 
       <IconButton
-        onClick={() => navigate(`/campaigns/${campaign.shortCode}/applicants`)}
+        onClick={() => {
+          flushSync(() => {
+            onBeforeNavigateToNonCardPage?.();
+          });
+          markLeftToNonCardPage(campaign.shortCode);
+          navigate(`/campaigns/${campaign.shortCode}/applicants`);
+        }}
         label="신청자 목록"
       >
         <Users size={17} strokeWidth={1.7} />
@@ -39,7 +54,13 @@ export function OwnerPanel({
 
       {!isClosed && (
         <IconButton
-          onClick={() => navigate(`/campaigns/${campaign.shortCode}/edit`)}
+          onClick={() => {
+            flushSync(() => {
+              onBeforeNavigateToNonCardPage?.();
+            });
+            markLeftToNonCardPage(campaign.shortCode);
+            navigate(`/campaigns/${campaign.shortCode}/edit`);
+          }}
           label="수정"
         >
           <Pencil size={17} strokeWidth={1.7} />

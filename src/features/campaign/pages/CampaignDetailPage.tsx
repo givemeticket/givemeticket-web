@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { motion } from "motion/react";
 import axios from "axios";
@@ -22,6 +22,11 @@ import { OwnerPanel } from "../components/OwnerPanel";
 import { useCampaignDetailData } from "../hooks/useCampaignDetailData";
 import { CountdownApplyButton } from "../components/CountdownApplyButton";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { isInitialDetailPageMount } from "@/shared/lib/navigationSessionStore";
+import {
+  consumeLeftToNonCardPage,
+  markTransitioningCampaign,
+} from "../lib/transitioningCampaignStore";
 
 /** 어디서 이 페이지로 들어왔는지 — 대시보드 탭에서 카드 클릭 시에만 명시적으로 실어서 넘김.
  * 공유 링크로 직접 들어오거나 주소를 직접 입력한 경우엔 이 값이 없어서 뒤로가기 버튼이 안 보임. */
@@ -33,13 +38,43 @@ export function CampaignDetailPage() {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
 
-  const cameFrom = (location.state as { from?: NavigationSource } | null)?.from;
+  // 새로고침(또는 공유 링크)으로 이 페이지에 바로 들어온 경우 — 이 인스턴스가 살아있는
+  // 내내 영구적으로 고정됨(절대 안 바뀜). 이유: 이 상태에서 목록으로 돌아가면, 목록도
+  // 독립적으로 "이번 세션 첫 복귀는 layoutId 생략"이라는 자기만의 판단을 이미 내려둔
+  // 상태라(CampaignListTab의 skipLayoutIdForCardId), 상세 쪽에서 나중에 layoutId를
+  // 다시 켜버리면 둘의 판단이 어긋나서 다시 짝 없는 카드 문제가 재발함.
+  const [isRefreshMount] = useState(() => isInitialDetailPageMount());
+  // 카드 없는 화면(수정/신청자 목록)에서 막 돌아온 경우 — isRefreshMount처럼 이것도
+  // 이 인스턴스가 살아있는 내내 영구 고정임. 한때 "카드가 페이드로 자리 잡고 나면
+  // 다시 켜서 목록으로 갈 때 이동 애니메이션을 쓸 수 있게" 시도해봤는데, layoutId를
+  // 마운트 이후에 동적으로 켰다 껐다 하는 것 자체가 Framer Motion에서 불안정해서
+  // (카드가 다시 두 개로 보이는 문제 재발) 되돌림. 예전 원칙("layoutId는 마운트
+  // 시점부터 계속 갖고 있어야 함")이 반대 방향(없다가 나중에 생기는 경우)에도
+  // 그대로 적용되는 것 같음.
+  const [cameFromNonCardPage] = useState(() =>
+    consumeLeftToNonCardPage(shortCode ?? ""),
+  );
+  // "수정"/"신청자 목록"처럼 캠페인 카드 자체가 없는 페이지로 이동하려는 참이면 true.
+  // OwnerPanel이 그 버튼을 누르는 순간(navigate 직전) 동기적으로 이 값을 켜줌.
+  const [isNavigatingToNonCardPage, setIsNavigatingToNonCardPage] =
+    useState(false);
+  const showCardLayoutId =
+    !isRefreshMount && !cameFromNonCardPage && !isNavigatingToNonCardPage;
+
+  // 마운트되는 순간 딱 한 번만 값을 붙잡아둠(useState의 lazy initializer). location은
+  // 전역 값이라, 뒤로가기를 누르면 이 컴포넌트가 아직 exit 애니메이션 재생 중(=화면에
+  // 남아있는 상태)이어도 라우터가 이미 바뀐 새 경로/state를 그대로 반영해버림 — 그러면
+  // cameFrom이 순간 undefined가 되면서, 페이지 전체가 사라지기도 전에 뒤로가기 버튼만
+  // 먼저 사라지는 문제가 있었음. 한 번 캡처해두면 이후 라우터가 어떻게 바뀌든 무관해짐.
+  const [cameFrom] = useState(
+    () => (location.state as { from?: NavigationSource } | null)?.from,
+  );
   // 목록에서 카드를 클릭해서 들어온 경우, 그 카드가 이미 갖고 있던 데이터를 그대로
   // 넘겨받음. 상세 API 응답을 기다리지 않고 이 데이터로 카드를 즉시 그릴 수 있어서,
   // "로딩 중엔 카드(layoutId)가 아예 없어서 이동 애니메이션이 짝을 못 찾는" 문제를 피함.
-  const placeholderCampaign = (
-    location.state as { campaign?: CampaignItem } | null
-  )?.campaign;
+  const [placeholderCampaign] = useState(
+    () => (location.state as { campaign?: CampaignItem } | null)?.campaign,
+  );
 
   const {
     campaign,
@@ -56,6 +91,18 @@ export function CampaignDetailPage() {
     hasActiveApplication,
     myApplicationDetail,
   } = useCampaignDetailData(shortCode, placeholderCampaign);
+
+  // 지금 보고 있는 캠페인 id를 기록해둠. 뒤로가기로 목록에 돌아가면, 목록이 이 값을
+  // 읽어서 "얘가 방금 여기서 돌아온 카드구나"를 판단해 개별 페이드를 안 줌.
+  // showCardLayoutId일 때만 기록함 — 안 그러면(이 카드가 layoutId 없이 그냥 페이드로
+  // 처리되는 중인데도) 저장소엔 무조건 기록해버려서, 나중에 목록이 "짝 있는 이동"으로
+  // 착각하고 layoutId를 잘못 부여하는 문제가 있었음(실제 나가는 카드는 짝 없이 자기
+  // 자리서 페이드하고, 목록 카드는 짝 없이 layoutId만 든 채로 따로 노는 바람에 카드가
+  // 두 개로 보이던 원인).
+  useEffect(() => {
+    if (cardSource && showCardLayoutId)
+      markTransitioningCampaign(cardSource.id);
+  }, [cardSource, showCardLayoutId]);
 
   const [actionError, setActionError] = useState("");
   const [isActing, setIsActing] = useState(false);
@@ -154,7 +201,7 @@ export function CampaignDetailPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
+        transition={{ duration: 4, ease: "easeInOut" }}
       />
 
       <div className="mx-auto max-w-2xl px-6">
@@ -163,7 +210,7 @@ export function CampaignDetailPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
+          transition={{ duration: 4, ease: "easeInOut" }}
         >
           <div className="flex items-center gap-1">
             {cameFrom && <BackButton fallback={`/${cameFrom}`} />}
@@ -172,8 +219,21 @@ export function CampaignDetailPage() {
         </motion.div>
 
         {/* [캠페인 카드] — 목록 카드와 같은 layoutId로 이동 애니메이션만 독립적으로 진행.
-            진짜 상세 데이터가 아직이면 넘겨받은 목록 데이터(cardSource)로 즉시 그림 */}
-        <div className="mt-4">
+            진짜 상세 데이터가 아직이면 넘겨받은 목록 데이터(cardSource)로 즉시 그림.
+            showCardLayoutId가 꺼져있으면(새로고침으로 들어온 최초 마운트, 또는 카드
+            없는 페이지로 이동 중) layoutId를 아예 안 주고, 대신 카드도 다른 요소들처럼
+            페이드로 처리함 */}
+        <motion.div
+          className="mt-4"
+          {...(showCardLayoutId
+            ? {}
+            : {
+                initial: { opacity: 0, y: 8 },
+                animate: { opacity: 1, y: 0 },
+                exit: { opacity: 0, y: -8 },
+                transition: { duration: 4, ease: "easeInOut" as const },
+              })}
+        >
           <CampaignCard
             title={cardSource.title}
             status={cardSource.status}
@@ -189,9 +249,11 @@ export function CampaignDetailPage() {
             ownerProfileImageUrl={cardSource.owner.profileImageUrl}
             imageUrl={cardImageUrl}
             interactive={false}
-            layoutId={`campaign-card-${cardSource.id}`}
+            layoutId={
+              showCardLayoutId ? `campaign-card-${cardSource.id}` : undefined
+            }
           />
-        </div>
+        </motion.div>
 
         {/* 카드 아래쪽 — 링크복사/관리 + 신청하기·취소 + 에러 문구. 역시 카드와 형제 요소.
             여긴 viewerRole/myApplication처럼 진짜 상세 데이터가 있어야만 정확히 그릴 수
@@ -200,7 +262,7 @@ export function CampaignDetailPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
+          transition={{ duration: 4, ease: "easeInOut" }}
         >
           {!campaign ? (
             <p className="mt-4 text-sm text-(--muted)">불러오는 중...</p>
@@ -214,6 +276,9 @@ export function CampaignDetailPage() {
                     isActing={isActing}
                     onDelete={() => setConfirmAction("delete")}
                     onClose={() => setConfirmAction("close")}
+                    onBeforeNavigateToNonCardPage={() =>
+                      setIsNavigatingToNonCardPage(true)
+                    }
                     leadingContent={
                       <CopyLinkButton
                         url={`${window.location.origin}/campaigns/${campaign.shortCode}`}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { BrandLogo } from "@/shared/components/BrandLogo";
 import { UserMenu } from "@/features/auth/components/UserMenu";
@@ -7,6 +7,10 @@ import { useMe } from "@/features/auth/hooks/useMe";
 import { withdrawUser } from "@/features/auth/api/authApi";
 import { clearAccessToken } from "@/shared/lib/authToken";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import {
+  getIsPageTransitioning,
+  subscribeToPageTransition,
+} from "@/shared/lib/pageTransitionStore";
 
 // 로그인/OAuth 콜백 화면을 뺀 모든 화면이 공유하는 최상위 레이아웃. 로고+아바타
 // 헤더가 여기 있어서, 리액트 라우터의 중첩 레이아웃 성질상 하위 라우트(RootLayout,
@@ -22,6 +26,15 @@ export function UserAppShell() {
   const logout = useLogout();
   const { data: me } = useMe();
   const [isWithdrawConfirmOpen, setIsWithdrawConfirmOpen] = useState(false);
+  // 페이지 전환 중이면(탭 전환/카드 이동 포함, 어떤 애니메이션이든) 화면 전체가
+  // 클릭 안 먹히게 함. 예전엔 각 페이지가 useIsPresent()로 각자 자기 안에서만
+  // 처리했는데, 탭 전환처럼 AnimatePresence 키 자체가 안 바뀌는 전환(useIsPresent가
+  // 계속 true라 안 걸림)은 못 잡았음. 여기 최상위(UserAppShell)에 딱 하나만 두면
+  // 페이지 종류/전환 방식과 무관하게 항상 똑같이 적용됨.
+  const isTransitioning = useSyncExternalStore(
+    subscribeToPageTransition,
+    getIsPageTransitioning,
+  );
 
   // TODO: 테스트용 임시 버튼. 실제 회원탈퇴 플로우(탈퇴 사유 입력 등)는
   // 나중에 제대로 화면으로 뺄 예정. 지금은 API 동작 확인용.
@@ -36,7 +49,9 @@ export function UserAppShell() {
   }
 
   return (
-    <div className="min-h-screen bg-(--ink) text-(--paper)">
+    <div className="relative min-h-screen bg-(--ink) text-(--paper)">
+      {isTransitioning && <div className="absolute inset-0 z-999" />}
+
       <header className="mx-auto flex max-w-2xl items-center gap-2 px-6 pt-8">
         <BrandLogo />
 
