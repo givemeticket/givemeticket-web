@@ -168,8 +168,8 @@ export interface ApplicationDetail {
   userId: number;
   status: ApplicationStatus;
   failureReason?: FailureReason;
-  /** 신청한 시각 (ISO 8601) */
-  createdAt: string;
+  /** 자리를 잡은 시각 (ISO 8601). 방금 신청해서 저장이 아직 안 끝났으면 null일 수 있음 */
+  appliedAt: string | null;
 }
 
 export async function getApplication(

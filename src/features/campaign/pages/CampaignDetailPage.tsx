@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { motion } from "motion/react";
 import axios from "axios";
@@ -30,6 +31,15 @@ import {
   consumeLeftToNonCardPage,
   markTransitioningCampaign,
 } from "../lib/transitioningCampaignStore";
+import {
+  consumePendingScrollOffset,
+  markPendingScrollOffset,
+} from "@/shared/lib/scrollOffsetStore";
+import { getScrollPosition } from "@/shared/lib/scrollPositionStore";
+import {
+  PAGE_TRANSITION_DURATION,
+  POST_ANIMATION_DELAY_MS,
+} from "@/shared/lib/animationDurations";
 
 /** 어디서 이 페이지로 들어왔는지 — 대시보드 탭에서 카드 클릭 시에만 명시적으로 실어서 넘김.
  * 공유 링크로 직접 들어오거나 주소를 직접 입력한 경우엔 이 값이 없어서 뒤로가기 버튼이 안 보임. */
@@ -79,6 +89,57 @@ export function CampaignDetailPage() {
     () => (location.state as { campaign?: CampaignItem } | null)?.campaign,
   );
 
+  // 목록에서 카드를 클릭해서 들어온 경우, 그 클릭 시점의 목록 스크롤값이 여기 담겨
+  // 있음(없으면 null — 새로고침으로 들어왔거나 카드 클릭이 아닌 다른 경로로 온 경우).
+  // 마운트 시점에 한 번만 소비함.
+  const [pendingScrollOffset] = useState(() => consumePendingScrollOffset());
+  // margin-top(오프셋)이 그대로 유지되고 있어도, 그 아래 실제 콘텐츠(카드 포함)가
+  // layoutId 애니메이션이 끝나는 순간 실제로 살짝 짧아지면서 문서 전체 스크롤
+  // 가능 높이가 줄어들고, 브라우저가 스크롤을 강제로 잘라내는(clamp) 문제가
+  // 있었음(margin-top이 그대로인데도 scrollHeight는 줄어드는 걸 로그로 확인함 —
+  // Framer Motion이 layoutId 애니메이션을 마무리하며 내부적으로 뭔가 정리하는
+  // 과정에서 순간적으로 실제 레이아웃 높이가 줄어드는 것으로 추정). "딱 필요한
+  // 만큼"이 아니라, 최소한 이 오프셋 + 뷰포트 높이만큼은 절대 안 줄어들도록 별도
+  // 스페이서로 보장함 — 콘텐츠가 순간적으로 얼마나 짧아지든 이 최소 높이가
+  // 스크롤 가능 영역을 지켜줌.
+  const [viewportHeightAtMount] = useState(() => window.innerHeight);
+  // 오프셋이 실제로 걸려있는 상태인지. 애니메이션이 끝나면 false로 바뀌면서
+  // 오프셋을 제거함과 동시에 진짜 스크롤을 이 페이지의 목표값으로 맞춤 — 이 둘이
+  // 정확히 동시에 일어나야 화면상 아무 변화 없이 "순간이동"됨(자세한 원리는
+  // scrollOffsetStore.ts 참고).
+  const [isScrollOffsetActive, setIsScrollOffsetActive] = useState(
+    pendingScrollOffset !== null,
+  );
+  // 오프셋을 없애는 그 순간, 카드의 이동 duration을 0으로 강제해서 즉시 반영되게
+  // 함 — 안 그러면 오프셋 제거로 카드 측정 위치가 바뀌는 걸 Framer Motion이 "또
+  // 다른 이동"으로 착각해서, 의도치 않은 두 번째 애니메이션을 자체적으로
+  // 걸어버리는 문제가 있었음(로그로 확인함).
+  const [hasSnappedScrollOffset, setHasSnappedScrollOffset] = useState(false);
+
+  useEffect(() => {
+    if (pendingScrollOffset === null) return;
+    // 카드 이동 + 페이지 페이드가 전부 통일된 duration이라, 그 시간만큼만
+    // 기다리면 됨(여유분 조금 추가)
+    const timer = setTimeout(() => {
+      // window.scrollTo는 즉시 반영되는데, 오프셋 제거(state 변경)는 리액트의
+      // 다음 렌더링까지 기다림 — 이 둘 사이에 "스크롤은 바뀌었는데 오프셋은 아직
+      // 안 없어진" 짧은 순간이 그대로 화면에 그려져서, 카드가 잠깐 아래로
+      // 순간이동했다 나타나는 것처럼 보이는 문제가 있었음. flushSync로 오프셋
+      // 제거(및 그 결과 리렌더링/DOM 반영)를 먼저 동기적으로 완전히 끝내고, 그
+      // 다음에 스크롤을 바꿔서 그 틈이 안 생기게 함.
+      flushSync(() => {
+        setIsScrollOffsetActive(false);
+        setHasSnappedScrollOffset(true);
+      });
+      // 이 페이지 자신의 저장된 목표 스크롤값으로 실제 스크롤을 맞춤 (새로 들어온
+      // 상세 페이지면 보통 0).
+      const targetScrollY = getScrollPosition(location.pathname);
+      window.scrollTo(0, targetScrollY);
+    }, POST_ANIMATION_DELAY_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const {
     campaign,
     cardSource,
@@ -103,8 +164,9 @@ export function CampaignDetailPage() {
   // 자리서 페이드하고, 목록 카드는 짝 없이 layoutId만 든 채로 따로 노는 바람에 카드가
   // 두 개로 보이던 원인).
   useEffect(() => {
-    if (cardSource && showCardLayoutId)
+    if (cardSource && showCardLayoutId) {
       markTransitioningCampaign(cardSource.id);
+    }
   }, [cardSource, showCardLayoutId]);
 
   const [actionError, setActionError] = useState("");
@@ -208,7 +270,7 @@ export function CampaignDetailPage() {
   return (
     <LoadingFade isLoading={!cardSource && isLoading}>
       {cardSource && (
-        <div className="relative min-h-screen pt-8 pb-10 text-(--paper)">
+        <div className="relative h-full pt-8 pb-10 text-(--paper)">
           {/* 배경색 전용 레이어. 이것도 독립적으로 페이드시켜야 함 — 안 그러면 상세 페이지가
               사라지는 동안에도 이 불투명한 배경이 화면 전체를 계속 덮고 있어서, 그 밑에서
               동시에 나타나고 있는 목록 화면이 거의 끝까지 안 보이다가 마지막 순간에야
@@ -218,19 +280,54 @@ export function CampaignDetailPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 4, ease: "easeInOut" }}
+            transition={{
+              duration: PAGE_TRANSITION_DURATION,
+              ease: "easeInOut",
+            }}
           />
 
-          <div className="mx-auto max-w-2xl px-6">
+          <div
+            className="mx-auto max-w-2xl px-6"
+            style={
+              isScrollOffsetActive && pendingScrollOffset !== null
+                ? { marginTop: pendingScrollOffset }
+                : undefined
+            }
+          >
             {/* 카드 위쪽 — < 티켓정보. 카드와 형제 요소라 카드의 투명도엔 영향 없음 */}
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 4, ease: "easeInOut" }}
+              transition={{
+                duration: PAGE_TRANSITION_DURATION,
+                ease: "easeInOut",
+              }}
             >
               <div className="flex items-center gap-1">
-                {cameFrom && <BackButton fallback={`/${cameFrom}`} />}
+                {cameFrom && (
+                  <BackButton
+                    fallback={`/${cameFrom}`}
+                    onBeforeNavigate={() => {
+                      // showCardLayoutId가 false면(새로고침으로 들어온 경우 등) 이
+                      // 카드는 애초에 layoutId를 안 써서 layoutId 기반 이동
+                      // 애니메이션 자체가 없음 — 보정할 게 없는데 오프셋을 걸었다
+                      // 없애면 그 과정 자체가 스크롤을 미세하게 어긋나게 만들
+                      // 수 있어서, 이 경우엔 아예 건너뜀.
+                      if (!showCardLayoutId) return;
+                      // 역방향(상세→목록) 오프셋 = "지금 상세 스크롤(실제 스크롤이
+                      // 그대로 유지될 값)" - "목록의 저장된 목표 스크롤값". 목록이
+                      // 이 값으로 자기 콘텐츠에 반대 방향 오프셋을 걸어서 보정함
+                      // (자세한 부호 설명은 scrollOffsetStore.ts 참고)
+                      const targetListScrollY = getScrollPosition(
+                        `/${cameFrom}`,
+                      );
+                      markPendingScrollOffset(
+                        window.scrollY - targetListScrollY,
+                      );
+                    }}
+                  />
+                )}
                 <h1 className="text-lg font-bold">티켓정보</h1>
               </div>
             </motion.div>
@@ -248,7 +345,10 @@ export function CampaignDetailPage() {
                     initial: { opacity: 0, y: 8 },
                     animate: { opacity: 1, y: 0 },
                     exit: { opacity: 0, y: -8 },
-                    transition: { duration: 4, ease: "easeInOut" as const },
+                    transition: {
+                      duration: PAGE_TRANSITION_DURATION,
+                      ease: "easeInOut" as const,
+                    },
                   })}
             >
               <CampaignCard
@@ -271,6 +371,7 @@ export function CampaignDetailPage() {
                     ? `campaign-card-${cardSource.id}`
                     : undefined
                 }
+                layoutDurationOverride={hasSnappedScrollOffset ? 0 : undefined}
               />
             </motion.div>
 
@@ -281,7 +382,10 @@ export function CampaignDetailPage() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 4, ease: "easeInOut" }}
+              transition={{
+                duration: PAGE_TRANSITION_DURATION,
+                ease: "easeInOut",
+              }}
             >
               {!campaign ? (
                 <p className="mt-4 text-sm text-(--muted)">불러오는 중...</p>
@@ -320,8 +424,8 @@ export function CampaignDetailPage() {
                         <p className="text-sm text-(--muted)">
                           신청시각:{" "}
                           <span className="font-semibold text-(--paper)">
-                            {myApplicationDetail
-                              ? formatDateTimeKo(myApplicationDetail.createdAt)
+                            {myApplicationDetail?.appliedAt
+                              ? formatDateTimeKo(myApplicationDetail.appliedAt)
                               : "불러오는 중..."}
                           </span>
                         </p>
@@ -355,6 +459,20 @@ export function CampaignDetailPage() {
               )}
             </motion.div>
           </div>
+
+          {/* 스크롤 오프셋(margin-top)이 정확한 위치 보정을 담당하는 동안, 그 아래 실제
+              콘텐츠(카드 포함)가 layoutId 애니메이션 완료 시점에 순간적으로 살짝
+              짧아지면서 문서 전체 스크롤 가능 높이가 오프셋만큼도 못 채우게 되는
+              문제가 있었음(margin-top 자체는 그대로 유지되는데도 scrollHeight가
+              줄어드는 걸 로그로 확인함 — Framer Motion이 layoutId 애니메이션을
+              마무리하며 내부적으로 뭔가 정리하는 과정에서 순간적으로 실제 레이아웃
+              높이가 줄어드는 것으로 추정). 콘텐츠의 위치엔 영향 없이(형제 요소로,
+              margin-top 없이) 문서 맨 끝에 여유 공간만 추가로 확보해서, 콘텐츠가
+              얼마나 짧아지든 전체 문서가 절대 이 밑으로는 안 줄어들게 함.
+              브라우저가 스크롤을 강제로 잘라낼 일이 없어짐. */}
+          {isScrollOffsetActive && pendingScrollOffset !== null && (
+            <div aria-hidden style={{ height: viewportHeightAtMount }} />
+          )}
 
           <ConfirmDialog
             isOpen={confirmAction !== null}

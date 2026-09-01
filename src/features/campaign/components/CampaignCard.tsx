@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { Avatar } from "@/shared/components/Avatar";
+import { PAGE_TRANSITION_DURATION } from "@/shared/lib/animationDurations";
 
 // 행사 목록(나의 티켓 / 나의 행사)에서 공통으로 쓰는 카드.
 // "보딩패스" 스타일 — 오른쪽에 상태 색상으로 채운 스텁을 붙이고,
@@ -43,6 +44,12 @@ interface CampaignCardProps {
    * (바로 리셋하면, 아직 화면에 남아있는 주변 페이지의 페이드가 다 안 끝난 상태에서
    * 이 카드의 애니메이션 prop이 갑자기 바뀌면서 깜빡이는 문제가 있었음) */
   onMoveComplete?: () => void;
+  /** layout 이동 duration을 강제로 덮어씀(주로 0). 스크롤 오프셋 보정
+   * (scrollOffsetStore.ts)에서 오프셋을 없애는 순간, 카드의 측정 위치가 바뀌는
+   * 걸 Framer Motion이 "또 다른 이동"으로 착각해서 자체적으로 두 번째 애니메이션을
+   * 걸어버리는 문제가 있었음. 그 순간만 이 값을 0으로 줘서 즉시 반영되게 함 —
+   * 안 주면(undefined) 평소처럼 animateMove 기준으로 자동 계산됨. */
+  layoutDurationOverride?: number;
 }
 
 const STATUS_META: Record<
@@ -74,6 +81,7 @@ export function CampaignCard({
   layoutId,
   animateMove = false,
   onMoveComplete,
+  layoutDurationOverride,
 }: CampaignCardProps) {
   // 매진은 별도 상태가 아니라 OPEN + soldOut 조합이라, 뱃지 표시만 그때 덮어씀
   const meta =
@@ -143,17 +151,23 @@ export function CampaignCard({
   // 위치/크기 이동 애니메이션(layout)의 기본값은 스프링(물리 기반)이라, 감쇠가
   // 부족하면 목표 지점을 지나쳤다가 되돌아오는 튕김 현상이 생김. duration 기반
   // easing으로 명시적으로 바꿔서 한 번에 부드럽게 도착하도록 함.
-  // 실제로 이동해야 하는 카드만 0.35초, 나머지(옆 카드가 빠지면서 자리가 밀리기만
-  // 하는 카드)는 0초 — 안 그러면 밀리는 것까지 다 슬라이드 애니메이션이 걸려서 지저분해짐.
-  const layoutTransition = {
-    layout: { duration: animateMove ? 3 : 0, ease: "easeInOut" as const },
-  };
-
+  // layoutDurationOverride가 있으면 그 값을 최우선으로 씀(주로 스크롤 오프셋
+  // 상쇄 시점에 0으로 강제할 때 씀).
   if (!interactive) {
+    // 상세 페이지의 카드는 animateMove 개념 자체가 없음(목록처럼 "이동해야 하는
+    // 카드"와 "밀리기만 하는 카드"를 구분할 필요가 없어서) — 항상
+    // PAGE_TRANSITION_DURATION으로 도착 애니메이션을 재생함.
+    const detailLayoutDuration =
+      layoutDurationOverride ?? PAGE_TRANSITION_DURATION;
     return (
       <motion.div
         layoutId={layoutId}
-        transition={{ layout: { duration: 3, ease: "easeInOut" as const } }}
+        transition={{
+          layout: {
+            duration: detailLayoutDuration,
+            ease: "easeInOut" as const,
+          },
+        }}
         className="flex w-full overflow-hidden rounded-lg border text-left shadow-[0_1px_3px_rgba(17,24,39,0.06)]"
         style={{ borderColor: "var(--line)", backgroundColor: cardBg }}
       >
@@ -161,6 +175,15 @@ export function CampaignCard({
       </motion.div>
     );
   }
+
+  // 목록의 카드: 실제로 이동해야 하는 카드(animateMove)만 정해진 duration, 나머지
+  // (옆 카드가 빠지면서 자리가 밀리기만 하는 카드)는 0초 — 안 그러면 밀리는 것까지
+  // 다 슬라이드 애니메이션이 걸려서 지저분해짐.
+  const listLayoutDuration =
+    layoutDurationOverride ?? (animateMove ? PAGE_TRANSITION_DURATION : 0);
+  const layoutTransition = {
+    layout: { duration: listLayoutDuration, ease: "easeInOut" as const },
+  };
 
   return (
     <motion.button

@@ -23,7 +23,7 @@ export function FullPageMessage({
   const navigate = useNavigate();
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-(--ink) px-6 text-center text-(--paper)">
+    <div className="flex h-full flex-col items-center justify-center gap-5 bg-(--ink) px-6 py-16 text-center text-(--paper)">
       <div
         className="flex h-20 w-20 items-center justify-center rounded-full text-(--brand-blue)"
         style={{ backgroundColor: "var(--ink-soft)" }}

@@ -8,6 +8,8 @@
 // 리액트 state가 아니라 이런 구독 방식(useSyncExternalStore)을 쓰는 이유: 이 값을
 // 갱신하는 쪽(RootLayout)이랑 읽는 쪽(UserAppShell)이 서로 부모/자식도 아니고
 // 공통 조상도 마땅치 않아서, 평범한 props/state로 넘기기 애매함.
+import { POST_ANIMATION_DELAY_MS } from "./animationDurations";
+
 type Listener = () => void;
 
 let isTransitioning = false;
@@ -30,7 +32,7 @@ export function subscribeToPageTransition(listener: Listener): () => void {
 
 let transitionEndTimer: ReturnType<typeof setTimeout> | undefined;
 
-/** 신호를 켜고, 가장 긴 애니메이션(4초) 뒤 자동으로 끔. RootLayout이 감지하는
+/** 신호를 켜고, 가장 긴 애니메이션 뒤 자동으로 끔. RootLayout이 감지하는
  * "진짜 전환"뿐 아니라, RootLayout을 거치지 않는 특수한 이동(예: BrandLogo의
  * "/" 이동 — "/"는 UserAppShell 바깥 라우트라 RootLayout이 그 전환 자체를
  * 감지할 기회가 없음)에서도 직접 이 함수를 불러서 씀. 다시 호출되면 이전
@@ -40,5 +42,5 @@ export function beginPageTransition() {
   if (transitionEndTimer) clearTimeout(transitionEndTimer);
   transitionEndTimer = setTimeout(() => {
     setIsPageTransitioning(false);
-  }, 4000);
+  }, POST_ANIMATION_DELAY_MS);
 }

@@ -20,12 +20,12 @@ import { OAuthCallbackPage } from "@/features/auth/pages/OAuthCallbackPage";
 import { FullPageMessage } from "@/shared/components/FullPageMessage";
 import { MapPinOff } from "lucide-react";
 import { beginPageTransition } from "@/shared/lib/pageTransitionStore";
-
-// 경로별 스크롤 위치를 직접 관리 (sessionStorage — 새로고침해도 유지되면 좋아서).
-// 리액트 라우터의 <ScrollRestoration> 대신 직접 저장/복원함 — 페이지 전환
-// 애니메이션 중엔 목록/상세 두 화면이 동시에 떠 있는데, 그동안 스크롤이 언제 어디로
-// 옮겨지는지를 저희가 정확한 타이밍에 직접 통제해야 해서.
-const SCROLL_KEY_PREFIX = "gmt_scroll:";
+import { consumePendingScrollOffsetForRootLayout } from "@/shared/lib/scrollOffsetStore";
+import {
+  saveScrollPosition as saveScrollPositionRaw,
+  getScrollPosition,
+} from "@/shared/lib/scrollPositionStore";
+import { POST_ANIMATION_DELAY_MS } from "@/shared/lib/animationDurations";
 
 // 스크롤 복원이 의미 없는 경로(수정/신청자 목록)는 저장 자체를 건너뜀. 이 두
 // 화면은 짧은 폼/목록이라 스크롤 복원할 가치가 딱히 없는데, `shortCode`가 경로에
@@ -40,12 +40,7 @@ function isScrollWorthSaving(pathname: string): boolean {
 
 function saveScrollPosition(pathname: string) {
   if (!isScrollWorthSaving(pathname)) return;
-  sessionStorage.setItem(SCROLL_KEY_PREFIX + pathname, String(window.scrollY));
-}
-
-function getScrollPosition(pathname: string): number {
-  const raw = sessionStorage.getItem(SCROLL_KEY_PREFIX + pathname);
-  return raw ? Number(raw) : 0;
+  saveScrollPositionRaw(pathname);
 }
 
 // /mytickets, /mycampaigns는 같은 DashboardLayout 안에서 탭 내용만 바뀌는 거라
@@ -86,13 +81,9 @@ function RootLayout() {
   // 스크롤 저장은 떠나는 순간 바로, 복원은 애니메이션이 끝나는 시점에 딱 한 번만
   // (window.scrollTo 한 번) 실행함.
   //
-  // 참고(알려진 한계): 목록이 많이 스크롤된 상태에서 카드를 클릭하면, 그 카드가
-  // 상세 페이지로 이동하는 애니메이션이 살짝 부자연스러울 수 있음(위로 사라졌다
-  // 나타나는 것처럼 보임). 원인은 전환 중 잠깐 목록/상세 두 화면이 동시에 떠 있는데,
-  // 브라우저 스크롤 값은 문서 전체에 하나뿐이라 "목록은 스크롤 500, 상세는 스크롤 0"을
-  // 동시에 만족시킬 방법이 없어서임(근본적으로 실제 브라우저 스크롤과 완전히 분리된
-  // 가상 스크롤 시스템을 새로 만들어야 완전히 해결됨 — 지금은 그 정도까진 안 함).
-  // 스크롤 안 내린 상태에서의 전환은 이 문제와 무관하게 정상 동작함.
+  // 단, 카드 클릭/뒤로가기로 인한 목록↔상세 전환은 예외 — 그 경우엔 스크롤 오프셋
+  // 방식(scrollOffsetStore.ts)이 대신 처리하니, 여기서 평소처럼 스크롤을 옮기면
+  // 오히려 방해가 됨. hasPendingScrollOffset()으로 그 경우를 감지해서 건너뜀.
   useLayoutEffect(() => {
     const leavingPathname = prevPathnameRef.current;
     const arrivingPathname = location.pathname;
@@ -101,18 +92,22 @@ function RootLayout() {
     if (leavingPathname === arrivingPathname) return;
 
     // 헤더(로고/아바타)처럼 특정 페이지에 속하지 않는 요소도 전환 중엔 클릭이
-    // 막혀야 해서, 여기(진짜 전환이 감지되는 지점)에서 전역 신호를 켬(가장 긴
-    // 애니메이션 4초 뒤 자동으로 꺼짐 — pageTransitionStore.ts 참고).
+    // 막혀야 해서, 여기(진짜 전환이 감지되는 지점)에서 전역 신호를 켬(자동으로 꺼짐
+    // — pageTransitionStore.ts 참고).
     beginPageTransition();
 
     // 떠나는 페이지의 스크롤 위치를 저장 — 아직 화면이 안 바뀐 시점이라 window.scrollY가
     // 정확히 그 페이지 기준 값임
     saveScrollPosition(leavingPathname);
 
+    // 스크롤 오프셋 방식으로 처리되는 전환이면, 도착 페이지가 알아서 스크롤까지
+    // 책임지고 처리하니 여기서는 아무것도 안 함
+    if (consumePendingScrollOffsetForRootLayout()) return;
+
     const timer = setTimeout(() => {
       // 도착한 페이지에 저장된 값이 있으면 그 위치로, 처음 오는 페이지면 맨 위로
       window.scrollTo(0, getScrollPosition(arrivingPathname));
-    }, 400);
+    }, POST_ANIMATION_DELAY_MS);
 
     return () => {
       clearTimeout(timer);
@@ -130,7 +125,11 @@ function RootLayout() {
           정상 작동해서, "새로고침 직후 vs 아닌 경우"로 동작이 갈리는 비일관성이 있었음.
           제거하면 최초 페이지 로드 때도 살짝 페이드인되는 정도의 트레이드오프만 생김. */}
       <AnimatePresence mode="popLayout">
-        {element && <div key={animationKey}>{element}</div>}
+        {element && (
+          <div key={animationKey} className="h-full">
+            {element}
+          </div>
+        )}
       </AnimatePresence>
     </LayoutGroup>
   );

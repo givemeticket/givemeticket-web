@@ -15,6 +15,14 @@ import {
 import { formatDateTimeKo } from "@/shared/lib/formatDate";
 import { consumeTransitioningCampaignId } from "@/features/campaign/lib/transitioningCampaignStore";
 import { isFirstReturnFromRefreshedDetailPage } from "@/shared/lib/navigationSessionStore";
+import {
+  markPendingScrollOffset,
+  consumePendingScrollOffset,
+} from "@/shared/lib/scrollOffsetStore";
+import {
+  PAGE_TRANSITION_DURATION,
+  POST_ANIMATION_DELAY_MS,
+} from "@/shared/lib/animationDurations";
 import { useDashboardFilters } from "../hooks/useDashboardFilters";
 import type { FilterTab } from "../lib/dashboardFilterStore";
 
@@ -50,6 +58,39 @@ export function CampaignListTab({
 }: CampaignListTabProps) {
   const navigate = useNavigate();
 
+  // 상세 페이지에서 뒤로가기로 돌아온 경우, 그 클릭 시점에 계산해둔 역방향 오프셋값이
+  // 여기 담겨있음(없으면 null — 다른 경로로 들어온 경우). 마운트 시점에 한 번만 소비함.
+  const [pendingScrollOffset] = useState(() => consumePendingScrollOffset());
+  const [isScrollOffsetActive, setIsScrollOffsetActive] = useState(
+    pendingScrollOffset !== null,
+  );
+  // 오프셋을 없애는 그 순간, 돌아온 카드의 이동 duration을 0으로 강제해서 즉시
+  // 반영되게 함 — 안 그러면 오프셋 제거로 카드 측정 위치가 바뀌는 걸 Framer
+  // Motion이 "또 다른 이동"으로 착각해서, 의도치 않은 두 번째 애니메이션을
+  // 자체적으로 걸어버리는 문제가 있었음(CampaignDetailPage에서 로그로 확인한
+  // 것과 같은 원인, 여기도 대칭으로 적용함).
+  const [hasSnappedScrollOffset, setHasSnappedScrollOffset] = useState(false);
+
+  useEffect(() => {
+    if (pendingScrollOffset === null) return;
+    // 카드 이동 + 페이지 페이드가 전부 통일된 duration이라, 그 시간만큼만
+    // 기다리면 됨(여유분 조금 추가). 오프셋 제거랑 동시에 진짜 스크롤을 이 목록의
+    // 저장된 목표값으로 맞춤 — 정확히 같은 타이밍이어야 시각적 어긋남이 없음.
+    const timer = setTimeout(() => {
+      // window.scrollTo는 즉시 반영되는데, 오프셋 제거(state 변경)는 리액트의
+      // 다음 렌더링까지 기다림 — flushSync로 오프셋 제거를 먼저 동기적으로 완전히
+      // 끝내고, 그 다음에 스크롤을 바꿔서 시각적으로 어긋나는 틈이 안 생기게 함.
+      flushSync(() => {
+        setIsScrollOffsetActive(false);
+        setHasSnappedScrollOffset(true);
+      });
+      const nextScrollY = window.scrollY - pendingScrollOffset;
+      window.scrollTo(0, nextScrollY);
+    }, POST_ANIMATION_DELAY_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const {
     sortBy,
     sortDirection,
@@ -68,7 +109,16 @@ export function CampaignListTab({
   >(undefined);
   if (initialRef.current === undefined) {
     const id = consumeTransitioningCampaignId();
-    if (id !== null && isFirstReturnFromRefreshedDetailPage()) {
+    // isFirstReturnFromRefreshedDetailPage()는 이 세션 전체에서 딱 한 번만 유효한
+    // 소모성 신호라, id가 null이든 아니든 항상 호출해서 소비해야 함. `id !== null
+    // && isFirstReturnFromRefreshedDetailPage()`처럼 쓰면, id가 null일 때 단축
+    // 평가로 뒤쪽 호출 자체가 스킵되면서 이 신호가 "안 쓰인 채로" 남아있다가,
+    // 완전히 무관한 나중의 다른 카드 클릭→복귀 시점에 뒤늦게 소비되며 그 카드한테
+    // 잘못된 특별 취급(skipLayoutIdForCardId)이 적용되는 버그가 있었음(로그로
+    // 확인함) — 그 카드는 layoutId가 없는데 상세 쪽은 있어서 서로 짝이 어긋나며
+    // 카드가 복제되는 것처럼 보였음.
+    const isFirstReturn = isFirstReturnFromRefreshedDetailPage();
+    if (id !== null && isFirstReturn) {
       // 새로고침 직후 최초 복귀 — 이 카드 하나만, 이번 렌더링에서만 "이동 중" 특별
       // 취급을 안 함(layoutId 기반 이동 대신 다른 카드들처럼 페이드로)
       initialRef.current = { transitioningId: null, skipLayoutIdForCardId: id };
@@ -127,7 +177,7 @@ export function CampaignListTab({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 4, ease: "easeInOut" }}
+          transition={{ duration: PAGE_TRANSITION_DURATION, ease: "easeInOut" }}
         >
           <EmptyState
             icon={emptyIcon}
@@ -166,7 +216,7 @@ export function CampaignListTab({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 4, ease: "easeInOut" }}
+          transition={{ duration: PAGE_TRANSITION_DURATION, ease: "easeInOut" }}
         >
           {showExpiredOnly ? (
             <EmptyState
@@ -214,14 +264,19 @@ export function CampaignListTab({
                   : `campaign-card-${c.id}`
               }
               animateMove={isTransitioning}
+              layoutDurationOverride={
+                isTransitioning && hasSnappedScrollOffset ? 0 : undefined
+              }
               onMoveComplete={() => {
                 if (resetTimeoutRef.current)
                   clearTimeout(resetTimeoutRef.current);
-                // 주변 페이지의 4초짜리 페이드가 확실히 다 끝난 뒤로 리셋을 늦춤
-                // (카드의 3초 이동보다 여유를 좀 더 둠)
+                // 카드 애니메이션이 끝난 즉시 리셋하면, 주변 페이지의 페이드가 아직
+                // 안 끝난 상태에서 카드 애니메이션 prop이 갑자기 바뀌며 깜빡이는
+                // 문제가 있었음. POST_ANIMATION_DELAY_MS(애니메이션 지속시간 +
+                // 여유분)만큼 기다린 뒤 리셋함 — animationDurations.ts 참고.
                 resetTimeoutRef.current = setTimeout(() => {
                   setTransitioningId(null);
-                }, 1500);
+                }, POST_ANIMATION_DELAY_MS);
               }}
               onClick={() => {
                 // setTransitioningId만 하고 바로 navigate하면, 그 상태 변경이 화면에
@@ -232,6 +287,9 @@ export function CampaignListTab({
                 flushSync(() => {
                   setTransitioningId(c.id);
                 });
+                // 지금 스크롤값을 표시해둠 — 상세 페이지가 이 값으로 스크롤
+                // 오프셋 보정을 함 (scrollOffsetStore.ts 참고)
+                markPendingScrollOffset(window.scrollY);
                 navigate(`/campaigns/${c.shortCode}`, {
                   state: { from: fromKey, campaign: c },
                 });
@@ -251,7 +309,10 @@ export function CampaignListTab({
                 initial: { opacity: 0, y: 8 },
                 animate: { opacity: 1, y: 0 },
                 exit: { opacity: 0, y: -8 },
-                transition: { duration: 4, ease: "easeInOut" as const },
+                transition: {
+                  duration: PAGE_TRANSITION_DURATION,
+                  ease: "easeInOut" as const,
+                },
               };
 
           return (
@@ -265,13 +326,20 @@ export function CampaignListTab({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div
+      className="flex flex-col gap-4"
+      style={
+        isScrollOffsetActive && pendingScrollOffset !== null
+          ? { transform: `translateY(${pendingScrollOffset}px)` }
+          : undefined
+      }
+    >
       <motion.div
         className="flex items-center justify-between"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 4, ease: "easeInOut" }}
+        transition={{ duration: PAGE_TRANSITION_DURATION, ease: "easeInOut" }}
       >
         <InlineSortFilter
           sortOptions={sortOptions}

@@ -47,3 +47,11 @@ export function consumeLeftToNonCardPage(shortCode: string): boolean {
   }
   return false;
 }
+
+/** 이 모듈이 담고 있는 두 값(transitioningCampaignId, leftToNonCardPageForShortCode)을
+ * 한 번에 전부 지움. clearTransitioningCampaign()은 앞의 것만 지우는데, 그거랑
+ * 별개로 뒤의 것까지 같이 지워야 하는 상황(예: 홈으로 이동)을 위한 함수. */
+export function clearAllTransitioningCampaignState() {
+  transitioningCampaignId = null;
+  leftToNonCardPageForShortCode = null;
+}
