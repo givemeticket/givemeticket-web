@@ -13,10 +13,13 @@ import {
 import { formatDateTimeKo } from "@/shared/lib/formatDate";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { Check, Link2 } from "lucide-react";
+import { Trash2, SearchX } from "lucide-react";
 import { BackButton } from "@/shared/components/BackButton";
 import { IconButton } from "@/shared/components/IconButton";
 import { PrimaryButton } from "@/shared/components/PrimaryButton";
 import { SecondaryButton } from "@/shared/components/SecondaryButton";
+import { FullPageMessage } from "@/shared/components/FullPageMessage";
+import { LoadingFade } from "@/shared/components/LoadingFade";
 import { CampaignCard } from "../components/CampaignCard";
 import { OwnerPanel } from "../components/OwnerPanel";
 import { useCampaignDetailData } from "../hooks/useCampaignDetailData";
@@ -113,17 +116,29 @@ export function CampaignDetailPage() {
     "cancel" | "delete" | "close" | null
   >(null);
 
-  // 진짜 상세 데이터도, 넘겨받은 목록 데이터도 둘 다 없을 때만 로딩/에러 화면
-  if (!cardSource) {
-    if (isLoading) return <CenteredMessage text="불러오는 중..." />;
-    if (isError) {
-      const status = axios.isAxiosError(error)
-        ? error.response?.status
-        : undefined;
-      if (status === 410) return <CenteredMessage text="삭제된 행사예요." />;
-      return <CenteredMessage text="행사를 찾을 수 없어요." />;
+  // 삭제됨/못찾음은 콘텐츠랑 크로스페이드될 필요 없는 완전히 종결된 상태라 그대로 조기 반환.
+  // "불러오는 중"은 아래 return의 LoadingFade가 담당함 (로딩→콘텐츠 크로스페이드를 위해선
+  // 같은 AnimatePresence 안에서 둘 다 다뤄야 해서, 별도 조기 반환으로 빼면 안 됨)
+  if (!cardSource && isError) {
+    const status = axios.isAxiosError(error)
+      ? error.response?.status
+      : undefined;
+    if (status === 410) {
+      return (
+        <FullPageMessage
+          icon={<Trash2 size={32} strokeWidth={1.6} />}
+          title="삭제된 행사예요"
+          description="개설자가 이 행사를 삭제했어요."
+        />
+      );
     }
-    return null;
+    return (
+      <FullPageMessage
+        icon={<SearchX size={32} strokeWidth={1.6} />}
+        title="행사를 찾을 수 없어요"
+        description="주소가 잘못됐거나, 더 이상 존재하지 않는 행사예요."
+      />
+    );
   }
 
   async function handleApply() {
@@ -191,186 +206,192 @@ export function CampaignDetailPage() {
   }
 
   return (
-    <div className="relative min-h-screen pt-8 pb-10 text-(--paper)">
-      {/* 배경색 전용 레이어. 이것도 독립적으로 페이드시켜야 함 — 안 그러면 상세 페이지가
-          사라지는 동안에도 이 불투명한 배경이 화면 전체를 계속 덮고 있어서, 그 밑에서
-          동시에 나타나고 있는 목록 화면이 거의 끝까지 안 보이다가 마지막 순간에야
-          갑자기 드러나는 문제가 생김. 카드의 자식이 아닌 별개 형제 요소라 카드엔 영향 없음. */}
-      <motion.div
-        className="absolute inset-0 -z-10 bg-(--ink)"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 4, ease: "easeInOut" }}
-      />
-
-      <div className="mx-auto max-w-2xl px-6">
-        {/* 카드 위쪽 — < 티켓정보. 카드와 형제 요소라 카드의 투명도엔 영향 없음 */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 4, ease: "easeInOut" }}
-        >
-          <div className="flex items-center gap-1">
-            {cameFrom && <BackButton fallback={`/${cameFrom}`} />}
-            <h1 className="text-lg font-bold">티켓정보</h1>
-          </div>
-        </motion.div>
-
-        {/* [캠페인 카드] — 목록 카드와 같은 layoutId로 이동 애니메이션만 독립적으로 진행.
-            진짜 상세 데이터가 아직이면 넘겨받은 목록 데이터(cardSource)로 즉시 그림.
-            showCardLayoutId가 꺼져있으면(새로고침으로 들어온 최초 마운트, 또는 카드
-            없는 페이지로 이동 중) layoutId를 아예 안 주고, 대신 카드도 다른 요소들처럼
-            페이드로 처리함 */}
-        <motion.div
-          className="mt-4"
-          {...(showCardLayoutId
-            ? {}
-            : {
-                initial: { opacity: 0, y: 8 },
-                animate: { opacity: 1, y: 0 },
-                exit: { opacity: 0, y: -8 },
-                transition: { duration: 4, ease: "easeInOut" as const },
-              })}
-        >
-          <CampaignCard
-            title={cardSource.title}
-            status={cardSource.status}
-            soldOut={soldOut}
-            openAtLabel={`${formatDateTimeKo(cardSource.openAt)} 오픈`}
-            remainingStock={
-              cardSource.totalStock != null && hasStockValue
-                ? remainingStock
-                : undefined
-            }
-            totalStock={cardSource.totalStock ?? undefined}
-            ownerNickname={cardSource.owner.nickname}
-            ownerProfileImageUrl={cardSource.owner.profileImageUrl}
-            imageUrl={cardImageUrl}
-            interactive={false}
-            layoutId={
-              showCardLayoutId ? `campaign-card-${cardSource.id}` : undefined
-            }
+    <LoadingFade isLoading={!cardSource && isLoading}>
+      {cardSource && (
+        <div className="relative min-h-screen pt-8 pb-10 text-(--paper)">
+          {/* 배경색 전용 레이어. 이것도 독립적으로 페이드시켜야 함 — 안 그러면 상세 페이지가
+              사라지는 동안에도 이 불투명한 배경이 화면 전체를 계속 덮고 있어서, 그 밑에서
+              동시에 나타나고 있는 목록 화면이 거의 끝까지 안 보이다가 마지막 순간에야
+              갑자기 드러나는 문제가 생김. 카드의 자식이 아닌 별개 형제 요소라 카드엔 영향 없음. */}
+          <motion.div
+            className="absolute inset-0 -z-10 bg-(--ink)"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 4, ease: "easeInOut" }}
           />
-        </motion.div>
 
-        {/* 카드 아래쪽 — 링크복사/관리 + 신청하기·취소 + 에러 문구. 역시 카드와 형제 요소.
-            여긴 viewerRole/myApplication처럼 진짜 상세 데이터가 있어야만 정확히 그릴 수
-            있어서, campaign(진짜 데이터)이 도착하기 전까진 간단한 대기 문구만 보여줌 */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 4, ease: "easeInOut" }}
-        >
-          {!campaign ? (
-            <p className="mt-4 text-sm text-(--muted)">불러오는 중...</p>
-          ) : (
-            <>
-              {/* 링크 복사(누구나) + 관리 아이콘(수정/삭제/종료, 관리자만) — 같은 줄 */}
-              <div className="mt-4">
-                {campaign.viewerRole === "OWNER" ? (
-                  <OwnerPanel
-                    campaign={campaign}
-                    isActing={isActing}
-                    onDelete={() => setConfirmAction("delete")}
-                    onClose={() => setConfirmAction("close")}
-                    onBeforeNavigateToNonCardPage={() =>
-                      setIsNavigatingToNonCardPage(true)
-                    }
-                    leadingContent={
-                      <CopyLinkButton
-                        url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
-                      />
-                    }
-                  />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <CopyLinkButton
-                      url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
-                    />
-                  </div>
-                )}
+          <div className="mx-auto max-w-2xl px-6">
+            {/* 카드 위쪽 — < 티켓정보. 카드와 형제 요소라 카드의 투명도엔 영향 없음 */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 4, ease: "easeInOut" }}
+            >
+              <div className="flex items-center gap-1">
+                {cameFrom && <BackButton fallback={`/${cameFrom}`} />}
+                <h1 className="text-lg font-bold">티켓정보</h1>
               </div>
+            </motion.div>
 
-              {/* 신청하기 / 신청취소 — 역할과 무관하게 공통 처리 (관리자도 신청 가능) */}
-              <div className="mt-6 flex justify-center">
-                {hasActiveApplication && campaign.myApplication ? (
-                  <div className="flex flex-col items-center gap-3">
-                    <p className="text-sm text-(--muted)">
-                      신청시각:{" "}
-                      <span className="font-semibold text-(--paper)">
-                        {myApplicationDetail
-                          ? formatDateTimeKo(myApplicationDetail.createdAt)
-                          : "불러오는 중..."}
-                      </span>
-                    </p>
-                    {campaign.status !== "CLOSED" && (
-                      <SecondaryButton
-                        onClick={() => setConfirmAction("cancel")}
-                        disabled={isActing}
-                      >
-                        {isActing ? "처리 중..." : "신청 취소"}
-                      </SecondaryButton>
+            {/* [캠페인 카드] — 목록 카드와 같은 layoutId로 이동 애니메이션만 독립적으로 진행.
+                진짜 상세 데이터가 아직이면 넘겨받은 목록 데이터(cardSource)로 즉시 그림.
+                showCardLayoutId가 꺼져있으면(새로고침으로 들어온 최초 마운트, 또는 카드
+                없는 페이지로 이동 중) layoutId를 아예 안 주고, 대신 카드도 다른 요소들처럼
+                페이드로 처리함 */}
+            <motion.div
+              className="mt-4"
+              {...(showCardLayoutId
+                ? {}
+                : {
+                    initial: { opacity: 0, y: 8 },
+                    animate: { opacity: 1, y: 0 },
+                    exit: { opacity: 0, y: -8 },
+                    transition: { duration: 4, ease: "easeInOut" as const },
+                  })}
+            >
+              <CampaignCard
+                title={cardSource.title}
+                status={cardSource.status}
+                soldOut={soldOut}
+                openAtLabel={`${formatDateTimeKo(cardSource.openAt)} 오픈`}
+                remainingStock={
+                  cardSource.totalStock != null && hasStockValue
+                    ? remainingStock
+                    : undefined
+                }
+                totalStock={cardSource.totalStock ?? undefined}
+                ownerNickname={cardSource.owner.nickname}
+                ownerProfileImageUrl={cardSource.owner.profileImageUrl}
+                imageUrl={cardImageUrl}
+                interactive={false}
+                layoutId={
+                  showCardLayoutId
+                    ? `campaign-card-${cardSource.id}`
+                    : undefined
+                }
+              />
+            </motion.div>
+
+            {/* 카드 아래쪽 — 링크복사/관리 + 신청하기·취소 + 에러 문구. 역시 카드와 형제 요소.
+                여긴 viewerRole/myApplication처럼 진짜 상세 데이터가 있어야만 정확히 그릴 수
+                있어서, campaign(진짜 데이터)이 도착하기 전까진 간단한 대기 문구만 보여줌 */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 4, ease: "easeInOut" }}
+            >
+              {!campaign ? (
+                <p className="mt-4 text-sm text-(--muted)">불러오는 중...</p>
+              ) : (
+                <>
+                  {/* 링크 복사(누구나) + 관리 아이콘(수정/삭제/종료, 관리자만) — 같은 줄 */}
+                  <div className="mt-4">
+                    {campaign.viewerRole === "OWNER" ? (
+                      <OwnerPanel
+                        campaign={campaign}
+                        isActing={isActing}
+                        onDelete={() => setConfirmAction("delete")}
+                        onClose={() => setConfirmAction("close")}
+                        onBeforeNavigateToNonCardPage={() =>
+                          setIsNavigatingToNonCardPage(true)
+                        }
+                        leadingContent={
+                          <CopyLinkButton
+                            url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
+                          />
+                        }
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <CopyLinkButton
+                          url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
+                        />
+                      </div>
                     )}
                   </div>
-                ) : (
-                  <ApplySection
-                    campaign={campaign}
-                    hasStockValue={hasStockValue}
-                    isActing={isActing}
-                    onApply={handleApply}
-                    onCampaignOpened={() => {
-                      refetch();
-                      setActionError("");
-                    }}
-                  />
-                )}
-              </div>
 
-              {actionError && (
-                <p className="mt-4 text-xs text-(--warn)">{actionError}</p>
+                  {/* 신청하기 / 신청취소 — 역할과 무관하게 공통 처리 (관리자도 신청 가능) */}
+                  <div className="mt-6 flex justify-center">
+                    {hasActiveApplication && campaign.myApplication ? (
+                      <div className="flex flex-col items-center gap-3">
+                        <p className="text-sm text-(--muted)">
+                          신청시각:{" "}
+                          <span className="font-semibold text-(--paper)">
+                            {myApplicationDetail
+                              ? formatDateTimeKo(myApplicationDetail.createdAt)
+                              : "불러오는 중..."}
+                          </span>
+                        </p>
+                        {campaign.status !== "CLOSED" && (
+                          <SecondaryButton
+                            onClick={() => setConfirmAction("cancel")}
+                            disabled={isActing}
+                          >
+                            {isActing ? "처리 중..." : "신청 취소"}
+                          </SecondaryButton>
+                        )}
+                      </div>
+                    ) : (
+                      <ApplySection
+                        campaign={campaign}
+                        hasStockValue={hasStockValue}
+                        isActing={isActing}
+                        onApply={handleApply}
+                        onCampaignOpened={() => {
+                          refetch();
+                          setActionError("");
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  {actionError && (
+                    <p className="mt-4 text-xs text-(--warn)">{actionError}</p>
+                  )}
+                </>
               )}
-            </>
-          )}
-        </motion.div>
-      </div>
+            </motion.div>
+          </div>
 
-      <ConfirmDialog
-        isOpen={confirmAction !== null}
-        title={
-          confirmAction === "delete"
-            ? "정말 삭제하시겠어요?"
-            : confirmAction === "close"
-              ? "신청을 종료하시겠어요?"
-              : "신청을 취소하시겠어요?"
-        }
-        description={
-          confirmAction === "delete"
-            ? "신청자가 있어도 전부 취소되고, 되돌릴 수 없어요."
-            : confirmAction === "close"
-              ? "새 신청만 막히고, 이미 확정된 신청은 그대로 유지돼요. 되돌릴 수 없어요."
-              : undefined
-        }
-        confirmLabel={
-          confirmAction === "delete"
-            ? "삭제"
-            : confirmAction === "close"
-              ? "종료"
-              : "취소하기"
-        }
-        danger={confirmAction === "delete"}
-        onConfirm={() => {
-          const action = confirmAction;
-          setConfirmAction(null);
-          if (action === "delete") handleDelete();
-          else if (action === "close") handleClose();
-          else if (action === "cancel") handleCancel();
-        }}
-        onCancel={() => setConfirmAction(null)}
-      />
-    </div>
+          <ConfirmDialog
+            isOpen={confirmAction !== null}
+            title={
+              confirmAction === "delete"
+                ? "정말 삭제하시겠어요?"
+                : confirmAction === "close"
+                  ? "신청을 종료하시겠어요?"
+                  : "신청을 취소하시겠어요?"
+            }
+            description={
+              confirmAction === "delete"
+                ? "신청자가 있어도 전부 취소되고, 되돌릴 수 없어요."
+                : confirmAction === "close"
+                  ? "새 신청만 막히고, 이미 확정된 신청은 그대로 유지돼요. 되돌릴 수 없어요."
+                  : undefined
+            }
+            confirmLabel={
+              confirmAction === "delete"
+                ? "삭제"
+                : confirmAction === "close"
+                  ? "종료"
+                  : "취소하기"
+            }
+            danger={confirmAction === "delete"}
+            onConfirm={() => {
+              const action = confirmAction;
+              setConfirmAction(null);
+              if (action === "delete") handleDelete();
+              else if (action === "close") handleClose();
+              else if (action === "cancel") handleCancel();
+            }}
+            onCancel={() => setConfirmAction(null)}
+          />
+        </div>
+      )}
+    </LoadingFade>
   );
 }
 
@@ -433,13 +454,5 @@ function CopyLinkButton({ url }: { url: string }) {
         <Link2 size={17} strokeWidth={1.7} />
       )}
     </IconButton>
-  );
-}
-
-function CenteredMessage({ text }: { text: string }) {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-(--ink) px-6 text-center text-sm text-(--muted)">
-      {text}
-    </div>
   );
 }

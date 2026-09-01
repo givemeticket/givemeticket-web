@@ -12,6 +12,9 @@ import { isoToDatetimeLocalValue } from "@/shared/lib/formatDate";
 import { BackButton } from "@/shared/components/BackButton";
 import { PrimaryButton } from "@/shared/components/PrimaryButton";
 import { AnimatedPageBackground } from "@/shared/components/AnimatedPageBackground";
+import { FullPageMessage } from "@/shared/components/FullPageMessage";
+import { LoadingFade } from "@/shared/components/LoadingFade";
+import { SearchX } from "lucide-react";
 import { clearTransitioningCampaign } from "../lib/transitioningCampaignStore";
 
 // "행사 추가"(CampaignCreatePage)랑 같은 페이지 구조 — 예전엔 상세 페이지 안에
@@ -36,23 +39,21 @@ export function CampaignEditPage() {
     enabled: Boolean(shortCode),
   });
 
-  if (isLoading) {
+  if (isError || (!isLoading && !campaign)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-(--ink) text-(--paper)">
-        불러오는 중...
-      </div>
+      <FullPageMessage
+        icon={<SearchX size={32} strokeWidth={1.6} />}
+        title="행사를 찾을 수 없어요"
+        description="주소가 잘못됐거나, 더 이상 존재하지 않는 행사예요."
+      />
     );
   }
 
-  if (isError || !campaign) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-(--ink) text-(--paper)">
-        행사를 찾을 수 없어요.
-      </div>
-    );
-  }
-
-  return <CampaignEditForm campaign={campaign} />;
+  return (
+    <LoadingFade isLoading={isLoading}>
+      {campaign && <CampaignEditForm campaign={campaign} />}
+    </LoadingFade>
+  );
 }
 
 function CampaignEditForm({ campaign }: { campaign: CampaignDetail }) {

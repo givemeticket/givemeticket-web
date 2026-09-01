@@ -3,8 +3,9 @@ import { flushSync } from "react-dom";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Archive, Plus } from "lucide-react";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { LoadingFade } from "@/shared/components/LoadingFade";
 import { InlineSortFilter } from "@/shared/components/InlineSortFilter";
 import { CampaignCard } from "@/features/campaign/components/CampaignCard";
 import {
@@ -120,21 +121,20 @@ export function CampaignListTab({
   });
 
   function renderBody() {
-    if (isLoading) {
-      return (
-        <p className="py-16 text-center text-sm text-(--muted)">
-          불러오는 중...
-        </p>
-      );
-    }
-
     if (!campaigns || campaigns.length === 0) {
       return (
-        <EmptyState
-          icon={emptyIcon}
-          title={emptyTitle}
-          description={emptyDescription}
-        />
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 4, ease: "easeInOut" }}
+        >
+          <EmptyState
+            icon={emptyIcon}
+            title={emptyTitle}
+            description={emptyDescription}
+          />
+        </motion.div>
       );
     }
 
@@ -162,7 +162,26 @@ export function CampaignListTab({
 
     if (visibleCampaigns.length === 0) {
       return (
-        <p className="py-16 text-center text-sm text-(--muted)">{emptyTitle}</p>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 4, ease: "easeInOut" }}
+        >
+          {showExpiredOnly ? (
+            <EmptyState
+              icon={<Archive size={22} strokeWidth={1.7} />}
+              title="만료된 행사가 없어요"
+              description="삭제되거나 종료된 행사가 여기 모여요"
+            />
+          ) : (
+            <EmptyState
+              icon={emptyIcon}
+              title={emptyTitle}
+              description={emptyDescription}
+            />
+          )}
+        </motion.div>
       );
     }
 
@@ -277,7 +296,7 @@ export function CampaignListTab({
         )}
       </motion.div>
 
-      {renderBody()}
+      <LoadingFade isLoading={isLoading}>{renderBody()}</LoadingFade>
     </div>
   );
 }

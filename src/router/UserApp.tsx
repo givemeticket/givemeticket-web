@@ -17,6 +17,8 @@ import { CampaignEditPage } from "@/features/campaign/pages/CampaignEditPage";
 import { CampaignApplicantsPage } from "@/features/campaign/pages/CampaignApplicantsPage";
 import { CampaignDetailPage } from "@/features/campaign/pages/CampaignDetailPage";
 import { OAuthCallbackPage } from "@/features/auth/pages/OAuthCallbackPage";
+import { FullPageMessage } from "@/shared/components/FullPageMessage";
+import { MapPinOff } from "lucide-react";
 import { beginPageTransition } from "@/shared/lib/pageTransitionStore";
 
 // 경로별 스크롤 위치를 직접 관리 (sessionStorage — 새로고침해도 유지되면 좋아서).
@@ -25,7 +27,19 @@ import { beginPageTransition } from "@/shared/lib/pageTransitionStore";
 // 옮겨지는지를 저희가 정확한 타이밍에 직접 통제해야 해서.
 const SCROLL_KEY_PREFIX = "gmt_scroll:";
 
+// 스크롤 복원이 의미 없는 경로(수정/신청자 목록)는 저장 자체를 건너뜀. 이 두
+// 화면은 짧은 폼/목록이라 스크롤 복원할 가치가 딱히 없는데, `shortCode`가 경로에
+// 들어가다 보니 방문한 캠페인 수만큼 sessionStorage에 안 쓰이는 키가 계속 쌓이는
+// 낭비가 있었음. 반대로 캠페인 상세(`/campaigns/{shortCode}`)나 행사 추가
+// (`/campaigns/create`)는 목록↔이동 왕복에서 실제로 쓰이니 그대로 유지함 — 상세도
+// shortCode가 들어가 똑같이 계속 쌓이긴 하지만, 이건 "목록↔상세" 스크롤 복원에
+// 실제로 필요한 저장이라 감수함.
+function isScrollWorthSaving(pathname: string): boolean {
+  return !pathname.endsWith("/edit") && !pathname.endsWith("/applicants");
+}
+
 function saveScrollPosition(pathname: string) {
+  if (!isScrollWorthSaving(pathname)) return;
   sessionStorage.setItem(SCROLL_KEY_PREFIX + pathname, String(window.scrollY));
 }
 
@@ -122,6 +136,16 @@ function RootLayout() {
   );
 }
 
+function NotFoundPage() {
+  return (
+    <FullPageMessage
+      icon={<MapPinOff size={32} strokeWidth={1.6} />}
+      title="페이지를 찾을 수 없어요"
+      description="주소가 잘못됐거나, 더 이상 존재하지 않는 페이지예요."
+    />
+  );
+}
+
 const router = createBrowserRouter([
   // 로그인 화면(비로그인 시 "/") / OAuth 콜백은 UserAppShell(고정 헤더) 바깥에 둠 —
   // 이 두 화면엔 로고+아바타 헤더가 뜨면 안 되므로.
@@ -165,10 +189,7 @@ const router = createBrowserRouter([
             ],
           },
 
-          {
-            path: "*",
-            element: <div className="p-8">페이지를 찾을 수 없어요</div>,
-          },
+          { path: "*", element: <NotFoundPage /> },
         ],
       },
     ],

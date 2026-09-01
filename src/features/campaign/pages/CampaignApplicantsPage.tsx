@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { SearchX, X } from "lucide-react";
 import {
   getCampaign,
   getCampaignApplicants,
@@ -14,6 +14,8 @@ import { Avatar } from "@/shared/components/Avatar";
 import { IconButton } from "@/shared/components/IconButton";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { AnimatedPageBackground } from "@/shared/components/AnimatedPageBackground";
+import { FullPageMessage } from "@/shared/components/FullPageMessage";
+import { LoadingFade } from "@/shared/components/LoadingFade";
 import { clearTransitioningCampaign } from "../lib/transitioningCampaignStore";
 
 // 개설자 전용 — 확정된 신청자를 선착순 순서대로 보여주고, 개별 취소(강제 내보내기)도
@@ -62,19 +64,15 @@ export function CampaignApplicantsPage() {
     }
   }
 
-  if (isCampaignLoading || isApplicantsLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-(--ink) text-(--paper)">
-        불러오는 중...
-      </div>
-    );
-  }
+  const isLoading = isCampaignLoading || isApplicantsLoading;
 
-  if (!campaign) {
+  if (!isLoading && !campaign) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-(--ink) text-(--paper)">
-        행사를 찾을 수 없어요.
-      </div>
+      <FullPageMessage
+        icon={<SearchX size={32} strokeWidth={1.6} />}
+        title="행사를 찾을 수 없어요"
+        description="주소가 잘못됐거나, 더 이상 존재하지 않는 행사예요."
+      />
     );
   }
 
@@ -82,51 +80,61 @@ export function CampaignApplicantsPage() {
 
   return (
     <>
-      <AnimatedPageBackground>
-        <div className="mx-auto max-w-2xl px-6 pt-8 pb-10">
-          <div className="flex items-center gap-1">
-            <BackButton fallback={`/campaigns/${shortCode}`} />
-            <h1 className="text-lg font-bold">신청자 목록</h1>
-          </div>
-          <p className="mt-1 text-sm text-(--muted)">
-            {campaign.title} · 총 {applicantsResult?.totalCount ?? 0}명
-          </p>
-
-          <div className="mt-6 flex flex-col gap-2">
-            {applicants.length === 0 && (
-              <p className="py-16 text-center text-sm text-(--muted)">
-                아직 신청자가 없어요.
-              </p>
-            )}
-
-            {applicants.map((a, idx) => (
-              <div
-                key={a.applicationId}
-                className="flex items-center gap-3 rounded-xl border p-3"
-                style={{ borderColor: "var(--line)" }}
-              >
-                <span className="w-6 shrink-0 text-center text-xs text-(--muted)">
-                  {idx + 1}
-                </span>
-                <Avatar src={a.profileImageUrl} name={a.nickname} size={36} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{a.nickname}</p>
-                  <p className="text-xs text-(--muted)">
-                    {formatDateTimeKo(a.appliedAt)} 신청
-                  </p>
-                </div>
-                <IconButton
-                  onClick={() => setCancelTarget(a)}
-                  label="신청 취소"
-                  tone="warn"
-                >
-                  <X size={16} strokeWidth={2} />
-                </IconButton>
+      <LoadingFade isLoading={isLoading}>
+        {campaign && (
+          <AnimatedPageBackground>
+            <div className="mx-auto max-w-2xl px-6 pt-8 pb-10">
+              <div className="flex items-center gap-1">
+                <BackButton fallback={`/campaigns/${shortCode}`} />
+                <h1 className="text-lg font-bold">신청자 목록</h1>
               </div>
-            ))}
-          </div>
-        </div>
-      </AnimatedPageBackground>
+              <p className="mt-1 text-sm text-(--muted)">
+                {campaign.title} · 총 {applicantsResult?.totalCount ?? 0}명
+              </p>
+
+              <div className="mt-6 flex flex-col gap-2">
+                {applicants.length === 0 && (
+                  <p className="py-16 text-center text-sm text-(--muted)">
+                    아직 신청자가 없어요.
+                  </p>
+                )}
+
+                {applicants.map((a, idx) => (
+                  <div
+                    key={a.applicationId}
+                    className="flex items-center gap-3 rounded-xl border p-3"
+                    style={{ borderColor: "var(--line)" }}
+                  >
+                    <span className="w-6 shrink-0 text-center text-xs text-(--muted)">
+                      {idx + 1}
+                    </span>
+                    <Avatar
+                      src={a.profileImageUrl}
+                      name={a.nickname}
+                      size={36}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {a.nickname}
+                      </p>
+                      <p className="text-xs text-(--muted)">
+                        {formatDateTimeKo(a.appliedAt)} 신청
+                      </p>
+                    </div>
+                    <IconButton
+                      onClick={() => setCancelTarget(a)}
+                      label="신청 취소"
+                      tone="warn"
+                    >
+                      <X size={16} strokeWidth={2} />
+                    </IconButton>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </AnimatedPageBackground>
+        )}
+      </LoadingFade>
 
       <ConfirmDialog
         isOpen={cancelTarget !== null}

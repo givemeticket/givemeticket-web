@@ -7,6 +7,7 @@ import {
   consumePostLoginRedirect,
 } from "../lib/oauthSession";
 import { setAccessToken } from "@/shared/lib/authToken";
+import { LoadingScreen } from "@/shared/components/LoadingScreen";
 
 type Phase = "processing" | "error";
 
@@ -74,23 +75,19 @@ export function OAuthCallbackPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  if (phase === "processing") return <LoadingScreen />;
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-(--ink) px-6 text-center text-(--paper)">
-      {phase === "processing" ? (
-        <p className="text-sm text-(--muted)">로그인 처리 중이에요...</p>
-      ) : (
-        <>
-          <p className="text-sm text-(--paper)">{errorMessage}</p>
-          <button
-            type="button"
-            onClick={() => navigate("/", { replace: true })}
-            className="rounded-full px-4 py-2 text-sm font-semibold text-(--on-yellow)"
-            style={{ backgroundColor: "var(--brand-yellow)" }}
-          >
-            로그인 화면으로 돌아가기
-          </button>
-        </>
-      )}
+      <p className="text-sm text-(--paper)">{errorMessage}</p>
+      <button
+        type="button"
+        onClick={() => navigate("/", { replace: true })}
+        className="rounded-full px-4 py-2 text-sm font-semibold text-(--on-yellow)"
+        style={{ backgroundColor: "var(--brand-yellow)" }}
+      >
+        로그인 화면으로 돌아가기
+      </button>
     </div>
   );
 }
