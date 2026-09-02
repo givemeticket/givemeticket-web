@@ -6,7 +6,8 @@ import { beginPageTransition } from "@/shared/lib/pageTransitionStore";
 import { LoadingScreen } from "@/shared/components/LoadingScreen";
 import { clearAllScrollPositions } from "@/shared/lib/scrollPositionStore";
 import { clearPendingScrollOffset } from "@/shared/lib/scrollOffsetStore";
-import { clearAllTransitioningCampaignState } from "@/features/campaign/lib/transitioningCampaignStore";
+import { clearLeftToNonCardPage } from "@/features/campaign/lib/leftToNonCardPageStore";
+import { clearReturningCampaign } from "@/features/campaign/lib/returningCardStore";
 
 // "/" 는 고정된 라우트가 아니라, 로그인 상태에 따라
 // 로그인 화면(비로그인) 또는 대시보드 기본 탭(로그인)으로 갈리는 진입점.
@@ -30,14 +31,12 @@ export function RootRoute() {
     // 정리함 — 아무 데도 안 쓰이고 남아있던 낡은 값들이 나중에 엉뚱한 시점에
     // 잘못 소비되면서 애니메이션에 가끔 부작용을 일으키는 문제가 있었음. "/"로
     // 오는 진입점이 결국 다 여기를 거치니, 홈으로 갈 때마다 자연스럽게 리셋되는
-    // 셈. 단, 다음 두 가지는 일부러 안 건드림:
-    // - navigationSessionStore.ts: "이 세션이 새로고침으로 시작됐는지"는 불변의
-    //   사실이라, 중간에 초기화하면 오히려 엉뚱한 시점에 재발동하는 버그가 재발함
-    // - dashboardFilterStore.ts: 애니메이션이랑 무관한 사용자 선호(정렬/필터)라,
-    //   홈으로 갈 때마다 초기화되면 오히려 불편함
+    // 셈. 단, dashboardFilterStore.ts는 일부러 안 건드림 — 애니메이션이랑 무관한
+    // 사용자 선호(정렬/필터)라, 홈으로 갈 때마다 초기화되면 오히려 불편함.
     clearAllScrollPositions();
     clearPendingScrollOffset();
-    clearAllTransitioningCampaignState();
+    clearLeftToNonCardPage();
+    clearReturningCampaign();
   }, [isAuthenticated]);
 
   if (isLoading) return <LoadingScreen />;

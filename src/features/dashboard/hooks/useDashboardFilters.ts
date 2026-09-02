@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   getFilterState,
   setFilterState,
@@ -19,14 +19,20 @@ export function useDashboardFilters(activeTab: FilterTab) {
     () => getFilterState(activeTab).showExpiredOnly,
   );
 
-  // 탭을 전환하면, 그 탭에 저장돼있던 값으로 다시 불러옴
-  useEffect(() => {
+  // 탭을 전환하면, 그 탭에 저장돼있던 값으로 다시 불러옴. 이펙트 대신 "렌더링
+  // 중 state를 비교해서 다르면 그 자리에서 다시 set"하는 리액트 공식 패턴을
+  // 씀 — 이펙트로 하면 지난 탭의 값으로 한 번 그려졌다가 이펙트가 실행되고
+  // 나서야 새 값으로 다시 그려지는 깜빡임이 생기지만(react-hooks/set-state-in-effect
+  // 경고도 이 패턴 자체를 지적함), 렌더링 중 비교+set은 화면에 그려지기 전에
+  // 즉시 반영됨.
+  const [lastActiveTab, setLastActiveTab] = useState(activeTab);
+  if (activeTab !== lastActiveTab) {
     const saved = getFilterState(activeTab);
     setSortByState(saved.sortBy);
     setSortDirectionState(saved.sortDirection);
     setShowExpiredOnlyState(saved.showExpiredOnly);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+    setLastActiveTab(activeTab);
+  }
 
   function setSortBy(v: string) {
     setSortByState(v);

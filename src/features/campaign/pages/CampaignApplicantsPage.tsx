@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { SearchX, X } from "lucide-react";
 import {
@@ -16,20 +16,21 @@ import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { AnimatedPageBackground } from "@/shared/components/AnimatedPageBackground";
 import { FullPageMessage } from "@/shared/components/FullPageMessage";
 import { LoadingFade } from "@/shared/components/LoadingFade";
-import { clearTransitioningCampaign } from "../lib/transitioningCampaignStore";
 
 // 개설자 전용 — 확정된 신청자를 선착순 순서대로 보여주고, 개별 취소(강제 내보내기)도
 // 가능함. shortCode로 캠페인부터 조회해서 진짜 campaignId를 얻은 다음, 그걸로
 // 신청자 목록 API를 호출함 (신청자 목록 API 자체는 campaignId 기준이라서).
 export function CampaignApplicantsPage() {
   const { shortCode } = useParams<{ shortCode: string }>();
+  const location = useLocation();
 
-  // 마운트될 때마다 저장소를 비움 — 이 화면엔 캠페인 카드 자체가 없어서, 예전
-  // 상세 페이지 방문 때 저장된 값이 여기를 거쳐 목록으로 돌아갈 때까지 계속 남아있다가
-  // 엉뚱하게 소비되며 짝 없는 카드가 잠깐 나타났다 사라지는 문제가 있었음.
-  useEffect(() => {
-    clearTransitioningCampaign();
-  }, []);
+  // 상세 페이지에서 "신청자 목록" 아이콘을 클릭해서 들어왔는지 — 뒤로가기
+  // 버튼은 항상 보이지만, 이 값에 따라 버튼을 눌렀을 때 어디로 갈지가 갈림
+  // (아래 BackButton의 forceFallback 참고). 자세한 이유는 CampaignEditPage.tsx의
+  // 같은 패턴 참고.
+  const [cameFromDetail] = useState(
+    () => (location.state as { fromDetail?: boolean } | null)?.fromDetail,
+  );
 
   const { data: campaign, isLoading: isCampaignLoading } = useQuery({
     queryKey: ["campaign", shortCode],
@@ -85,7 +86,14 @@ export function CampaignApplicantsPage() {
           <AnimatedPageBackground>
             <div className="mx-auto max-w-2xl px-6 pt-8 pb-10">
               <div className="flex items-center gap-1">
-                <BackButton fallback={`/campaigns/${shortCode}`} />
+                {/* 상세에서 클릭해서 들어온 경우엔 실제 뒤로가기(navigate(-1))로,
+                    주소를 직접 입력해서 들어온 경우엔(cameFromDetail이 없음)
+                    엉뚱한 이전 페이지로 가지 않도록 강제로 이 캠페인의 상세
+                    페이지로 보냄. */}
+                <BackButton
+                  fallback={`/campaigns/${shortCode}`}
+                  forceFallback={!cameFromDetail}
+                />
                 <h1 className="text-lg font-bold">신청자 목록</h1>
               </div>
               <p className="mt-1 text-sm text-(--muted)">

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Ban, Pencil, Trash2, Users } from "lucide-react";
 import { type CampaignDetail } from "../api/campaignApi";
 import { IconButton } from "@/shared/components/IconButton";
-import { markLeftToNonCardPage } from "../lib/transitioningCampaignStore";
+import { markLeftToNonCardPage } from "../lib/leftToNonCardPageStore";
 
 // 관리자(개설자) 전용 패널 — 아이콘 한 줄(수정/종료/삭제).
 // 링크 복사는 역할과 무관하게 누구나 볼 수 있어야 해서 별도 CopyLinkButton으로 분리됨.
@@ -26,10 +26,14 @@ export function OwnerPanel({
   /** 아이콘 행 맨 앞에 같이 넣을 요소 (예: 누구나 볼 수 있는 링크 복사 버튼) */
   leadingContent?: ReactNode;
   /** "수정"/"신청자 목록"처럼, 캠페인 카드 자체가 없는 페이지로 이동하기 직전에
-   * 호출됨. 상세 페이지가 이걸로 "이번 전환은 카드 layoutId 짝짓기를 기대하면 안
-   * 된다"는 걸 미리 알고, 카드를 그냥 페이드로 처리하게 함 — 안 그러면 짝 없는
-   * layoutId만 든 채로 방치되다가 그 화면의 다른 요소들 페이드가 다 끝난 뒤에야
-   * 뒤늦게 사라지는 문제가 있었음 */
+   * 호출됨. 상세 페이지가 이걸로 카드를 페이드아웃 처리함(opacity만 조절 —
+   * layoutId 자체는 안 건드림, CampaignDetailPage.tsx 참고).
+   *
+   * flushSync 제거를 실험해봤는데, 오히려 깜빡임이 더 길어지는 부작용이
+   * 있어서(실제로 확인함) 다시 되돌림 — 왜 flushSync 없이 자동 배칭에만
+   * 맡기면 더 나빠지는지는 아직 정확히 모름(추측: navigate로 인한 리액트
+   * 라우터 자체의 리렌더까지 한 커밋에 다 같이 묶이면서, 그 큰 커밋 자체가
+   * 오히려 더 늦게/뭉쳐서 처리되는 것으로 추정 — 확인 안 됨). */
   onBeforeNavigateToNonCardPage?: () => void;
 }) {
   const navigate = useNavigate();
@@ -45,7 +49,15 @@ export function OwnerPanel({
             onBeforeNavigateToNonCardPage?.();
           });
           markLeftToNonCardPage(campaign.shortCode);
-          navigate(`/campaigns/${campaign.shortCode}/applicants`);
+          // 상세 페이지에서 클릭해서 들어왔다는 걸 표시 — 신청자 목록/수정
+          // 페이지가 이 값으로(CampaignDetailPage의 cameFrom과 같은 원칙)
+          // 뒤로가기 버튼을 보여줄지 판단함. 공유되는 화면이 아니라 항상
+          // 이 경로로만 들어오지만, 주소를 직접 입력했거나 북마크로 들어온
+          // 경우엔 이 값이 없어서 뒤로가기 버튼이 안 보임 — 그런 경우
+          // "뒤로"가 이 캠페인의 상세 페이지라는 보장이 없어서.
+          navigate(`/campaigns/${campaign.shortCode}/applicants`, {
+            state: { fromDetail: true },
+          });
         }}
         label="신청자 목록"
       >
@@ -59,7 +71,10 @@ export function OwnerPanel({
               onBeforeNavigateToNonCardPage?.();
             });
             markLeftToNonCardPage(campaign.shortCode);
-            navigate(`/campaigns/${campaign.shortCode}/edit`);
+            // 이유는 위 "신청자 목록" 버튼과 동일
+            navigate(`/campaigns/${campaign.shortCode}/edit`, {
+              state: { fromDetail: true },
+            });
           }}
           label="수정"
         >

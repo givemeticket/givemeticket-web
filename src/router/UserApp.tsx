@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   createBrowserRouter,
   RouterProvider,
@@ -20,7 +20,10 @@ import { OAuthCallbackPage } from "@/features/auth/pages/OAuthCallbackPage";
 import { FullPageMessage } from "@/shared/components/FullPageMessage";
 import { MapPinOff } from "lucide-react";
 import { beginPageTransition } from "@/shared/lib/pageTransitionStore";
-import { consumePendingScrollOffsetForRootLayout } from "@/shared/lib/scrollOffsetStore";
+import {
+  consumePendingScrollOffsetForRootLayout,
+  markPendingScrollOffset,
+} from "@/shared/lib/scrollOffsetStore";
 import {
   saveScrollPosition as saveScrollPositionRaw,
   getScrollPosition,
@@ -41,6 +44,34 @@ function isScrollWorthSaving(pathname: string): boolean {
 function saveScrollPosition(pathname: string) {
   if (!isScrollWorthSaving(pathname)) return;
   saveScrollPositionRaw(pathname);
+}
+
+// "카드가 있는 캠페인 상세 화면"인지 확인. /campaigns/create는 카드가 없는
+// 화면이라 제외해야 하는데, "슬래시 뒤에 슬래시 없는 문자열"만 보는 정규식은
+// "create"도 shortCode인 것처럼 매칭해버리는 문제가 있어서 음성 전방탐색으로
+// 정확히 그 세그먼트만 제외함. /edit, /applicants 접미사가 붙은 화면도 카드가
+// 없는 화면인데, 이 정규식엔 세그먼트가 하나 더 있어서 애초에 안 걸림(제외할
+// 필요조차 없음).
+function isCardDetailPathname(pathname: string): boolean {
+  return /^\/campaigns\/(?!create(?:$|\/))[^/]+$/.test(pathname);
+}
+
+const CARD_LIST_PATHNAMES = new Set(["/mytickets", "/mycampaigns"]);
+
+// 목록↔상세처럼 스크롤 오프셋 트릭(scrollOffsetStore.ts — 도착 화면이 스크롤이
+// 이미 맞은 것처럼 보이게 하는 방식)을 서로 지원하는 화면 사이의 전환인지 확인.
+// 이 조합이 아니면 오프셋을 걸어도 어차피 아무도 안 읽어서 의미가 없고, 다음
+// 전환 때까지 안 쓰이고 남아있게 둘 이유도 없어서 아예 안 건다.
+function supportsScrollOffsetTrick(
+  leavingPathname: string,
+  arrivingPathname: string,
+): boolean {
+  return (
+    (CARD_LIST_PATHNAMES.has(leavingPathname) &&
+      isCardDetailPathname(arrivingPathname)) ||
+    (isCardDetailPathname(leavingPathname) &&
+      CARD_LIST_PATHNAMES.has(arrivingPathname))
+  );
 }
 
 // /mytickets, /mycampaigns는 같은 DashboardLayout 안에서 탭 내용만 바뀌는 거라
@@ -78,12 +109,46 @@ function RootLayout() {
   // 그 페이지의 스크롤 위치를 저장할 수 있어서
   const prevPathnameRef = useRef(location.pathname);
 
+  // 스크롤 오프셋 표시는 자식(도착 페이지)이 렌더링을 시작하기 전에 끝나 있어야
+  // 함 — 도착 페이지(CampaignListTab/CampaignDetailPage)는 이 값을 useState
+  // 초기화 함수(=렌더링 도중 실행됨)에서 바로 읽어가는데, 아래 useLayoutEffect는
+  // 전체 트리가 커밋된 뒤(자식 렌더링보다 한참 뒤)에나 실행돼서 거기서 표시하면
+  // 이미 늦음 — 자식은 그 시점엔 이미 (관련 없는 이전 전환에서 남은) 낡은 값을
+  // 읽어버린 뒤라서, 정작 이번 전환을 위해 계산한 값은 아무도 못 읽고 버려짐
+  // (실제로 이렇게 했다가, 카드는 낡은/어긋난 오프셋 기준으로 layoutId 위치를
+  // 잡고 정렬 버튼 같은 일반 요소는 다른 기준으로 그려지면서 서로 어긋나
+  // 빈 공간이 보이는 버그로 이어졌음). 그래서 이 값만 따로 렌더링
+  // 도중(자식을 그리기 전)에 미리 계산해서 표시해둠.
+  //
+  // ref가 아니라 state로 "직전에 처리한 경로"를 추적함 — ref를 렌더링 중에
+  // 읽거나 쓰면 안 된다는 규칙(react-hooks/refs, `npm run lint`가 잡아냄)에
+  // 걸려서. 대신 리액트가 공식적으로 권장하는 "렌더링 중 state를 비교해서
+  // 다르면 그 자리에서 다시 set"하는 패턴을 씀 — 렌더링 도중 setState를 부르면
+  // 리액트가 자식을 그리기 전에 이 컴포넌트를 즉시 한 번 더 렌더링해주기 때문에
+  // (그 사이 커밋/페인트는 안 일어남), 자식은 항상 갱신된 값만 보게 됨.
+  const [scrollOffsetMarkedForPathname, setScrollOffsetMarkedForPathname] =
+    useState(location.pathname);
+  if (location.pathname !== scrollOffsetMarkedForPathname) {
+    if (
+      supportsScrollOffsetTrick(
+        scrollOffsetMarkedForPathname,
+        location.pathname,
+      )
+    ) {
+      markPendingScrollOffset(
+        window.scrollY - getScrollPosition(location.pathname),
+      );
+    }
+    setScrollOffsetMarkedForPathname(location.pathname);
+  }
+
   // 스크롤 저장은 떠나는 순간 바로, 복원은 애니메이션이 끝나는 시점에 딱 한 번만
   // (window.scrollTo 한 번) 실행함.
   //
   // 단, 카드 클릭/뒤로가기로 인한 목록↔상세 전환은 예외 — 그 경우엔 스크롤 오프셋
-  // 방식(scrollOffsetStore.ts)이 대신 처리하니, 여기서 평소처럼 스크롤을 옮기면
-  // 오히려 방해가 됨. hasPendingScrollOffset()으로 그 경우를 감지해서 건너뜀.
+  // 방식(scrollOffsetStore.ts, 위에서 표시함)이 대신 처리하니, 여기서 평소처럼
+  // 스크롤을 옮기면 오히려 방해가 됨. consumePendingScrollOffsetForRootLayout()으로
+  // 그 경우를 감지해서 건너뜀.
   useLayoutEffect(() => {
     const leavingPathname = prevPathnameRef.current;
     const arrivingPathname = location.pathname;
@@ -100,8 +165,8 @@ function RootLayout() {
     // 정확히 그 페이지 기준 값임
     saveScrollPosition(leavingPathname);
 
-    // 스크롤 오프셋 방식으로 처리되는 전환이면, 도착 페이지가 알아서 스크롤까지
-    // 책임지고 처리하니 여기서는 아무것도 안 함
+    // 스크롤 오프셋 방식으로 처리되는 전환이면(위에서 렌더링 중에 이미 표시해둠),
+    // 도착 페이지가 알아서 스크롤까지 책임지고 처리하니 여기서는 아무것도 안 함
     if (consumePendingScrollOffsetForRootLayout()) return;
 
     const timer = setTimeout(() => {

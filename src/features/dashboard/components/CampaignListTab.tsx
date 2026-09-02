@@ -13,12 +13,8 @@ import {
   type CampaignScope,
 } from "@/features/campaign/api/campaignApi";
 import { formatDateTimeKo } from "@/shared/lib/formatDate";
-import { consumeTransitioningCampaignId } from "@/features/campaign/lib/transitioningCampaignStore";
-import { isFirstReturnFromRefreshedDetailPage } from "@/shared/lib/navigationSessionStore";
-import {
-  markPendingScrollOffset,
-  consumePendingScrollOffset,
-} from "@/shared/lib/scrollOffsetStore";
+import { consumePendingScrollOffset } from "@/shared/lib/scrollOffsetStore";
+import { consumeReturningCampaignId } from "@/features/campaign/lib/returningCardStore";
 import {
   PAGE_TRANSITION_DURATION,
   POST_ANIMATION_DELAY_MS,
@@ -99,57 +95,14 @@ export function CampaignListTab({
     setSortDirection,
     setShowExpiredOnly,
   } = useDashboardFilters(fromKey);
-  // consumeTransitioningCampaignId()랑 isFirstReturnFromRefreshedDetailPage() 둘 다
-  // 소모성(한 번만 유효한 값)이라, 아래 두 state가 서로 다른 useState 초기화 함수
-  // 안에서 각자 호출하면 안 됨(두 번째 호출은 항상 "이미 소모됨" 결과가 나옴). 그래서
-  // 딱 한 번만 계산해서 ref에 담아두고, 두 state를 거기서 각각 시드함.
-  const initialRef = useRef<
-    | { transitioningId: number | null; skipLayoutIdForCardId: number | null }
-    | undefined
-  >(undefined);
-  if (initialRef.current === undefined) {
-    const id = consumeTransitioningCampaignId();
-    // isFirstReturnFromRefreshedDetailPage()는 이 세션 전체에서 딱 한 번만 유효한
-    // 소모성 신호라, id가 null이든 아니든 항상 호출해서 소비해야 함. `id !== null
-    // && isFirstReturnFromRefreshedDetailPage()`처럼 쓰면, id가 null일 때 단축
-    // 평가로 뒤쪽 호출 자체가 스킵되면서 이 신호가 "안 쓰인 채로" 남아있다가,
-    // 완전히 무관한 나중의 다른 카드 클릭→복귀 시점에 뒤늦게 소비되며 그 카드한테
-    // 잘못된 특별 취급(skipLayoutIdForCardId)이 적용되는 버그가 있었음(로그로
-    // 확인함) — 그 카드는 layoutId가 없는데 상세 쪽은 있어서 서로 짝이 어긋나며
-    // 카드가 복제되는 것처럼 보였음.
-    const isFirstReturn = isFirstReturnFromRefreshedDetailPage();
-    if (id !== null && isFirstReturn) {
-      // 새로고침 직후 최초 복귀 — 이 카드 하나만, 이번 렌더링에서만 "이동 중" 특별
-      // 취급을 안 함(layoutId 기반 이동 대신 다른 카드들처럼 페이드로)
-      initialRef.current = { transitioningId: null, skipLayoutIdForCardId: id };
-    } else {
-      initialRef.current = { transitioningId: id, skipLayoutIdForCardId: null };
-    }
-  }
-
-  // "지금 이동 중인 카드가 뭔지" 하나만 추적. 처음엔 상세 페이지에서 돌아온 경우를 위해
-  // 저장소 값으로 초기화하고(한 번 읽으면 소모됨), 그 다음부턴 새로 클릭할 때마다
-  // 덮어씀 — 예전엔 "돌아온 카드"랑 "새로 클릭한 카드"를 별도 state로 나눠서 관리하다가,
-  // 새 카드를 클릭해도 예전 값이 안 지워지고 계속 남아있어서 둘 다 동시에
-  // "이동 중"으로 처리되는 버그가 있었음(예전 카드가 애니메이션 내내 목록에 남아있던 원인)
+  // "지금 이동 중인 카드가 뭔지" 하나만 추적. 상세 페이지에서 인앱 뒤로가기
+  // 버튼으로 돌아온 경우, 그 클릭 시점에 표시해둔 값을 여기서 이어받아 그
+  // 카드에도 이동 애니메이션을 걸어줌(returningCardStore.ts, 한 번 읽으면
+  // 소모됨). 그 외(새로 클릭, 새로고침, 브라우저 자체 뒤로/앞으로가기 등)엔
+  // 값이 없어서 null로 시작하고, 클릭할 때마다 그때그때 덮어씀.
   const [transitioningId, setTransitioningId] = useState<number | null>(
-    () => initialRef.current!.transitioningId,
+    () => consumeReturningCampaignId(),
   );
-
-  // 새로고침으로 상세 페이지에 바로 들어온 뒤, 처음으로 목록에 돌아오는 바로 그 순간엔
-  // "돌아온 그 카드 하나만" layoutId를 생략해야 함(대신 페이드로). 처음엔 이걸 컴포넌트
-  // 전체 플래그로 만들었었는데, 그러면 이 목록 인스턴스가 살아있는 동안 계속(=그 뒤에
-  // 다른 카드를 새로 클릭해도) layoutId가 안 붙는 버그가 있었음 — "이 목록에 딱 한 번
-  // 있었던 특수 상황"이 "이 인스턴스 전체의 평생 상태"로 잘못 굳어버린 것. 그래서
-  // "어떤 카드 id가 이번 딱 한 번만 생략 대상인지"로 좁히고, 첫 렌더링이 끝나자마자
-  // (아래 useEffect) 바로 리셋해서 그 다음 클릭부턴(그 카드를 포함해서) 전혀 영향
-  // 없게 함.
-  const [skipLayoutIdForCardId, setSkipLayoutIdForCardId] = useState<
-    number | null
-  >(() => initialRef.current!.skipLayoutIdForCardId);
-  useEffect(() => {
-    setSkipLayoutIdForCardId(null);
-  }, []);
 
   // onMoveComplete에서 transitioningId를 리셋할 때 쓸 지연 타이머. 카드가 도착한
   // 즉시 리셋하면, 그 순간 아직 화면에 남아있는 주변 페이지(예: 방금 떠나온 상세
@@ -254,15 +207,12 @@ export function CampaignListTab({
               ownerNickname={c.owner.nickname}
               ownerProfileImageUrl={c.owner.profileImageUrl}
               imageUrl={c.imageUrl}
-              // layoutId는 평소엔 항상(처음부터) 줌 — Framer Motion이 기준점을 미리
-              // 알고 있어야 하기 때문. 실제로 이동해야 하는 카드인지는 animateMove로만
-              // 구분함. skipLayoutIdForCardId랑 일치하는 딱 그 카드, 딱 이번 렌더링에서만
-              // 생략함 (그 다음 렌더링부턴 이 값 자체가 리셋되어 다시 정상 부여됨)
-              layoutId={
-                c.id === skipLayoutIdForCardId
-                  ? undefined
-                  : `campaign-card-${c.id}`
-              }
+              // layoutId는 항상(예외 없이) 줌 — Framer Motion이 기준점을 미리 알고
+              // 있어야 하기 때문. 실제로 이동해야 하는 카드인지는 animateMove로만
+              // 구분함. 마운트 시점에 한 번 결정하고 이후 절대 안 바꾸는 게 원칙인데
+              // (animation.md 1번), "항상 켜짐"은 그 자체로 이미 이 원칙에 안전하게
+              // 부합함.
+              layoutId={`campaign-card-${c.id}`}
               animateMove={isTransitioning}
               layoutDurationOverride={
                 isTransitioning && hasSnappedScrollOffset ? 0 : undefined
@@ -287,9 +237,9 @@ export function CampaignListTab({
                 flushSync(() => {
                   setTransitioningId(c.id);
                 });
-                // 지금 스크롤값을 표시해둠 — 상세 페이지가 이 값으로 스크롤
-                // 오프셋 보정을 함 (scrollOffsetStore.ts 참고)
-                markPendingScrollOffset(window.scrollY);
+                // 스크롤 오프셋 보정은 이제 RootLayout(UserApp.tsx)이 모든
+                // 목록↔상세 전환에서 일괄적으로 계산해줌 — 여기서 따로 표시해둘
+                // 필요 없음.
                 navigate(`/campaigns/${c.shortCode}`, {
                   state: { from: fromKey, campaign: c },
                 });

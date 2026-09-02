@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent,
-  type WheelEvent,
-} from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 
 // DateTimePickerField의 모달 레이아웃(하이라이트 밴드 위치 등)도 이 값들을 그대로
 // 써야 해서 export함 — 두 파일이 같은 값을 따로따로 들고 있으면 어긋날 수 있음.
@@ -159,9 +153,14 @@ export function WheelColumn({
   // 낡은 클로저가 돼버림 (다른 휠을 조작해서 selectedValue/onChange가 바뀌어도
   // 이 리스너는 그걸 모름 — 이게 다른 휠까지 같이 흔들리던 진짜 원인이었음).
   // 매 렌더마다 최신 로직으로 갱신되는 ref를 하나 두고, 리스너는 항상 이 ref를
-  // 통해서만 호출하도록 함.
+  // 통해서만 호출하도록 함. ref 갱신 자체는 렌더링 중이 아니라(react-hooks/refs
+  // 규칙 위반) 매 렌더 이후 실행되는 이펙트(의존성 배열 없음 = 매번 실행)에서
+  // 함 — scrollend는 사용자가 실제로 스크롤을 멈춰야 발생하는 이벤트라, 렌더링과
+  // 그 직후 커밋 사이의 찰나에 끼어들 일이 없어서 타이밍상 안전함.
   const commitRef = useRef(commitAndMaybeRecenter);
-  commitRef.current = commitAndMaybeRecenter;
+  useEffect(() => {
+    commitRef.current = commitAndMaybeRecenter;
+  });
 
   // 브라우저가 스크롤이 "진짜로" 끝난 시점을 정확히 알려주는 이벤트.
   // 이게 있으면 몇 ms 동안 조용했다고 추측하는 방식보다 훨씬 정확함.
@@ -186,27 +185,50 @@ export function WheelColumn({
   const wheelAccumRef = useRef(0);
   const WHEEL_STEP_PX = 45;
 
-  function handleWheel(e: WheelEvent<HTMLDivElement>) {
-    e.preventDefault();
+  // JSX의 onWheel(리액트 합성 이벤트)로 등록하면 안 됨 — 리액트가 성능상 wheel
+  // 리스너를 기본적으로 passive로 등록해서, 그 안에서 e.preventDefault()를 불러도
+  // 조용히 무시되고 "Unable to preventDefault inside passive event listener
+  // invocation" 경고만 뜸(스크롤 자체는 안 막힘). useBlockUserScroll.ts에서 이미
+  // 같은 이유로 쓰는 방식대로, 네이티브 addEventListener로 직접 등록하면서
+  // { passive: false }를 명시해야 함. circular/n은 실제로 이 컴포넌트가 살아있는
+  // 동안 안 바뀌지만(오전오후/시/분 각각 고정된 설정), 혹시 바뀌는 경우까지
+  // 대비해서 의존성 배열에 넣어 항상 최신값으로 다시 등록되게 함.
+  useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
-    wheelAccumRef.current += e.deltaY;
-    if (Math.abs(wheelAccumRef.current) < WHEEL_STEP_PX) return;
+    function handleWheel(e: WheelEvent) {
+      e.preventDefault();
 
-    const steps = Math.trunc(wheelAccumRef.current / WHEEL_STEP_PX);
-    wheelAccumRef.current -= steps * WHEEL_STEP_PX;
+      wheelAccumRef.current += e.deltaY;
+      if (Math.abs(wheelAccumRef.current) < WHEEL_STEP_PX) return;
 
-    // 애니메이션이 아직 안 끝났을 수 있는 el.scrollTop을 다시 읽는 대신,
-    // 우리가 마지막으로 지시한 목표 위치를 기준으로 이어서 계산 — 그래야 빠르게
-    // 연달아 들어오는 이벤트에서도 튀지 않고 정확히 한 칸씩 누적됨
-    const base =
-      wheelTargetIndexRef.current ?? Math.round(el.scrollTop / ROW_HEIGHT);
-    const next = base + steps;
-    wheelTargetIndexRef.current = next;
+      const steps = Math.trunc(wheelAccumRef.current / WHEEL_STEP_PX);
+      wheelAccumRef.current -= steps * WHEEL_STEP_PX;
 
-    el.scrollTo({ top: next * ROW_HEIGHT, behavior: "smooth" });
-  }
+      // 애니메이션이 아직 안 끝났을 수 있는 el.scrollTop을 다시 읽는 대신,
+      // 우리가 마지막으로 지시한 목표 위치를 기준으로 이어서 계산 — 그래야 빠르게
+      // 연달아 들어오는 이벤트에서도 튀지 않고 정확히 한 칸씩 누적됨
+      const base =
+        wheelTargetIndexRef.current ?? Math.round(el!.scrollTop / ROW_HEIGHT);
+      const rawNext = base + steps;
+      // circular=false(오전오후/시처럼 끝이 있는 휠)는 브라우저가 실제 스크롤
+      // 위치를 [0, (n-1)*ROW_HEIGHT] 범위로 알아서 clamp함. 근데 여기서 추적하는
+      // "우리가 마지막으로 지시한 목표 인덱스"는 그 clamp를 모르고 계속
+      // 누적되기만 해서, 끝에 도달한 뒤에도 같은 방향으로 계속 스크롤하면 이
+      // 값만 실제 범위 밖으로 한참 벗어나 버림 — 그 상태에서 반대로 스크롤하면,
+      // 화면은 이미 끝인데 이 값이 그만큼 다시 범위 안으로 들어와야 그제야
+      // 위치가 움직이기 시작하는 버그로 이어짐(실제로 겪음). 여기서도 같은
+      // 범위로 clamp해서 실제 스크롤 위치와 어긋나지 않게 함.
+      const next = circular ? rawNext : Math.max(0, Math.min(n - 1, rawNext));
+      wheelTargetIndexRef.current = next;
+
+      el!.scrollTo({ top: next * ROW_HEIGHT, behavior: "smooth" });
+    }
+
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, [circular, n]);
 
   // 마우스 드래그로 휠을 움직일 수 있게 함. 터치는 브라우저 기본 스와이프 스크롤을
   // 그대로 쓰므로(이미 잘 동작함) pointerType이 mouse일 때만 개입함 — 안 그러면
@@ -259,7 +281,6 @@ export function WheelColumn({
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      onWheel={handleWheel}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

@@ -40,8 +40,12 @@ export function CountdownApplyButton({
 
   const serverNow = () => Date.now() + offsetRef.current;
 
+  // 마운트되는 첫 렌더링 시점엔 서버 시각 오차 응답이 아직 온 적이 없어서
+  // offsetRef.current가 항상 0(초기값)임이 보장됨 — 그래서 여기선 굳이
+  // serverNow()(ref 읽기)를 안 부르고 오차 0으로 직접 계산해도 결과가 같음.
+  // 렌더링 중엔 ref를 읽으면 안 된다는 규칙(react-hooks/refs) 때문.
   const [remainingMs, setRemainingMs] = useState(
-    () => new Date(openAt).getTime() - serverNow(),
+    () => new Date(openAt).getTime() - Date.now(),
   );
   // 실제 API를 호출하는 버튼이라, 오픈 직전 광클로 요청이 과도하게 나가지 않도록
   // 아주 짧은 디바운스만 걸어둠 (isActing 중엔 어차피 막히지만, 응답이 빨리 오면

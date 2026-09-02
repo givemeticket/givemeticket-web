@@ -1,5 +1,5 @@
-import { useEffect, useState, type SubmitEvent } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useState, type SubmitEvent } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import {
@@ -15,19 +15,11 @@ import { AnimatedPageBackground } from "@/shared/components/AnimatedPageBackgrou
 import { FullPageMessage } from "@/shared/components/FullPageMessage";
 import { LoadingFade } from "@/shared/components/LoadingFade";
 import { SearchX } from "lucide-react";
-import { clearTransitioningCampaign } from "../lib/transitioningCampaignStore";
 
 // "행사 추가"(CampaignCreatePage)랑 같은 페이지 구조 — 예전엔 상세 페이지 안에
 // 인라인으로 펼쳐지는 폼(OwnerPanel)이었는데, 별도 페이지로 분리함.
 export function CampaignEditPage() {
   const { shortCode } = useParams<{ shortCode: string }>();
-
-  // 마운트될 때마다 저장소를 비움 — 이 화면엔 캠페인 카드 자체가 없어서, 예전
-  // 상세 페이지 방문 때 저장된 값이 여기를 거쳐 목록으로 돌아갈 때까지 계속 남아있다가
-  // 엉뚱하게 소비되며 짝 없는 카드가 잠깐 나타났다 사라지는 문제가 있었음.
-  useEffect(() => {
-    clearTransitioningCampaign();
-  }, []);
 
   const {
     data: campaign,
@@ -58,6 +50,16 @@ export function CampaignEditPage() {
 
 function CampaignEditForm({ campaign }: { campaign: CampaignDetail }) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // 상세 페이지에서 "수정" 아이콘을 클릭해서 들어왔는지 — 뒤로가기 버튼은
+  // 항상 보이지만, 이 값에 따라 버튼을 눌렀을 때 어디로 갈지가 갈림(아래
+  // BackButton의 forceFallback 참고). 마운트 시점에 한 번만 고정해두는 이유는
+  // CampaignDetailPage의 cameFrom과 동일(뒤로가기 exit 애니메이션 중 라우터
+  // state가 먼저 바뀌어버려서 판단이 틀어지는 문제 방지).
+  const [cameFromDetail] = useState(
+    () => (location.state as { fromDetail?: boolean } | null)?.fromDetail,
+  );
 
   const [title, setTitle] = useState(campaign.title);
   const [totalStock, setTotalStock] = useState(
@@ -118,7 +120,14 @@ function CampaignEditForm({ campaign }: { campaign: CampaignDetail }) {
     <AnimatedPageBackground>
       <div className="mx-auto max-w-2xl px-6 pt-8 pb-10">
         <div className="flex items-center gap-1">
-          <BackButton fallback={`/campaigns/${campaign.shortCode}`} />
+          {/* 상세에서 클릭해서 들어온 경우엔 실제 뒤로가기(navigate(-1))로,
+              주소를 직접 입력해서 들어온 경우엔(cameFromDetail이 없음)
+              엉뚱한 이전 페이지(새 탭의 이전 방문 기록 등)로 가지 않도록
+              강제로 이 캠페인의 상세 페이지로 보냄. */}
+          <BackButton
+            fallback={`/campaigns/${campaign.shortCode}`}
+            forceFallback={!cameFromDetail}
+          />
           <h1 className="text-lg font-bold">행사 수정</h1>
         </div>
 
