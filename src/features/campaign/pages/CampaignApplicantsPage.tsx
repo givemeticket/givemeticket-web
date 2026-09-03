@@ -13,7 +13,7 @@ import { BackButton } from "@/shared/components/BackButton";
 import { Avatar } from "@/shared/components/Avatar";
 import { IconButton } from "@/shared/components/IconButton";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
-import { AnimatedPageBackground } from "@/shared/components/AnimatedPageBackground";
+import { AnimatedPageBackground } from "@/shared/animation/components/AnimatedPageBackground";
 import { FullPageMessage } from "@/shared/components/FullPageMessage";
 import { LoadingFade } from "@/shared/components/LoadingFade";
 

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Ban, Pencil, Trash2, Users } from "lucide-react";
 import { type CampaignDetail } from "../api/campaignApi";
 import { IconButton } from "@/shared/components/IconButton";
-import { markLeftToNonCardPage } from "../lib/leftToNonCardPageStore";
+import { markLeftToNonCardPage } from "@/shared/animation/pageTransition/leftToNonCardPageStore";
 
 // 관리자(개설자) 전용 패널 — 아이콘 한 줄(수정/종료/삭제).
 // 링크 복사는 역할과 무관하게 누구나 볼 수 있어야 해서 별도 CopyLinkButton으로 분리됨.

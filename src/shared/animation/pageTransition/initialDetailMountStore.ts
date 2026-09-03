@@ -1,3 +1,5 @@
+import { isCardDetailPathname } from "./cardDetailPathname";
+
 // 이 모듈이 로드되는 시점(=이 브라우저 탭의 현재 세션이 시작된 시점, 새로고침
 // 포함)의 URL을 그대로 기록해둠 — 리액트 렌더링/이펙트 타이밍과 무관한 순수
 // JS 레벨의 신호라서 안전함.
@@ -9,11 +11,8 @@
 // 남아있음. 이 둘을 가르는 유일한 차이가 "이 세션이 실제로 이 URL에서 막
 // 시작됐는지"라서, 그 사실 자체를 여기 남겨둠(예전 navigationSessionStore.ts와
 // 같은 기법).
-const initialPathname = window.location.pathname;
 
-function isCardDetailPathname(pathname: string): boolean {
-  return /^\/campaigns\/(?!create(?:$|\/))[^/]+$/.test(pathname);
-}
+const initialPathname = window.location.pathname;
 
 const startedOnDetailPage = isCardDetailPathname(initialPathname);
 

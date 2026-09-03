@@ -5,7 +5,7 @@ import { CampaignFormFields } from "../components/CampaignFormFields";
 import { nowAsDatetimeLocalValue } from "@/shared/lib/formatDate";
 import { BackButton } from "@/shared/components/BackButton";
 import { PrimaryButton } from "@/shared/components/PrimaryButton";
-import { AnimatedPageBackground } from "@/shared/components/AnimatedPageBackground";
+import { AnimatedPageBackground } from "@/shared/animation/components/AnimatedPageBackground";
 
 export function CampaignCreatePage() {
   const navigate = useNavigate();

@@ -11,7 +11,7 @@ import { CampaignFormFields } from "../components/CampaignFormFields";
 import { isoToDatetimeLocalValue } from "@/shared/lib/formatDate";
 import { BackButton } from "@/shared/components/BackButton";
 import { PrimaryButton } from "@/shared/components/PrimaryButton";
-import { AnimatedPageBackground } from "@/shared/components/AnimatedPageBackground";
+import { AnimatedPageBackground } from "@/shared/animation/components/AnimatedPageBackground";
 import { FullPageMessage } from "@/shared/components/FullPageMessage";
 import { LoadingFade } from "@/shared/components/LoadingFade";
 import { SearchX } from "lucide-react";

@@ -8,7 +8,7 @@
 // 리액트 state가 아니라 이런 구독 방식(useSyncExternalStore)을 쓰는 이유: 이 값을
 // 갱신하는 쪽(RootLayout)이랑 읽는 쪽(UserAppShell)이 서로 부모/자식도 아니고
 // 공통 조상도 마땅치 않아서, 평범한 props/state로 넘기기 애매함.
-import { POST_ANIMATION_DELAY_MS } from "./animationDurations";
+import { POST_ANIMATION_DELAY_MS } from "../animationDurations";
 
 type Listener = () => void;
 

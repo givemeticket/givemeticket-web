@@ -21,10 +21,20 @@
     sticky보다 위에 뜨는지 z-index 순서 확인 필요
 - [ ] 스크롤 연동 소개 화면 (screentune.app 스타일 — Framer Motion `useScroll`/`useTransform` 사용 예정)
 - [x] ~~브라우저 자체의 뒤로가기/앞으로가기 버튼으로 이동할 때, 특정 경우에 한해 카드 복사 버그 재현됨~~ — **완료.** 근본적 개선 방향(아래) 적용으로, native 뒤로가기/앞으로가기는 이제 항상 `layoutId`가 관여하지 않는 페이드로만 처리되도록 구조 자체가 바뀌어서, 이 버그가 날 수 있는 경로 자체가 없어짐. 여러 차례 실제 재현 테스트로 확인함(animation.md 19, 20번 참고).
-- [ ] **애니메이션 코드 정리(파일 재배치 등)** — 아래 "근본적 개선 방향으로 구조 전환"이 끝났으니 이제 순서상 진행 가능. 정리 방향:
-  - 흩어진 스토어들(`pageTransitionStore`, `scrollPositionStore`, `scrollOffsetStore`, `initialDetailMountStore`, `leftToNonCardPageStore`, `returningCardStore` 등)과 `UserApp.tsx`의 스크롤 저장/복원 함수(`saveScrollPosition`/`getScrollPosition`)/`getAnimationKey` 등 순수 로직을 `shared/animation/` 같은 별도 디렉토리로 모으기
-  - duration 매직 넘버 통합은 `animationDurations.ts`로 이미 완료됨. 남은 일은 지금 테스트용으로 늘려둔 값(`PAGE_TRANSITION_DURATION = 2`)을 프로덕션 값(카드 0.35초, 페이드 0.3초 — 또는 둘 다 통일된 값 하나)으로 되돌리는 것뿐
-  - `DashboardLayout.tsx`/`CampaignDetailPage.tsx`/`CampaignListTab.tsx` 4곳에서 반복되는 페이드+이동 `motion.div` 패턴(`initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}}`)을 `<FadeSlide>` 같은 공용 컴포넌트로 추출
+- [x] ~~애니메이션 코드 정리(파일 재배치 등)~~ — **완료.** 애니메이션/페이지 전환
+  관련 코드를 전부 `src/shared/animation/` 밑으로 통합함:
+  - `animationDurations.ts`, `components/`(`FadeSlide.tsx` 신규, `AnimatedPageBackground.tsx`
+    이동), `hooks/`(`useBlockUserScroll.ts` 이동)는 최상위에 두고, 라우트 전환
+    전용 스토어/순수 로직(`pageTransitionStore`, `scrollPositionStore`,
+    `scrollOffsetStore`, `initialDetailMountStore`, `leftToNonCardPageStore`,
+    `returningCardStore`, 신규 `cardDetailPathname.ts`/`routeTransitionRules.ts`)은
+    `pageTransition/` 하위 폴더로 뺌 — 나중에 다른 종류의 애니메이션(예: 아래
+    스크롤 연동 소개 화면)이 생기면 형제 폴더를 추가하는 식으로 확장 가능.
+  - `DashboardLayout.tsx`/`CampaignDetailPage.tsx`/`CampaignListTab.tsx` 7곳에서
+    반복되던 페이드+이동 `motion.div` 패턴을 `<FadeSlide>` 공용 컴포넌트로 추출.
+  - `campaign-card-${id}` layoutId 문자열 중복도 `features/campaign/lib/campaignCardLayoutId.ts`로 통합.
+  - duration 값(`PAGE_TRANSITION_DURATION = 2`, 테스트용)은 이번엔 일부러 안
+    건드림 — 확인 끝나면 프로덕션 값으로 되돌릴 것(여전히 남은 일).
 - [ ] **근본적 개선 방향(기본은 페이드 꺼짐, 확실한 케이스만 layoutId 켜기)으로 구조 전환** — 진입 경로(`CampaignDetailPage.tsx`의 `showCardLayoutId`)는 **완료**하고 여러 차례 실제 테스트로 검증함. 이탈 경로(수정/신청자 목록으로 떠날 때, `isNavigatingToNonCardPage`)는 같은 방향으로 정리를 시도했다가, 카드 없는 화면을 거쳐 목록으로 돌아가는 마지막 뒤로가기의 이동 애니메이션이 사라지는 더 큰 부작용이 있어서 되돌림 — 여전히 `layoutId`를 마운트 중 직접 켰다 껐다 하는 예외로 남아있음(1번 원칙 위반, 의도적으로 감수). 자세한 내용, 실제로 겪은 함정들, "저장소를 완전히 없애진 못했다"는 정직한 회고까지 전부 animation.md "근본적 개선 방향" 섹션 및 19~23번 항목에 정리해둠.
 - [ ] **아주 사소함: 상세→신청자목록/수정 이동 시 카드가 즉시 페이드되지 않고 순간 살짝 흐려졌다 풀렸다 다시 페이드됨** — `layoutId`를 마운트 이후 동적으로 떼는 것 자체의 불안정성으로 추정(animation.md 1번과 같은 종류). `flushSync` 제거로는 해결 안 됨(원복함). `layoutId`는 그대로 두고 카드 wrapper의 opacity만 별도로 조절하는 방식도 시도했으나, 그러면 위 "근본적 개선 방향" 항목에 적은 부작용(반환 여정 이동 애니메이션 소실)이 생겨서 되돌림(animation.md 23번). **보류 — 사용자가 별도로 추적 중, 이 항목엔 추가 작업 안 함.**
 

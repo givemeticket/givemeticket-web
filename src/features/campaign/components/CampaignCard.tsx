@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { Avatar } from "@/shared/components/Avatar";
-import { PAGE_TRANSITION_DURATION } from "@/shared/lib/animationDurations";
+import { PAGE_TRANSITION_DURATION } from "@/shared/animation/animationDurations";
 
 // 행사 목록(나의 티켓 / 나의 행사)에서 공통으로 쓰는 카드.
 // "보딩패스" 스타일 — 오른쪽에 상태 색상으로 채운 스텁을 붙이고,

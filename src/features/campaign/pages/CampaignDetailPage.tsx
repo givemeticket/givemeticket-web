@@ -6,7 +6,6 @@ import {
   useNavigationType,
   useParams,
 } from "react-router-dom";
-import { motion } from "motion/react";
 import axios from "axios";
 import {
   applyToCampaign,
@@ -31,15 +30,14 @@ import { OwnerPanel } from "../components/OwnerPanel";
 import { useCampaignDetailData } from "../hooks/useCampaignDetailData";
 import { CountdownApplyButton } from "../components/CountdownApplyButton";
 import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
-import { consumeLeftToNonCardPage } from "../lib/leftToNonCardPageStore";
-import { isInitialDetailPageMount } from "../lib/initialDetailMountStore";
-import { markReturningCampaign } from "../lib/returningCardStore";
-import { consumePendingScrollOffset } from "@/shared/lib/scrollOffsetStore";
-import { getScrollPosition } from "@/shared/lib/scrollPositionStore";
-import {
-  PAGE_TRANSITION_DURATION,
-  POST_ANIMATION_DELAY_MS,
-} from "@/shared/lib/animationDurations";
+import { getCampaignCardLayoutId } from "../lib/campaignCardLayoutId";
+import { FadeSlide } from "@/shared/animation/components/FadeSlide";
+import { consumeLeftToNonCardPage } from "@/shared/animation/pageTransition/leftToNonCardPageStore";
+import { isInitialDetailPageMount } from "@/shared/animation/pageTransition/initialDetailMountStore";
+import { markReturningCampaign } from "@/shared/animation/pageTransition/returningCardStore";
+import { consumePendingScrollOffset } from "@/shared/animation/pageTransition/scrollOffsetStore";
+import { getScrollPosition } from "@/shared/animation/pageTransition/scrollPositionStore";
+import { POST_ANIMATION_DELAY_MS } from "@/shared/animation/animationDurations";
 
 /** 어디서 이 페이지로 들어왔는지 — 대시보드 탭에서 카드 클릭 시에만 명시적으로 실어서 넘김.
  * 공유 링크로 직접 들어오거나 주소를 직접 입력한 경우엔 이 값이 없어서 뒤로가기 버튼이 안 보임. */
@@ -298,16 +296,7 @@ export function CampaignDetailPage() {
               사라지는 동안에도 이 불투명한 배경이 화면 전체를 계속 덮고 있어서, 그 밑에서
               동시에 나타나고 있는 목록 화면이 거의 끝까지 안 보이다가 마지막 순간에야
               갑자기 드러나는 문제가 생김. 카드의 자식이 아닌 별개 형제 요소라 카드엔 영향 없음. */}
-          <motion.div
-            className="absolute inset-0 -z-10 bg-(--ink)"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{
-              duration: PAGE_TRANSITION_DURATION,
-              ease: "easeInOut",
-            }}
-          />
+          <FadeSlide className="absolute inset-0 -z-10 bg-(--ink)" slide={false} />
 
           <div
             className="mx-auto max-w-2xl px-6"
@@ -318,15 +307,7 @@ export function CampaignDetailPage() {
             }
           >
             {/* 카드 위쪽 — < 티켓정보. 카드와 형제 요소라 카드의 투명도엔 영향 없음 */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{
-                duration: PAGE_TRANSITION_DURATION,
-                ease: "easeInOut",
-              }}
-            >
+            <FadeSlide>
               <div className="flex items-center gap-1">
                 {/* 스크롤 오프셋 보정은 이제 RootLayout(UserApp.tsx)이 모든
                     목록↔상세 전환에서 일괄적으로 계산해줌 — 예전엔 이 버튼을
@@ -349,27 +330,14 @@ export function CampaignDetailPage() {
                 )}
                 <h1 className="text-lg font-bold">티켓정보</h1>
               </div>
-            </motion.div>
+            </FadeSlide>
 
             {/* [캠페인 카드] — 목록 카드와 같은 layoutId로 이동 애니메이션만 독립적으로 진행.
                 진짜 상세 데이터가 아직이면 넘겨받은 목록 데이터(cardSource)로 즉시 그림.
                 showCardLayoutId가 꺼져있으면(새로고침으로 들어온 최초 마운트, 또는 카드
                 없는 페이지로 이동 중) layoutId를 아예 안 주고, 대신 카드도 다른 요소들처럼
                 페이드로 처리함. */}
-            <motion.div
-              className="mt-4"
-              {...(showCardLayoutId
-                ? {}
-                : {
-                    initial: { opacity: 0, y: 8 },
-                    animate: { opacity: 1, y: 0 },
-                    exit: { opacity: 0, y: -8 },
-                    transition: {
-                      duration: PAGE_TRANSITION_DURATION,
-                      ease: "easeInOut" as const,
-                    },
-                  })}
-            >
+            <FadeSlide className="mt-4" disabled={showCardLayoutId}>
               <CampaignCard
                 title={cardSource.title}
                 status={cardSource.status}
@@ -387,25 +355,17 @@ export function CampaignDetailPage() {
                 interactive={false}
                 layoutId={
                   showCardLayoutId
-                    ? `campaign-card-${cardSource.id}`
+                    ? getCampaignCardLayoutId(cardSource.id)
                     : undefined
                 }
                 layoutDurationOverride={hasSnappedScrollOffset ? 0 : undefined}
               />
-            </motion.div>
+            </FadeSlide>
 
             {/* 카드 아래쪽 — 링크복사/관리 + 신청하기·취소 + 에러 문구. 역시 카드와 형제 요소.
                 여긴 viewerRole/myApplication처럼 진짜 상세 데이터가 있어야만 정확히 그릴 수
                 있어서, campaign(진짜 데이터)이 도착하기 전까진 간단한 대기 문구만 보여줌 */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{
-                duration: PAGE_TRANSITION_DURATION,
-                ease: "easeInOut",
-              }}
-            >
+            <FadeSlide>
               {!campaign ? (
                 <p className="mt-4 text-sm text-(--muted)">불러오는 중...</p>
               ) : (
@@ -476,7 +436,7 @@ export function CampaignDetailPage() {
                   )}
                 </>
               )}
-            </motion.div>
+            </FadeSlide>
           </div>
 
           {/* 스크롤 오프셋(margin-top)이 정확한 위치 보정을 담당하는 동안, 그 아래 실제

@@ -10,8 +10,8 @@ import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import {
   getIsPageTransitioning,
   subscribeToPageTransition,
-} from "@/shared/lib/pageTransitionStore";
-import { useBlockUserScroll } from "@/shared/hooks/useBlockUserScroll";
+} from "@/shared/animation/pageTransition/pageTransitionStore";
+import { useBlockUserScroll } from "@/shared/animation/hooks/useBlockUserScroll";
 
 // 로그인/OAuth 콜백 화면을 뺀 모든 화면이 공유하는 최상위 레이아웃. 로고+아바타
 // 헤더가 여기 있어서, 리액트 라우터의 중첩 레이아웃 성질상 하위 라우트(RootLayout,

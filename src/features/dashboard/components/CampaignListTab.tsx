@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
-import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Archive, Plus } from "lucide-react";
@@ -12,13 +11,12 @@ import {
   listCampaigns,
   type CampaignScope,
 } from "@/features/campaign/api/campaignApi";
+import { getCampaignCardLayoutId } from "@/features/campaign/lib/campaignCardLayoutId";
 import { formatDateTimeKo } from "@/shared/lib/formatDate";
-import { consumePendingScrollOffset } from "@/shared/lib/scrollOffsetStore";
-import { consumeReturningCampaignId } from "@/features/campaign/lib/returningCardStore";
-import {
-  PAGE_TRANSITION_DURATION,
-  POST_ANIMATION_DELAY_MS,
-} from "@/shared/lib/animationDurations";
+import { FadeSlide } from "@/shared/animation/components/FadeSlide";
+import { consumePendingScrollOffset } from "@/shared/animation/pageTransition/scrollOffsetStore";
+import { consumeReturningCampaignId } from "@/shared/animation/pageTransition/returningCardStore";
+import { POST_ANIMATION_DELAY_MS } from "@/shared/animation/animationDurations";
 import { useDashboardFilters } from "../hooks/useDashboardFilters";
 import type { FilterTab } from "../lib/dashboardFilterStore";
 
@@ -126,18 +124,13 @@ export function CampaignListTab({
   function renderBody() {
     if (!campaigns || campaigns.length === 0) {
       return (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: PAGE_TRANSITION_DURATION, ease: "easeInOut" }}
-        >
+        <FadeSlide>
           <EmptyState
             icon={emptyIcon}
             title={emptyTitle}
             description={emptyDescription}
           />
-        </motion.div>
+        </FadeSlide>
       );
     }
 
@@ -165,12 +158,7 @@ export function CampaignListTab({
 
     if (visibleCampaigns.length === 0) {
       return (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: PAGE_TRANSITION_DURATION, ease: "easeInOut" }}
-        >
+        <FadeSlide>
           {showExpiredOnly ? (
             <EmptyState
               icon={<Archive size={22} strokeWidth={1.7} />}
@@ -184,7 +172,7 @@ export function CampaignListTab({
               description={emptyDescription}
             />
           )}
-        </motion.div>
+        </FadeSlide>
       );
     }
 
@@ -212,7 +200,7 @@ export function CampaignListTab({
               // 구분함. 마운트 시점에 한 번 결정하고 이후 절대 안 바꾸는 게 원칙인데
               // (animation.md 1번), "항상 켜짐"은 그 자체로 이미 이 원칙에 안전하게
               // 부합함.
-              layoutId={`campaign-card-${c.id}`}
+              layoutId={getCampaignCardLayoutId(c.id)}
               animateMove={isTransitioning}
               layoutDurationOverride={
                 isTransitioning && hasSnappedScrollOffset ? 0 : undefined
@@ -251,24 +239,13 @@ export function CampaignListTab({
           // prop을 줌. 예전엔 이동 중일 때 <div>, 아닐 때 <motion.div>로 아예
           // 다른 요소 타입을 썼는데, 같은 key라도 타입이 바뀌면 리액트가 업데이트
           // 대신 언마운트 후 재마운트를 해버려서(A→뒤로가기→B 클릭 시 A 카드가
-          // 애니메이션 없이 순간 사라졌다 나타나던 버그의 원인). 항상 motion.div로
-          // 통일하고 페이드 prop만 조건부로 줘서, 리액트가 "업데이트"로 처리하게 함.
-          const fadeProps = isTransitioning
-            ? {}
-            : {
-                initial: { opacity: 0, y: 8 },
-                animate: { opacity: 1, y: 0 },
-                exit: { opacity: 0, y: -8 },
-                transition: {
-                  duration: PAGE_TRANSITION_DURATION,
-                  ease: "easeInOut" as const,
-                },
-              };
-
+          // 애니메이션 없이 순간 사라졌다 나타나던 버그의 원인). FadeSlide는 항상
+          // motion.div로 통일하고 disabled일 때만 페이드 prop을 안 줘서, 리액트가
+          // "업데이트"로 처리하게 함.
           return (
-            <motion.div key={c.id} {...fadeProps}>
+            <FadeSlide key={c.id} disabled={isTransitioning}>
               {card}
-            </motion.div>
+            </FadeSlide>
           );
         })}
       </div>
@@ -284,13 +261,7 @@ export function CampaignListTab({
           : undefined
       }
     >
-      <motion.div
-        className="flex items-center justify-between"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: PAGE_TRANSITION_DURATION, ease: "easeInOut" }}
-      >
+      <FadeSlide className="flex items-center justify-between">
         <InlineSortFilter
           sortOptions={sortOptions}
           sortValue={sortBy}
@@ -312,7 +283,7 @@ export function CampaignListTab({
             행사 추가
           </button>
         )}
-      </motion.div>
+      </FadeSlide>
 
       <LoadingFade isLoading={isLoading}>{renderBody()}</LoadingFade>
     </div>
