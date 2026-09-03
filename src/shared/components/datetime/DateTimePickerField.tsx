@@ -7,9 +7,9 @@ import {
   Undo2,
 } from "lucide-react";
 import { WheelColumn, ROW_HEIGHT, WHEEL_PADDING } from "./WheelColumn";
-import { IconButton } from "./IconButton";
-import { Tooltip } from "./Tooltip";
-import { Modal } from "./Modal";
+import { IconButton } from "../buttons/IconButton";
+import { Tooltip } from "../overlay/Tooltip";
+import { Modal } from "../overlay/Modal";
 import {
   parseDatetimeLocalValue as parseValue,
   buildDatetimeLocalValueFromParts as toValue,

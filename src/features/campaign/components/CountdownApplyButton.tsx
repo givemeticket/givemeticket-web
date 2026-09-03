@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getServerTimeOffset } from "@/shared/lib/serverTime";
-import { PrimaryButton } from "@/shared/components/PrimaryButton";
+import { PrimaryButton } from "@/shared/components/buttons/PrimaryButton";
 
 // 오픈 전(SCHEDULED) 상태일 때 쓰는 카운트다운 버튼.
 // 서버 시각으로 오차를 보정하고, 클릭하면 실제 신청 API를 그대로 호출함

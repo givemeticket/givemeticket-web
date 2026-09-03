@@ -8,12 +8,11 @@ import {
   type CampaignDetail,
 } from "../api/campaignApi";
 import { CampaignFormFields } from "../components/CampaignFormFields";
+import { CampaignSubPageShell } from "../components/CampaignSubPageShell";
 import { isoToDatetimeLocalValue } from "@/shared/lib/formatDate";
-import { BackButton } from "@/shared/components/BackButton";
-import { PrimaryButton } from "@/shared/components/PrimaryButton";
-import { AnimatedPageBackground } from "@/shared/animation/components/AnimatedPageBackground";
-import { FullPageMessage } from "@/shared/components/FullPageMessage";
-import { LoadingFade } from "@/shared/components/LoadingFade";
+import { PrimaryButton } from "@/shared/components/buttons/PrimaryButton";
+import { FullPageMessage } from "@/shared/components/feedback/FullPageMessage";
+import { LoadingFade } from "@/shared/components/feedback/LoadingFade";
 import { SearchX } from "lucide-react";
 
 // "행사 추가"(CampaignCreatePage)랑 같은 페이지 구조 — 예전엔 상세 페이지 안에
@@ -117,60 +116,48 @@ function CampaignEditForm({ campaign }: { campaign: CampaignDetail }) {
   }
 
   return (
-    <AnimatedPageBackground>
-      <div className="mx-auto max-w-2xl px-6 pt-8 pb-10">
-        <div className="flex items-center gap-1">
-          {/* 상세에서 클릭해서 들어온 경우엔 실제 뒤로가기(navigate(-1))로,
-              주소를 직접 입력해서 들어온 경우엔(cameFromDetail이 없음)
-              엉뚱한 이전 페이지(새 탭의 이전 방문 기록 등)로 가지 않도록
-              강제로 이 캠페인의 상세 페이지로 보냄. */}
-          <BackButton
-            fallback={`/campaigns/${campaign.shortCode}`}
-            forceFallback={!cameFromDetail}
-          />
-          <h1 className="text-lg font-bold">행사 수정</h1>
+    // 상세에서 클릭해서 들어온 경우엔 실제 뒤로가기(navigate(-1))로, 주소를
+    // 직접 입력해서 들어온 경우엔(cameFromDetail이 없음) 엉뚱한 이전 페이지(새
+    // 탭의 이전 방문 기록 등)로 가지 않도록 강제로 이 캠페인의 상세 페이지로 보냄.
+    <CampaignSubPageShell
+      title="행사 수정"
+      backButtonFallback={`/campaigns/${campaign.shortCode}`}
+      backButtonForceFallback={!cameFromDetail}
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="mt-8 flex flex-col gap-6 rounded-2xl border p-6"
+        style={{ borderColor: "var(--line)" }}
+      >
+        <CampaignFormFields
+          title={title}
+          onTitleChange={setTitle}
+          totalStock={totalStock}
+          onTotalStockChange={setTotalStock}
+          totalStockMin={isOpen ? (campaign.totalStock ?? 1) : 1}
+          totalStockInfo={
+            isOpen ? "정원 유지 또는 증원만 가능합니다." : undefined
+          }
+          openAt={openAt}
+          onOpenAtChange={setOpenAt}
+          // 이미 오픈된 캠페인은 원래 오픈 시각(이미 지난 시각일 수 있음)을 그대로
+          // 유지하는 것도 허용해야 해서, 오늘이 아니라 원래 오픈 시각을 기준으로 함
+          openAtMinDate={isOpen ? new Date(campaign.openAt) : undefined}
+          openAtResetToNowOnOpen={isOpen}
+          openAtOriginalValue={isoToDatetimeLocalValue(campaign.openAt)}
+          openAtInfo={
+            isOpen ? "오픈 시각 유지 또는 미래만 가능합니다." : undefined
+          }
+        />
+
+        {errorMessage && <p className="text-xs text-(--warn)">{errorMessage}</p>}
+
+        <div className="self-end">
+          <PrimaryButton type="submit" disabled={!isFormValid || isSubmitting}>
+            {isSubmitting ? "저장 중..." : "저장"}
+          </PrimaryButton>
         </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="mt-8 flex flex-col gap-6 rounded-2xl border p-6"
-          style={{ borderColor: "var(--line)" }}
-        >
-          <CampaignFormFields
-            title={title}
-            onTitleChange={setTitle}
-            totalStock={totalStock}
-            onTotalStockChange={setTotalStock}
-            totalStockMin={isOpen ? (campaign.totalStock ?? 1) : 1}
-            totalStockInfo={
-              isOpen ? "정원 유지 또는 증원만 가능합니다." : undefined
-            }
-            openAt={openAt}
-            onOpenAtChange={setOpenAt}
-            // 이미 오픈된 캠페인은 원래 오픈 시각(이미 지난 시각일 수 있음)을 그대로
-            // 유지하는 것도 허용해야 해서, 오늘이 아니라 원래 오픈 시각을 기준으로 함
-            openAtMinDate={isOpen ? new Date(campaign.openAt) : undefined}
-            openAtResetToNowOnOpen={isOpen}
-            openAtOriginalValue={isoToDatetimeLocalValue(campaign.openAt)}
-            openAtInfo={
-              isOpen ? "오픈 시각 유지 또는 미래만 가능합니다." : undefined
-            }
-          />
-
-          {errorMessage && (
-            <p className="text-xs text-(--warn)">{errorMessage}</p>
-          )}
-
-          <div className="self-end">
-            <PrimaryButton
-              type="submit"
-              disabled={!isFormValid || isSubmitting}
-            >
-              {isSubmitting ? "저장 중..." : "저장"}
-            </PrimaryButton>
-          </div>
-        </form>
-      </div>
-    </AnimatedPageBackground>
+      </form>
+    </CampaignSubPageShell>
   );
 }

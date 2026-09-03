@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { SecondaryButton } from "./SecondaryButton";
+import { SecondaryButton } from "../buttons/SecondaryButton";
 
 interface FullPageMessageProps {
   icon: ReactNode;

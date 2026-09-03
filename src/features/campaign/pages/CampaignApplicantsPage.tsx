@@ -9,13 +9,12 @@ import {
   type Applicant,
 } from "../api/campaignApi";
 import { formatDateTimeKo } from "@/shared/lib/formatDate";
-import { BackButton } from "@/shared/components/BackButton";
 import { Avatar } from "@/shared/components/Avatar";
-import { IconButton } from "@/shared/components/IconButton";
-import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
-import { AnimatedPageBackground } from "@/shared/animation/components/AnimatedPageBackground";
-import { FullPageMessage } from "@/shared/components/FullPageMessage";
-import { LoadingFade } from "@/shared/components/LoadingFade";
+import { IconButton } from "@/shared/components/buttons/IconButton";
+import { ConfirmDialog } from "@/shared/components/overlay/ConfirmDialog";
+import { CampaignSubPageShell } from "../components/CampaignSubPageShell";
+import { FullPageMessage } from "@/shared/components/feedback/FullPageMessage";
+import { LoadingFade } from "@/shared/components/feedback/LoadingFade";
 
 // 개설자 전용 — 확정된 신청자를 선착순 순서대로 보여주고, 개별 취소(강제 내보내기)도
 // 가능함. shortCode로 캠페인부터 조회해서 진짜 campaignId를 얻은 다음, 그걸로
@@ -83,64 +82,54 @@ export function CampaignApplicantsPage() {
     <>
       <LoadingFade isLoading={isLoading}>
         {campaign && (
-          <AnimatedPageBackground>
-            <div className="mx-auto max-w-2xl px-6 pt-8 pb-10">
-              <div className="flex items-center gap-1">
-                {/* 상세에서 클릭해서 들어온 경우엔 실제 뒤로가기(navigate(-1))로,
-                    주소를 직접 입력해서 들어온 경우엔(cameFromDetail이 없음)
-                    엉뚱한 이전 페이지로 가지 않도록 강제로 이 캠페인의 상세
-                    페이지로 보냄. */}
-                <BackButton
-                  fallback={`/campaigns/${shortCode}`}
-                  forceFallback={!cameFromDetail}
-                />
-                <h1 className="text-lg font-bold">신청자 목록</h1>
-              </div>
-              <p className="mt-1 text-sm text-(--muted)">
-                {campaign.title} · 총 {applicantsResult?.totalCount ?? 0}명
-              </p>
+          // 상세에서 클릭해서 들어온 경우엔 실제 뒤로가기(navigate(-1))로, 주소를
+          // 직접 입력해서 들어온 경우엔(cameFromDetail이 없음) 엉뚱한 이전
+          // 페이지로 가지 않도록 강제로 이 캠페인의 상세 페이지로 보냄.
+          <CampaignSubPageShell
+            title="신청자 목록"
+            backButtonFallback={`/campaigns/${shortCode}`}
+            backButtonForceFallback={!cameFromDetail}
+          >
+            <p className="mt-1 text-sm text-(--muted)">
+              {campaign.title} · 총 {applicantsResult?.totalCount ?? 0}명
+            </p>
 
-              <div className="mt-6 flex flex-col gap-2">
-                {applicants.length === 0 && (
-                  <p className="py-16 text-center text-sm text-(--muted)">
-                    아직 신청자가 없어요.
-                  </p>
-                )}
+            <div className="mt-6 flex flex-col gap-2">
+              {applicants.length === 0 && (
+                <p className="py-16 text-center text-sm text-(--muted)">
+                  아직 신청자가 없어요.
+                </p>
+              )}
 
-                {applicants.map((a, idx) => (
-                  <div
-                    key={a.applicationId}
-                    className="flex items-center gap-3 rounded-xl border p-3"
-                    style={{ borderColor: "var(--line)" }}
-                  >
-                    <span className="w-6 shrink-0 text-center text-xs text-(--muted)">
-                      {idx + 1}
-                    </span>
-                    <Avatar
-                      src={a.profileImageUrl}
-                      name={a.nickname}
-                      size={36}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">
-                        {a.nickname}
-                      </p>
-                      <p className="text-xs text-(--muted)">
-                        {formatDateTimeKo(a.appliedAt)} 신청
-                      </p>
-                    </div>
-                    <IconButton
-                      onClick={() => setCancelTarget(a)}
-                      label="신청 취소"
-                      tone="warn"
-                    >
-                      <X size={16} strokeWidth={2} />
-                    </IconButton>
+              {applicants.map((a, idx) => (
+                <div
+                  key={a.applicationId}
+                  className="flex items-center gap-3 rounded-xl border p-3"
+                  style={{ borderColor: "var(--line)" }}
+                >
+                  <span className="w-6 shrink-0 text-center text-xs text-(--muted)">
+                    {idx + 1}
+                  </span>
+                  <Avatar src={a.profileImageUrl} name={a.nickname} size={36} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {a.nickname}
+                    </p>
+                    <p className="text-xs text-(--muted)">
+                      {formatDateTimeKo(a.appliedAt)} 신청
+                    </p>
                   </div>
-                ))}
-              </div>
+                  <IconButton
+                    onClick={() => setCancelTarget(a)}
+                    label="신청 취소"
+                    tone="warn"
+                  >
+                    <X size={16} strokeWidth={2} />
+                  </IconButton>
+                </div>
+              ))}
             </div>
-          </AnimatedPageBackground>
+          </CampaignSubPageShell>
         )}
       </LoadingFade>
 

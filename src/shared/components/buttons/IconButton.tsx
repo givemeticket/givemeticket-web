@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Tooltip } from "./Tooltip";
+import { Tooltip } from "../overlay/Tooltip";
 
 interface IconButtonProps {
   children: ReactNode;

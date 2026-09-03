@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { CircleAlert } from "lucide-react";
-import { DateTimePickerField } from "@/shared/components/DateTimePickerField";
-import { Tooltip } from "@/shared/components/Tooltip";
+import { DateTimePickerField } from "@/shared/components/datetime/DateTimePickerField";
+import { Tooltip } from "@/shared/components/overlay/Tooltip";
 
 interface CampaignFormFieldsProps {
   title: string;

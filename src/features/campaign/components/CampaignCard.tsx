@@ -39,11 +39,6 @@ interface CampaignCardProps {
    * 이동함. false(기본값)면, 옆 카드가 빠지면서 자리가 밀려도 즉시(0초) 제자리로
    * 스냅되기만 함 — 밀리는 것까지 다 같이 슬라이드 애니메이션이 걸리면 지저분해짐 */
   animateMove?: boolean;
-  /** animateMove가 true인 카드의 이동 애니메이션이 끝나면 호출됨. 목록 쪽에서
-   * "이동 중" 취급을 해제하는 데 씀 — 호출하는 쪽에서 리셋 시점을 살짝 늦춰야 함
-   * (바로 리셋하면, 아직 화면에 남아있는 주변 페이지의 페이드가 다 안 끝난 상태에서
-   * 이 카드의 애니메이션 prop이 갑자기 바뀌면서 깜빡이는 문제가 있었음) */
-  onMoveComplete?: () => void;
   /** layout 이동 duration을 강제로 덮어씀(주로 0). 스크롤 오프셋 보정
    * (scrollOffsetStore.ts)에서 오프셋을 없애는 순간, 카드의 측정 위치가 바뀌는
    * 걸 Framer Motion이 "또 다른 이동"으로 착각해서 자체적으로 두 번째 애니메이션을
@@ -80,7 +75,6 @@ export function CampaignCard({
   interactive = true,
   layoutId,
   animateMove = false,
-  onMoveComplete,
   layoutDurationOverride,
 }: CampaignCardProps) {
   // 매진은 별도 상태가 아니라 OPEN + soldOut 조합이라, 뱃지 표시만 그때 덮어씀
@@ -189,7 +183,6 @@ export function CampaignCard({
     <motion.button
       layoutId={layoutId}
       transition={layoutTransition}
-      onLayoutAnimationComplete={animateMove ? onMoveComplete : undefined}
       // CSS transition-transform 대신 Framer Motion 자체의 whileHover/whileTap을
       // 씀 — CSS 트랜지션이 transform을 건드리면, layoutId 이동 애니메이션이 매 프레임
       // 만들어내는 transform 값을 CSS가 또 한 번 따로 부드럽게 쫓아가려고 해서,

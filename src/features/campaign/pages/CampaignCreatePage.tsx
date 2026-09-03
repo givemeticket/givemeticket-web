@@ -2,10 +2,9 @@ import { useState, type SubmitEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { createCampaign } from "../api/campaignApi";
 import { CampaignFormFields } from "../components/CampaignFormFields";
+import { CampaignSubPageShell } from "../components/CampaignSubPageShell";
 import { nowAsDatetimeLocalValue } from "@/shared/lib/formatDate";
-import { BackButton } from "@/shared/components/BackButton";
-import { PrimaryButton } from "@/shared/components/PrimaryButton";
-import { AnimatedPageBackground } from "@/shared/animation/components/AnimatedPageBackground";
+import { PrimaryButton } from "@/shared/components/buttons/PrimaryButton";
 
 export function CampaignCreatePage() {
   const navigate = useNavigate();
@@ -52,41 +51,29 @@ export function CampaignCreatePage() {
   }
 
   return (
-    <AnimatedPageBackground>
-      <div className="mx-auto max-w-2xl px-6 pt-8 pb-10">
-        <div className="flex items-center gap-1">
-          <BackButton fallback="/mycampaigns" />
-          <h1 className="text-lg font-bold">행사 추가</h1>
+    <CampaignSubPageShell title="행사 추가" backButtonFallback="/mycampaigns">
+      <form
+        onSubmit={handleSubmit}
+        className="mt-8 flex flex-col gap-6 rounded-2xl border p-6"
+        style={{ borderColor: "var(--line)" }}
+      >
+        <CampaignFormFields
+          title={title}
+          onTitleChange={setTitle}
+          totalStock={totalStock}
+          onTotalStockChange={setTotalStock}
+          openAt={openAt}
+          onOpenAtChange={setOpenAt}
+        />
+
+        {errorMessage && <p className="text-xs text-(--warn)">{errorMessage}</p>}
+
+        <div className="self-end">
+          <PrimaryButton type="submit" disabled={!isFormValid || isSubmitting}>
+            {isSubmitting ? "추가 중..." : "추가"}
+          </PrimaryButton>
         </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="mt-8 flex flex-col gap-6 rounded-2xl border p-6"
-          style={{ borderColor: "var(--line)" }}
-        >
-          <CampaignFormFields
-            title={title}
-            onTitleChange={setTitle}
-            totalStock={totalStock}
-            onTotalStockChange={setTotalStock}
-            openAt={openAt}
-            onOpenAtChange={setOpenAt}
-          />
-
-          {errorMessage && (
-            <p className="text-xs text-(--warn)">{errorMessage}</p>
-          )}
-
-          <div className="self-end">
-            <PrimaryButton
-              type="submit"
-              disabled={!isFormValid || isSubmitting}
-            >
-              {isSubmitting ? "추가 중..." : "추가"}
-            </PrimaryButton>
-          </div>
-        </form>
-      </div>
-    </AnimatedPageBackground>
+      </form>
+    </CampaignSubPageShell>
   );
 }

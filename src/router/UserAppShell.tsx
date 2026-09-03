@@ -6,7 +6,7 @@ import { useLogout } from "@/features/auth/hooks/useLogout";
 import { useMe } from "@/features/auth/hooks/useMe";
 import { withdrawUser } from "@/features/auth/api/authApi";
 import { clearAccessToken } from "@/shared/lib/authToken";
-import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
+import { ConfirmDialog } from "@/shared/components/overlay/ConfirmDialog";
 import {
   getIsPageTransitioning,
   subscribeToPageTransition,

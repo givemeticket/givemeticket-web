@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { LoginPage } from "@/features/auth/pages/LoginPage";
 import { beginPageTransition } from "@/shared/animation/pageTransition/pageTransitionStore";
-import { LoadingScreen } from "@/shared/components/LoadingScreen";
+import { LoadingScreen } from "@/shared/components/feedback/LoadingScreen";
 import { clearAllScrollPositions } from "@/shared/animation/pageTransition/scrollPositionStore";
 import { clearPendingScrollOffset } from "@/shared/animation/pageTransition/scrollOffsetStore";
 import { clearLeftToNonCardPage } from "@/shared/animation/pageTransition/leftToNonCardPageStore";

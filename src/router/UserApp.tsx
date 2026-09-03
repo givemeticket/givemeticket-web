@@ -17,7 +17,7 @@ import { CampaignEditPage } from "@/features/campaign/pages/CampaignEditPage";
 import { CampaignApplicantsPage } from "@/features/campaign/pages/CampaignApplicantsPage";
 import { CampaignDetailPage } from "@/features/campaign/pages/CampaignDetailPage";
 import { OAuthCallbackPage } from "@/features/auth/pages/OAuthCallbackPage";
-import { FullPageMessage } from "@/shared/components/FullPageMessage";
+import { FullPageMessage } from "@/shared/components/feedback/FullPageMessage";
 import { MapPinOff } from "lucide-react";
 import { beginPageTransition } from "@/shared/animation/pageTransition/pageTransitionStore";
 import {

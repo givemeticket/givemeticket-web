@@ -3,9 +3,9 @@ import { flushSync } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Archive, Plus } from "lucide-react";
-import { EmptyState } from "@/shared/components/EmptyState";
-import { LoadingFade } from "@/shared/components/LoadingFade";
-import { InlineSortFilter } from "@/shared/components/InlineSortFilter";
+import { EmptyState } from "@/shared/components/feedback/EmptyState";
+import { LoadingFade } from "@/shared/components/feedback/LoadingFade";
+import { InlineSortFilter } from "./InlineSortFilter";
 import { CampaignCard } from "@/features/campaign/components/CampaignCard";
 import {
   listCampaigns,
@@ -14,7 +14,7 @@ import {
 import { getCampaignCardLayoutId } from "@/features/campaign/lib/campaignCardLayoutId";
 import { formatDateTimeKo } from "@/shared/lib/formatDate";
 import { FadeSlide } from "@/shared/animation/components/FadeSlide";
-import { consumePendingScrollOffset } from "@/shared/animation/pageTransition/scrollOffsetStore";
+import { useScrollOffsetSnap } from "@/shared/animation/pageTransition/useScrollOffsetSnap";
 import { consumeReturningCampaignId } from "@/shared/animation/pageTransition/returningCardStore";
 import { POST_ANIMATION_DELAY_MS } from "@/shared/animation/animationDurations";
 import { useDashboardFilters } from "../hooks/useDashboardFilters";
@@ -52,38 +52,12 @@ export function CampaignListTab({
 }: CampaignListTabProps) {
   const navigate = useNavigate();
 
-  // 상세 페이지에서 뒤로가기로 돌아온 경우, 그 클릭 시점에 계산해둔 역방향 오프셋값이
-  // 여기 담겨있음(없으면 null — 다른 경로로 들어온 경우). 마운트 시점에 한 번만 소비함.
-  const [pendingScrollOffset] = useState(() => consumePendingScrollOffset());
-  const [isScrollOffsetActive, setIsScrollOffsetActive] = useState(
-    pendingScrollOffset !== null,
-  );
-  // 오프셋을 없애는 그 순간, 돌아온 카드의 이동 duration을 0으로 강제해서 즉시
-  // 반영되게 함 — 안 그러면 오프셋 제거로 카드 측정 위치가 바뀌는 걸 Framer
-  // Motion이 "또 다른 이동"으로 착각해서, 의도치 않은 두 번째 애니메이션을
-  // 자체적으로 걸어버리는 문제가 있었음(CampaignDetailPage에서 로그로 확인한
-  // 것과 같은 원인, 여기도 대칭으로 적용함).
-  const [hasSnappedScrollOffset, setHasSnappedScrollOffset] = useState(false);
-
-  useEffect(() => {
-    if (pendingScrollOffset === null) return;
-    // 카드 이동 + 페이지 페이드가 전부 통일된 duration이라, 그 시간만큼만
-    // 기다리면 됨(여유분 조금 추가). 오프셋 제거랑 동시에 진짜 스크롤을 이 목록의
-    // 저장된 목표값으로 맞춤 — 정확히 같은 타이밍이어야 시각적 어긋남이 없음.
-    const timer = setTimeout(() => {
-      // window.scrollTo는 즉시 반영되는데, 오프셋 제거(state 변경)는 리액트의
-      // 다음 렌더링까지 기다림 — flushSync로 오프셋 제거를 먼저 동기적으로 완전히
-      // 끝내고, 그 다음에 스크롤을 바꿔서 시각적으로 어긋나는 틈이 안 생기게 함.
-      flushSync(() => {
-        setIsScrollOffsetActive(false);
-        setHasSnappedScrollOffset(true);
-      });
-      const nextScrollY = window.scrollY - pendingScrollOffset;
-      window.scrollTo(0, nextScrollY);
-    }, POST_ANIMATION_DELAY_MS);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // 상세 페이지에서 뒤로가기로 돌아온 경우, 그 클릭 시점에 계산해둔 역방향
+  // 오프셋값을 여기서 소비하고, 애니메이션이 끝나면 오프셋을 없애면서 실제
+  // 스크롤을 이 목록의 저장된 목표값(현재 스크롤에서 오프셋만큼 뺀 값)으로
+  // 맞춤(useScrollOffsetSnap.ts — CampaignDetailPage.tsx와 공유하는 로직).
+  const { pendingScrollOffset, isScrollOffsetActive, hasSnappedScrollOffset } =
+    useScrollOffsetSnap((offset) => window.scrollY - offset);
 
   const {
     sortBy,
@@ -102,18 +76,35 @@ export function CampaignListTab({
     () => consumeReturningCampaignId(),
   );
 
-  // onMoveComplete에서 transitioningId를 리셋할 때 쓸 지연 타이머. 카드가 도착한
-  // 즉시 리셋하면, 그 순간 아직 화면에 남아있는 주변 페이지(예: 방금 떠나온 상세
-  // 페이지)의 4초짜리 페이드가 덜 끝난 상태라 이 카드의 애니메이션 prop이 갑자기
-  // 바뀌면서 깜빡이는 버그가 있었음. 그래서 주변 페이드가 확실히 다 끝날 시점까지
-  // 리셋을 늦춤. 반대로 아예 리셋을 안 하면(이전 시도), 이 카드가 "이동 중" 상태로
-  // 계속 남아있다가 카드 없는 화면(행사 추가 등)으로 넘어갈 때 짝을 못 찾고
-  // 방치되는 버그가 있었음 — 그래서 "늦게라도 리셋은 하는" 이 방식으로 절충함.
+  // "이동 중" 카드를 다시 일반 카드로 되돌리는 지연 타이머. 이동 애니메이션이
+  // 끝나는 시점(예전엔 onLayoutAnimationComplete)이 아니라, 애니메이션이
+  // 실제로 시작되는 시점(=이 컴포넌트가 "이동 중" 카드를 이미 갖고 마운트되는
+  // 시점)을 기준으로 걺 — useScrollOffsetSnap.ts와 같은 패턴("duration+100ms
+  // 버퍼는 항상 시작 시점 기준"). 예전엔 종료 시점에 이 버퍼를 또 더해서,
+  // 실질적으로 시작부터 거의 두 배(duration + duration+100ms)를 기다리게
+  // 됐었고, 그 사이 카드 없는 화면(행사 추가 등)으로 넘어가면 이 카드가 여전히
+  // "이동 중"(layoutId 유지 + 페이드 없음) 상태로 방치되는 버그로 실제 재현됨.
+  //
+  // 즉시 리셋(버퍼 없이)하지 않는 이유는 그대로 유지: 아직 화면에 남아있는
+  // 주변 요소(헤더/필터줄/다른 카드 등)의 페이드가 다 안 끝난 상태에서 이
+  // 카드의 애니메이션 prop이 갑자기 바뀌며 깜빡이는 문제가 있었음. 반대로 아예
+  // 리셋을 안 하면(더 예전 시도), 카드 없는 화면으로 넘어갈 때 짝을 못 찾고
+  // 방치되는 문제가 있었음 — 그래서 "시작 시점 기준으로 한 번만 버퍼를 두고
+  // 리셋"하는 지금 방식으로 절충함.
   const resetTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => {
+    if (transitioningId !== null) {
+      resetTimeoutRef.current = setTimeout(() => {
+        setTransitioningId(null);
+      }, POST_ANIMATION_DELAY_MS);
+    }
     return () => {
       if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
     };
+    // 마운트 시점의 초기값 기준으로 딱 한 번만 예약함 — 이후 onClick으로
+    // transitioningId가 바뀌는 경로는 곧 페이지 자체가 언마운트되어 이 타이머가
+    // 필요 없음(아래 onClick 참고).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const { data: campaigns, isLoading } = useQuery({
@@ -205,17 +196,6 @@ export function CampaignListTab({
               layoutDurationOverride={
                 isTransitioning && hasSnappedScrollOffset ? 0 : undefined
               }
-              onMoveComplete={() => {
-                if (resetTimeoutRef.current)
-                  clearTimeout(resetTimeoutRef.current);
-                // 카드 애니메이션이 끝난 즉시 리셋하면, 주변 페이지의 페이드가 아직
-                // 안 끝난 상태에서 카드 애니메이션 prop이 갑자기 바뀌며 깜빡이는
-                // 문제가 있었음. POST_ANIMATION_DELAY_MS(애니메이션 지속시간 +
-                // 여유분)만큼 기다린 뒤 리셋함 — animationDurations.ts 참고.
-                resetTimeoutRef.current = setTimeout(() => {
-                  setTransitioningId(null);
-                }, POST_ANIMATION_DELAY_MS);
-              }}
               onClick={() => {
                 // setTransitioningId만 하고 바로 navigate하면, 그 상태 변경이 화면에
                 // 실제로 반영되기 전에 라우터 전환이 먼저 처리돼버릴 수 있음(navigate가

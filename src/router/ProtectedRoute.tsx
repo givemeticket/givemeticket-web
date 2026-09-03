@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { LoadingScreen } from "@/shared/components/LoadingScreen";
+import { LoadingScreen } from "@/shared/components/feedback/LoadingScreen";
 
 // 이 라우트 하위는 로그인이 필요합니다.
 // 비로그인 상태로 접근 시, 원래 가려던 경로를 redirect 쿼리파라미터에 담아

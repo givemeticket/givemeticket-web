@@ -7,7 +7,7 @@ import {
   consumePostLoginRedirect,
 } from "../lib/oauthSession";
 import { setAccessToken } from "@/shared/lib/authToken";
-import { LoadingScreen } from "@/shared/components/LoadingScreen";
+import { LoadingScreen } from "@/shared/components/feedback/LoadingScreen";
 
 type Phase = "processing" | "error";
 
