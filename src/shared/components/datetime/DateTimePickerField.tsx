@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Calendar,
   ChevronLeft,
@@ -6,7 +6,12 @@ import {
   CircleAlert,
   Undo2,
 } from "lucide-react";
-import { WheelColumn, ROW_HEIGHT, WHEEL_PADDING } from "./WheelColumn";
+import {
+  WheelColumn,
+  ROW_HEIGHT,
+  WHEEL_PADDING,
+  type WheelColumnHandle,
+} from "./WheelColumn";
 import { IconButton } from "../buttons/IconButton";
 import { Tooltip } from "../overlay/Tooltip";
 import { Modal } from "../overlay/Modal";
@@ -106,6 +111,15 @@ export function DateTimePickerField({
     () => parseValue(value).minute,
   );
 
+  // "확인"이 읽는 draftHour/draftMinute는 스크롤이 정착(commit)된 뒤에만
+  // 갱신되는 값이라, 사용자가 스크롤을 멈추자마자 곧바로 확인을 누르면 아직
+  // 갱신 전 값을 읽어버리는 레이스가 있었음(가끔 시각이 어긋나던 버그의
+  // 원인). 확인 시점엔 이 state 대신, 각 휠의 실제 스크롤 위치를 직접
+  // 조회(getCurrentValue)해서 화면에 보이는 값과 항상 일치하도록 함.
+  const meridiemRef = useRef<WheelColumnHandle>(null);
+  const hourRef = useRef<WheelColumnHandle>(null);
+  const minuteRef = useRef<WheelColumnHandle>(null);
+
   function openModal() {
     // resetToNowOnOpen이면 원래 값이 뭐였든 상관없이 항상 "지금"부터 보여줌.
     // 실제 저장된 값(value)은 "확인"을 눌러야만 이걸로 덮어써짐 — 안 누르고
@@ -119,7 +133,10 @@ export function DateTimePickerField({
   }
 
   function handleConfirm() {
-    onChange(toValue(draftDate, draftHour, draftMinute));
+    const m = (meridiemRef.current?.getCurrentValue() ?? meridiem) as 0 | 1;
+    const h = hourRef.current?.getCurrentValue() ?? hour12;
+    const min = minuteRef.current?.getCurrentValue() ?? draftMinute;
+    onChange(toValue(draftDate, to24Hour(h, m), min));
     setIsOpen(false);
   }
 
@@ -283,12 +300,14 @@ export function DateTimePickerField({
               }}
             />
             <WheelColumn
+              ref={meridiemRef}
               items={MERIDIEM_ITEMS}
               selectedValue={meridiem}
               onChange={(m) => setDraftHour(to24Hour(hour12, m as 0 | 1))}
               circular={false}
             />
             <WheelColumn
+              ref={hourRef}
               items={HOUR_ITEMS}
               selectedValue={hour12}
               onChange={(h) => setDraftHour(to24Hour(h, meridiem))}
@@ -296,6 +315,7 @@ export function DateTimePickerField({
             />
             <span className="flex items-center text-sm text-(--muted)">:</span>
             <WheelColumn
+              ref={minuteRef}
               items={MINUTE_ITEMS}
               selectedValue={draftMinute}
               onChange={setDraftMinute}

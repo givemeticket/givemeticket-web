@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -16,7 +16,10 @@ import { formatDateTimeKo } from "@/shared/lib/formatDate";
 import { FadeSlide } from "@/shared/animation/components/FadeSlide";
 import { useScrollOffsetSnap } from "@/shared/animation/pageTransition/useScrollOffsetSnap";
 import { consumeReturningCampaignId } from "@/shared/animation/pageTransition/returningCardStore";
-import { POST_ANIMATION_DELAY_MS } from "@/shared/animation/animationDurations";
+import {
+  getIsPageTransitioning,
+  subscribeToPageTransition,
+} from "@/shared/animation/pageTransition/pageTransitionStore";
 import { useDashboardFilters } from "../hooks/useDashboardFilters";
 import type { FilterTab } from "../lib/dashboardFilterStore";
 
@@ -76,36 +79,41 @@ export function CampaignListTab({
     () => consumeReturningCampaignId(),
   );
 
-  // "이동 중" 카드를 다시 일반 카드로 되돌리는 지연 타이머. 이동 애니메이션이
-  // 끝나는 시점(예전엔 onLayoutAnimationComplete)이 아니라, 애니메이션이
-  // 실제로 시작되는 시점(=이 컴포넌트가 "이동 중" 카드를 이미 갖고 마운트되는
-  // 시점)을 기준으로 걺 — useScrollOffsetSnap.ts와 같은 패턴("duration+100ms
-  // 버퍼는 항상 시작 시점 기준"). 예전엔 종료 시점에 이 버퍼를 또 더해서,
-  // 실질적으로 시작부터 거의 두 배(duration + duration+100ms)를 기다리게
-  // 됐었고, 그 사이 카드 없는 화면(행사 추가 등)으로 넘어가면 이 카드가 여전히
-  // "이동 중"(layoutId 유지 + 페이드 없음) 상태로 방치되는 버그로 실제 재현됨.
-  //
-  // 즉시 리셋(버퍼 없이)하지 않는 이유는 그대로 유지: 아직 화면에 남아있는
-  // 주변 요소(헤더/필터줄/다른 카드 등)의 페이드가 다 안 끝난 상태에서 이
-  // 카드의 애니메이션 prop이 갑자기 바뀌며 깜빡이는 문제가 있었음. 반대로 아예
-  // 리셋을 안 하면(더 예전 시도), 카드 없는 화면으로 넘어갈 때 짝을 못 찾고
-  // 방치되는 문제가 있었음 — 그래서 "시작 시점 기준으로 한 번만 버퍼를 두고
-  // 리셋"하는 지금 방식으로 절충함.
-  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => {
-    if (transitioningId !== null) {
-      resetTimeoutRef.current = setTimeout(() => {
-        setTransitioningId(null);
-      }, POST_ANIMATION_DELAY_MS);
-    }
-    return () => {
-      if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
-    };
-    // 마운트 시점의 초기값 기준으로 딱 한 번만 예약함 — 이후 onClick으로
-    // transitioningId가 바뀌는 경로는 곧 페이지 자체가 언마운트되어 이 타이머가
-    // 필요 없음(아래 onClick 참고).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // "이동 중" 카드를 다시 일반 카드로 되돌리는 시점 — 로컬 타이머로 직접
+  // 재는 대신, 전역 페이지 전환 신호(pageTransitionStore.ts)가 꺼지는 순간을
+  // 그대로 씀. 이 신호는 RootLayout이 실제 라우트 전환을 감지할 때마다
+  // duration+100ms 뒤 자동으로 꺼지는데, 예전엔 이 계산을 여기서도 로컬
+  // 타이머로 따로 다시 하고 있었음(그것도 시작이 아니라 "카드 이동 애니메이션이
+  // 끝나는 시점" 기준으로 걸어서, 실질적으로 거의 두 배를 기다리게 되는 버그로
+  // 이어짐 — 실제 재현 확인함). "이 페이지 전환이 완전히 끝났는지"를 판단하는
+  // 로직은 이미 pageTransitionStore 한 곳에 있으니 그걸 구독하는 게 맞음
+  // (UserAppShell.tsx가 클릭 차단에 쓰는 것과 같은 패턴).
+  const isPageTransitioning = useSyncExternalStore(
+    subscribeToPageTransition,
+    getIsPageTransitioning,
+  );
+  // isPageTransitioning은 "지금 이 순간 전환 중인지"만 알려줄 뿐, 그게
+  // true였다가 false로 돌아온 것(=이번 전환이 끝난 것)인지 아니면 애초에
+  // 아직 안 켜진 것인지는 구분을 안 해줌. 실제로 로그를 찍어보니, 이
+  // 컴포넌트가 마운트된 뒤 가장 먼저 도는 렌더링/이펙트조차
+  // RootLayout(부모)의 beginPageTransition() 호출보다 먼저 실행되는 경우가
+  // 있어서(effect든 렌더링 중 비교든 둘 다 겪음 — 실제 재현 확인함), "지금
+  // false면 무조건 리셋"은 두 방식 다 안전하지 않았음. 그래서 "한 번이라도
+  // true를 본 적 있는지"를 별도 state로 기억해두고, "true였다가 지금
+  // false"인 진짜 종료 시점에만 리셋함 — 이건 이번 렌더링에서 이미 알고
+  // 있는 값들(isPageTransitioning, hasSeenTransitionStart)끼리의 비교라,
+  // 앞서 겪은 두 경쟁 문제 모두와 무관함.
+  const [hasSeenTransitionStart, setHasSeenTransitionStart] = useState(false);
+  if (isPageTransitioning && !hasSeenTransitionStart) {
+    setHasSeenTransitionStart(true);
+  }
+  if (
+    !isPageTransitioning &&
+    hasSeenTransitionStart &&
+    transitioningId !== null
+  ) {
+    setTransitioningId(null);
+  }
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ["campaigns", scope],
@@ -200,8 +208,6 @@ export function CampaignListTab({
                 // setTransitioningId만 하고 바로 navigate하면, 그 상태 변경이 화면에
                 // 실제로 반영되기 전에 라우터 전환이 먼저 처리돼버릴 수 있음(navigate가
                 // 더 빠름). flushSync로 반영을 강제로 먼저 끝내고 넘어감.
-                if (resetTimeoutRef.current)
-                  clearTimeout(resetTimeoutRef.current);
                 flushSync(() => {
                   setTransitioningId(c.id);
                 });

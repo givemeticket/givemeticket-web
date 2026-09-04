@@ -20,23 +20,16 @@
   - 전환 중 클릭 차단 오버레이(`z-999`)가 sticky 요소도 확실히 덮는지, 모달이
     sticky보다 위에 뜨는지 z-index 순서 확인 필요
 - [ ] 스크롤 연동 소개 화면 (screentune.app 스타일 — Framer Motion `useScroll`/`useTransform` 사용 예정)
-- [x] ~~브라우저 자체의 뒤로가기/앞으로가기 버튼으로 이동할 때, 특정 경우에 한해 카드 복사 버그 재현됨~~ — **완료.** 근본적 개선 방향(아래) 적용으로, native 뒤로가기/앞으로가기는 이제 항상 `layoutId`가 관여하지 않는 페이드로만 처리되도록 구조 자체가 바뀌어서, 이 버그가 날 수 있는 경로 자체가 없어짐. 여러 차례 실제 재현 테스트로 확인함(animation.md 19, 20번 참고).
-- [x] ~~애니메이션 코드 정리(파일 재배치 등)~~ — **완료.** 애니메이션/페이지 전환
-  관련 코드를 전부 `src/shared/animation/` 밑으로 통합함:
-  - `animationDurations.ts`, `components/`(`FadeSlide.tsx` 신규, `AnimatedPageBackground.tsx`
-    이동), `hooks/`(`useBlockUserScroll.ts` 이동)는 최상위에 두고, 라우트 전환
-    전용 스토어/순수 로직(`pageTransitionStore`, `scrollPositionStore`,
-    `scrollOffsetStore`, `initialDetailMountStore`, `leftToNonCardPageStore`,
-    `returningCardStore`, 신규 `cardDetailPathname.ts`/`routeTransitionRules.ts`)은
-    `pageTransition/` 하위 폴더로 뺌 — 나중에 다른 종류의 애니메이션(예: 아래
-    스크롤 연동 소개 화면)이 생기면 형제 폴더를 추가하는 식으로 확장 가능.
-  - `DashboardLayout.tsx`/`CampaignDetailPage.tsx`/`CampaignListTab.tsx` 7곳에서
-    반복되던 페이드+이동 `motion.div` 패턴을 `<FadeSlide>` 공용 컴포넌트로 추출.
-  - `campaign-card-${id}` layoutId 문자열 중복도 `features/campaign/lib/campaignCardLayoutId.ts`로 통합.
-  - duration 값(`PAGE_TRANSITION_DURATION = 2`, 테스트용)은 이번엔 일부러 안
-    건드림 — 확인 끝나면 프로덕션 값으로 되돌릴 것(여전히 남은 일).
 - [ ] **근본적 개선 방향(기본은 페이드 꺼짐, 확실한 케이스만 layoutId 켜기)으로 구조 전환** — 진입 경로(`CampaignDetailPage.tsx`의 `showCardLayoutId`)는 **완료**하고 여러 차례 실제 테스트로 검증함. 이탈 경로(수정/신청자 목록으로 떠날 때, `isNavigatingToNonCardPage`)는 같은 방향으로 정리를 시도했다가, 카드 없는 화면을 거쳐 목록으로 돌아가는 마지막 뒤로가기의 이동 애니메이션이 사라지는 더 큰 부작용이 있어서 되돌림 — 여전히 `layoutId`를 마운트 중 직접 켰다 껐다 하는 예외로 남아있음(1번 원칙 위반, 의도적으로 감수). 자세한 내용, 실제로 겪은 함정들, "저장소를 완전히 없애진 못했다"는 정직한 회고까지 전부 animation.md "근본적 개선 방향" 섹션 및 19~23번 항목에 정리해둠.
 - [ ] **아주 사소함: 상세→신청자목록/수정 이동 시 카드가 즉시 페이드되지 않고 순간 살짝 흐려졌다 풀렸다 다시 페이드됨** — `layoutId`를 마운트 이후 동적으로 떼는 것 자체의 불안정성으로 추정(animation.md 1번과 같은 종류). `flushSync` 제거로는 해결 안 됨(원복함). `layoutId`는 그대로 두고 카드 wrapper의 opacity만 별도로 조절하는 방식도 시도했으나, 그러면 위 "근본적 개선 방향" 항목에 적은 부작용(반환 여정 이동 애니메이션 소실)이 생겨서 되돌림(animation.md 23번). **보류 — 사용자가 별도로 추적 중, 이 항목엔 추가 작업 안 함.**
+- [ ] **`pageTransitionStore.ts` 내부를 `AnimatePresence`의 `onExitComplete`
+  같은 실제 애니메이션 완료 이벤트 기반으로 바꾸는 심화 개선** — 지금은
+  "duration+100ms 버퍼 타이머"로 "전환이 끝났다"를 추측하는데, 이 자체가
+  틀린 패턴은 아니지만(`react-transition-group`의 `timeout` prop과 같은
+  흔한 절충안) 더 정확한 방법이 있는지 검토해보기로 함. 헤더 클릭 차단/스크롤
+  스냅/카드 리셋 등 이 신호에 의존하는 모든 곳에 영향을 주는 핵심 메커니즘이라
+  리스크가 크고, `AnimatePresence` 이벤트 타이밍의 알려진 엣지케이스도 있어서
+  **사용자가 나중에 진행하기로 보류함.**
 
 ## 홈 화면("/") / 찜 기능 (백엔드 API 필요 — 아직 관련 API 없음, 기획만 정리해둠)
 
@@ -64,5 +57,12 @@
   미정, 논의 필요). 홈 화면 전용이 아니라 **모든 캠페인 카드에 공통 적용**할
   예정(목록/상세 어디서든 매진 임박이면 표시)
 
-## 기타
-- [ ] `DateTimePickerField`(타임휠 피커)에 아직 해결 안 된 자잘한 버그 몇 개 있음 (우선순위 낮음, 보류 중)
+## 사이트관리자 문의 (백엔드 API는 있음, 프론트 미구현 — 보류)
+- [ ] **문의 기능 프론트 구현** — 백엔드에 `POST/GET /api/v1/inquiries`,
+  `GET/PATCH/DELETE /api/v1/inquiries/{inquiryId}`가 이미 있음(백엔드
+  개발자 말로는 "대강" 구현한 상태). **구현 전에 백엔드와 먼저 확인할 것**:
+  현재 API 명세(`/v3/api-docs`) 기준으로 5개 엔드포인트가 전부 인증 없이
+  열려있음 — 문의 등록(POST)이야 비로그인이 맞지만, 목록 조회(GET, 이메일
+  포함)/수정(PATCH)/삭제(DELETE)까지 아무나 호출 가능한 상태라 "사이트관리자
+  전용"이 되려면 그쪽에 인증/권한 제한이 먼저 필요해 보임.
+

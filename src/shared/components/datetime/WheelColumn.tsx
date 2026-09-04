@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type PointerEvent,
+  type Ref,
+} from "react";
 
 // DateTimePickerField의 모달 레이아웃(하이라이트 밴드 위치 등)도 이 값들을 그대로
 // 써야 해서 export함 — 두 파일이 같은 값을 따로따로 들고 있으면 어긋날 수 있음.
@@ -17,6 +24,17 @@ const RECENTER_MARGIN = 2;
 const SUPPORTS_SCROLLEND =
   typeof window !== "undefined" && "onscrollend" in window;
 
+/**
+ * 정착(commit) 판정을 기다리지 않고, "지금 이 순간" 실제 스크롤 위치가
+ * 가리키는 값을 즉시 계산해서 돌려줌. 휠의 커밋은 scrollend/디바운스로
+ * 비동기 처리되는데, "확인" 버튼처럼 그 정착을 기다릴 수 없는 곳(사용자가
+ * 스크롤을 멈추자마자 바로 누를 수 있음)에서 화면에 보이는 값과 실제
+ * 확정값이 어긋나지 않도록 이 메서드로 우회함.
+ */
+export interface WheelColumnHandle {
+  getCurrentValue(): number;
+}
+
 // 세로 스크롤 + snap으로 동작하는 휠 하나. DateTimePickerField의 오전오후/시/분 3개가
 // 각각 이 컴포넌트의 별도 인스턴스임.
 export function WheelColumn({
@@ -24,12 +42,15 @@ export function WheelColumn({
   selectedValue,
   onChange,
   circular = true,
+  ref,
 }: {
   items: { value: number; label: string }[];
   selectedValue: number;
   onChange: (value: number) => void;
   /** false면 항목을 반복하지 않음 (예: 오전/오후처럼 2개뿐인 휠) */
   circular?: boolean;
+  // React 19부터는 forwardRef 없이 함수 컴포넌트가 ref를 일반 prop으로 받을 수 있음
+  ref?: Ref<WheelColumnHandle>;
 }) {
   const n = items.length;
   const repeatCount = circular ? REPEAT : 1;
@@ -53,6 +74,16 @@ export function WheelColumn({
   }
 
   const [rawIndex, setRawIndex] = useState(() => indexOfValue(selectedValue));
+
+  useImperativeHandle(ref, () => ({
+    getCurrentValue() {
+      const el = containerRef.current;
+      if (!el) return selectedValue;
+      const idx = Math.round(el.scrollTop / ROW_HEIGHT);
+      const actual = ((idx % n) + n) % n;
+      return items[actual].value;
+    },
+  }));
 
   // 최초 마운트 시 위치 맞춤
   useEffect(() => {
@@ -140,9 +171,13 @@ export function WheelColumn({
       // 아직 끝나지 않은 네이티브 스냅과 충돌하는 문제를 없애기 위함)
       if (SUPPORTS_SCROLLEND) return;
 
+      // commitAndMaybeRecenter를 여기서 직접 참조하면 이 타이머가 예약된
+      // 렌더 시점의 낡은 클로저(옛 selectedValue/onChange)를 그대로 실행해버림
+      // — scrollend 경로(위 handleScrollEnd)에서 이미 겪은 문제와 동일해서,
+      // 같은 해결책인 commitRef를 통해 항상 최신 로직으로 호출함.
       if (settleTimeoutRef.current) clearTimeout(settleTimeoutRef.current);
       settleTimeoutRef.current = setTimeout(
-        () => commitAndMaybeRecenter(idx),
+        () => commitRef.current(idx),
         150,
       );
     });

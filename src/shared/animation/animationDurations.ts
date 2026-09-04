@@ -6,7 +6,7 @@
 //
 // TODO: 지금은 스크롤 오프셋 애니메이션을 눈으로 확인하려고 임시로 2초로
 // 늘려둔 상태. 확인 끝나면 프로덕션 값(0.35초)으로 되돌릴 것.
-export const PAGE_TRANSITION_DURATION = 2;
+export const PAGE_TRANSITION_DURATION = 0.35;
 
 /** Framer Motion의 transition.duration은 초 단위, setTimeout은 밀리초 단위라
  * 서로 변환해서 씀 (아래 POST_ANIMATION_DELAY_MS 계산에만 내부적으로 쓰임) */
