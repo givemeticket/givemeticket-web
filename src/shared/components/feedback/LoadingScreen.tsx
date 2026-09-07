@@ -1,7 +1,6 @@
-import { Loader2 } from "lucide-react";
-import { motion } from "motion/react";
+import { TicketSpinner } from "./TicketSpinner";
 
-// 로딩 표시 — 회전하는 아이콘 + 안내 문구.
+// 로딩 표시 — 찢어진 티켓 스피너 + 안내 문구.
 //
 // position: fixed로 뷰포트 정중앙에 고정함. 처음엔 패딩 기반(그 자리에서 자연스럽게
 // 흐름을 따라가는 방식)으로 했는데, 그러면 이 컴포넌트가 놓이는 위치마다(로그인
@@ -11,13 +10,7 @@ import { motion } from "motion/react";
 export function LoadingScreen() {
   return (
     <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-(--ink) text-(--paper)">
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-        className="text-(--brand-blue)"
-      >
-        <Loader2 size={32} strokeWidth={2} />
-      </motion.div>
+      <TicketSpinner size={180} />
       <p className="text-sm text-(--muted)">불러오는 중...</p>
     </div>
   );

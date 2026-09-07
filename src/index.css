@@ -2,9 +2,22 @@
 @import "pretendard/dist/web/static/pretendard.css";
 
 /* 스크롤바가 나타날 때/없을 때 콘텐츠 너비가 달라지는 걸 방지 —
-   스크롤이 실제로 필요 없는 페이지도 그만큼의 공간을 항상 미리 확보해둠 */
+   스크롤이 실제로 필요 없는 페이지도 그만큼의 공간을 항상 미리 확보해둠.
+   scrollbar-gutter는 같은 요소에 overflow가 auto/scroll/hidden으로
+   설정돼 있어야만 실제로 거터를 예약함(기본값 visible이면 아무 효과 없음
+   — MDN 확인함). overflow-y: auto로 처음 고쳤을 때도, 콘텐츠가 뷰포트보다
+   짧아서(예: 목록 로딩 중) 스크롤 자체가 필요 없는 상태에서는 거터 예약이
+   실제로는 안 되는 것으로 확인됨(실측: clientWidth가 여전히 로딩 중/후에
+   서로 달랐음) — auto는 "필요할 때만" 스크롤 매커니즘을 켜는 값이라 이
+   경우를 못 잡는 것으로 보임. overflow-y: scroll로 무조건 스크롤 매커니즘
+   자체를 항상 켜두면 이 조건 없이 거터가 항상 예약됨. 목록이 로딩되며
+   콘텐츠가 갑자기 길어질 때 스크롤바가 새로 생기면서 페이지 폭이 줄어드는
+   순간적인 레이아웃 재계산이 있었고, 이게 그 시점에 진행 중이던 카드 진입
+   애니메이션의 프레임을 밀어서 "순간이동"처럼 보이는 원인이었음
+   (animation.md류 버그로 착각하기 쉬운 사례). */
 html {
   scrollbar-gutter: stable;
+  overflow-y: scroll;
 }
 
 :root {
@@ -85,6 +98,97 @@ button:not(:disabled) {
   }
   .countdown-urgent {
     animation: countdownPulse 0.9s ease-in-out infinite;
+  }
+  .tk-body {
+    animation: tks-body var(--tk-cycle, 1.8s) cubic-bezier(0.4, 0, 0.35, 1)
+      infinite;
+  }
+  .tk-stub {
+    animation: tks-stub var(--tk-cycle, 1.8s) cubic-bezier(0.4, 0, 0.35, 1)
+      infinite;
+  }
+  .tk-bar {
+    animation: tks-bar var(--tk-cycle, 1.8s) ease-in-out infinite;
+  }
+}
+
+/* "찢어진 티켓이 절취선을 따라 벌어졌다 다시 붙는" 로딩 스피너(TicketSpinner.tsx).
+   각 조각(몸체/줄기)의 종이면+톱니 단면은 컴포넌트 쪽에서 inline SVG path로 그림 —
+   clip-path는 border를 잘라내버려서, 굵은 윤곽선은 stroke로만 안전하게 나옴.
+   애니메이션(위 .tk-body/.tk-stub/.tk-bar의 animation 속성)은 prefers-reduced-motion을
+   존중해 위쪽 블록에서만 켜지고, 아래 구조/색상 규칙은 항상 적용됨.
+   .tk-mark는 티켓 안 텍스트를 흉내낸 정적인 장식(제목 옆 마크, 구분선, 줄기 쪽
+   막대들) — .tk-bar(본문 줄 2개)만 깜빡이고 이건 애니메이션 없음. */
+.tk {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  --tk-ink: var(--paper);
+  --tk-paper: #ffffff;
+}
+.tk-body {
+  position: relative;
+  flex: 1 1 auto;
+}
+.tk-stub {
+  position: relative;
+  flex: 0 0 30%;
+  margin-left: -2.6%;
+}
+.tk-paper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.tk-face {
+  fill: var(--tk-paper);
+  stroke: var(--tk-ink);
+  stroke-width: 2.6;
+  vector-effect: non-scaling-stroke;
+}
+.tk-mark,
+.tk-bar {
+  background: var(--tk-ink);
+}
+
+@keyframes tks-body {
+  0% {
+    transform: translateX(0);
+  }
+  46%,
+  54% {
+    transform: translateX(-9%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes tks-stub {
+  0% {
+    transform: translateX(0);
+  }
+  46%,
+  54% {
+    transform: translateX(9%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes tks-bar {
+  0% {
+    opacity: 0.2;
+  }
+  46%,
+  54% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0.2;
   }
 }
 
