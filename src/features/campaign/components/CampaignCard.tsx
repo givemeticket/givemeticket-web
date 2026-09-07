@@ -102,10 +102,14 @@ export function CampaignCard({
         className="m-3 h-16 w-16 shrink-0 self-center rounded-lg object-cover sm:h-25.5 sm:w-25.5"
       />
 
-      {/* 메인 정보 영역 */}
-      <div className="min-w-0 flex-1 py-4 pr-4">
+      {/* 메인 정보 영역. 재고 스텁이 있을 때만 stub-divider-mirror를 붙임 —
+          스텁 쪽 절취선 반원과 짝을 이뤄 경계에서 완전한 원으로 보이게 하는
+          용도라, 스텁 자체가 없으면 필요 없음 */}
+      <div
+        className={`min-w-0 flex-1 py-4 pr-4 ${hasStock ? "stub-divider-mirror" : ""}`}
+      >
         <span
-          className="inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold"
+          className="status-texture inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold"
           style={{ backgroundColor: meta.bg, color: meta.fg }}
         >
           {meta.label}
@@ -125,11 +129,13 @@ export function CampaignCard({
         <p className="mt-1 text-xs text-(--muted)">{openAtLabel}</p>
       </div>
 
-      {/* 상태 색상으로 채운 스텁 — 잔여 좌석을 숫자로 강조 */}
+      {/* 상태 색상으로 채운 스텁 — 잔여 좌석을 숫자로 강조.
+          stub-perforated가 왼쪽 경계에 종이 질감 + 펀치홀 절취선을 그려주므로
+          border-l은 따로 안 씀(카드 본문과 재질이 다르게 보이던 문제 해결) */}
       {hasStock && (
         <div
-          className="flex w-20 shrink-0 flex-col items-center justify-center gap-0.5 border-l sm:w-24"
-          style={{ borderColor: "var(--line)", backgroundColor: meta.bg }}
+          className="stub-perforated flex w-20 shrink-0 flex-col items-center justify-center gap-0.5 pl-1.5 sm:w-24"
+          style={{ backgroundColor: meta.bg }}
         >
           <span
             className="text-center text-base font-extrabold leading-tight"
@@ -168,8 +174,8 @@ export function CampaignCard({
             ease: "easeInOut" as const,
           },
         }}
-        className="flex w-full overflow-hidden rounded-lg border text-left shadow-[0_1px_3px_rgba(17,24,39,0.06)]"
-        style={{ borderColor: "var(--line)", backgroundColor: cardBg }}
+        className="paper-texture flex w-full overflow-hidden rounded-lg text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)]"
+        style={{ backgroundColor: cardBg }}
       >
         {content}
       </motion.div>
@@ -202,8 +208,8 @@ export function CampaignCard({
       type="button"
       onClick={onClick}
       disabled={isDeleted}
-      className="flex w-full overflow-hidden rounded-lg border text-left shadow-[0_1px_3px_rgba(17,24,39,0.06)] transition-shadow duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) disabled:cursor-default"
-      style={{ borderColor: "var(--line)", backgroundColor: cardBg }}
+      className="paper-texture flex w-full overflow-hidden rounded-lg text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)] transition-shadow duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) disabled:cursor-default"
+      style={{ backgroundColor: cardBg }}
     >
       {content}
     </motion.button>

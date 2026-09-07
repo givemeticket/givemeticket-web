@@ -81,6 +81,89 @@ button:not(:disabled) {
   display: none; /* Chrome/Safari */
 }
 
+/* 카드 배경에 얹는 은은한 종이 질감. 처음엔 SVG 노이즈 필터(feTurbulence)로
+   직접 만들어봤는데, 감마 보정으로 대비를 최대한 올려도 결이 "종이"보다는
+   "노이즈"처럼 보이는 느낌이 강했음 — 결국 transparenttextures.com에서 받은
+   실제 종이 섬유 텍스처 PNG(투명 배경 위에 옅은 결무늬만 있는 알파 채널
+   이미지, public/paper.png)로 교체함. 알파 채널이 있어서 카드마다 배경색이
+   달라도(정상=--ink-soft, 삭제됨=--deleted) 그 위에 자연스럽게 겹쳐짐. */
+.paper-texture {
+  background-image: url("/paper.png");
+}
+
+/* 상태 뱃지/재고 스텁처럼 채도 높은 색(meta.bg)으로 채워진 작은 UI 조각에
+   얹는 종이 질감. .paper-texture와 달리 background-blend-mode: multiply를
+   씀 — 노란색처럼 밝은 배경 위에서는 기본(normal) 알파 합성으로는 결이 거의
+   안 보였기 때문(자세한 이유는 아래 .stub-perforated 주석 참고). */
+.status-texture {
+  background-image: url("/paper.png");
+  background-blend-mode: multiply;
+}
+
+/* 카드 오른쪽의 재고 스텁(보딩패스 스타일) 전용 배경 — 카드 본문과 같은 종이
+   질감(url("/paper.png"))에, 왼쪽 경계를 실선 대신 펀치홀(원형 절취선)로
+   그려서 "여기서 뜯어낸다"는 티켓 느낌을 냄. 두 배경을 겹겹이 쌓아야 해서
+   (원 패턴 + 종이 질감) .paper-texture와 별도 클래스로 둠 — 같은 요소에
+   background-image를 두 클래스에서 각각 선언하면 하나만 적용되고 합쳐지지
+   않기 때문. 스텁 배경색(상태별 meta.bg)은 그대로 인라인 style로 받고, 이
+   두 배경이 그 위에 얹힘.
+
+   두 가지 시행착오를 거침:
+   1. 처음엔 원(펀치홀) 레이어의 background-size를 "100% 11px"로 줬는데,
+      이러면 그 원을 그리는 캔버스 자체가 스텁 전체 너비가 돼버려서 원이
+      캔버스 정중앙(=스텁 정중앙)에 그려짐 — 구분선이 아니라 스텁 한가운데
+      점으로 보이는 버그였음. 캔버스 너비를 6px로 좁게 주고 왼쪽에 붙여서
+      해결.
+   2. 종이 질감을 배경색 위에 그냥 알파로 얹으면(기본 normal 블렌드), 텍스처
+      자체가 밝은 회색 계열이라 마찬가지로 밝은 노란색(OPEN 상태) 위에서는
+      명도차가 거의 없어 결이 안 보였음. background-blend-mode를 종이 질감
+      레이어에만 multiply로 주면(그래픽 툴에서 종이 질감을 색 위에 합성할 때
+      쓰는 표준 방식) 밑에 있는 색을 항상 곱해서 어둡게 만들기 때문에, 배경이
+      밝든 어둡든 결이 일관되게 드러남 — 노랑/빨강/파랑 모두 확인함. 원(펀치홀)
+      레이어는 그대로 normal로 둬야 원래 의도한 점 색(흰색)이 그대로 유지됨.
+   3. background-position을 "left"(=0px)로 두면, 원이 자기 타일(6px 너비)의
+      가운데인 3px 지점에 그려져서 색 경계(스텁의 왼쪽 끝, 0px)보다 3px
+      안쪽에 찍힘 — "경계선이 절취선 오른쪽에 붙어있다"는 느낌이 났던 원인.
+      "-3px"만큼 왼쪽으로 밀어서 원의 중심 자체를 경계(0px)에 맞추면, 스텁
+      쪽에서는 원의 오른쪽 절반만 보임(왼쪽 절반은 스텁 박스 밖이라 잘림).
+   4. 3번만 하고 나니 이번엔 반대로 "펀치홀이 반만 보이고 잘린 것처럼
+      보인다"는 문제가 생김 — 당연한 결과였음, 원의 나머지 왼쪽 절반은
+      스텁이 아니라 그 옆 카드 본문(mid) 영역에 그려져야 완전한 원이 되는데,
+      mid 쪽엔 대응하는 배경이 전혀 없었기 때문. 그래서 mid 쪽에도 짝이 되는
+      원 레이어를 추가함(.stub-divider-mirror, 아래) — mid의 오른쪽 끝이
+      정확히 스텁의 왼쪽 끝과 맞닿아 있으므로, 그쪽에서 "right -3px"로 원의
+      왼쪽 절반을 그리면 스텁 쪽 오른쪽 절반과 경계에서 이어져 완전한 원 하나로
+      보임. */
+.stub-perforated {
+  background-image:
+    radial-gradient(circle, #ffffff 1.6px, transparent 1.6px),
+    url("/paper.png");
+  background-size:
+    6px 11px,
+    auto;
+  background-repeat: repeat-y, repeat;
+  background-position:
+    -3px center,
+    0 0;
+  background-blend-mode: normal, multiply;
+}
+
+/* .stub-perforated의 짝 — 카드 본문(mid) 영역의 오른쪽 끝에 붙여서, 스텁
+   쪽 반원과 이어져 완전한 원(펀치홀)으로 보이게 함. mid 자신은 배경이 따로
+   없어(카드 바깥 컨테이너의 .paper-texture가 비쳐 보이는 구조) 원 레이어 하나만
+   추가하면 됨 — 종이 질감은 이미 바깥 컨테이너 것이 그대로 보이므로 중복으로
+   깔 필요 없음. */
+.stub-divider-mirror {
+  background-image: radial-gradient(
+    circle,
+    #ffffff 1.6px,
+    transparent 1.6px
+  );
+  background-size: 6px 11px;
+  background-repeat: repeat-y;
+  background-position: right -3px center;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .stamp-anim {
     animation: stampDown 0.8s cubic-bezier(0.2, 0.85, 0.25, 1.2) both;
