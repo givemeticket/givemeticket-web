@@ -89,11 +89,17 @@ export function CampaignCard({
 
   const content = (
     <>
-      {/* 썸네일 — 등록된 게 없으면(아직 등록 기능 자체가 없어서 항상 이 경우) 플레이스홀더 */}
+      {/* 썸네일 — 등록된 게 없으면(아직 등록 기능 자체가 없어서 항상 이 경우) 플레이스홀더.
+          좁은 화면(640px 미만)에서는 작게 줄여서, 그 옆 제목/닉네임 영역이
+          너무 눌리지 않게 함(재고 스텁까지 겹치면 320px에서 거의 안 보였음).
+          카드 전체는 기본 정렬(stretch)을 그대로 둬야 오른쪽 재고 스텁의
+          border-l이 카드 높이 전체를 채우는데, 그러면 명시적 높이가 있는
+          이 썸네일만 늘어나지 않고 위쪽에 붙어버려서(flex-start로 대체됨)
+          self-center로 얘만 따로 세로 가운데 정렬함 */}
       <img
         src={imageUrl || "/gray_logo.png"}
         alt=""
-        className="m-3 h-25.5 w-25.5 shrink-0 rounded-lg object-cover"
+        className="m-3 h-16 w-16 shrink-0 self-center rounded-lg object-cover sm:h-25.5 sm:w-25.5"
       />
 
       {/* 메인 정보 영역 */}
@@ -122,7 +128,7 @@ export function CampaignCard({
       {/* 상태 색상으로 채운 스텁 — 잔여 좌석을 숫자로 강조 */}
       {hasStock && (
         <div
-          className="flex w-24 shrink-0 flex-col items-center justify-center gap-0.5 border-l"
+          className="flex w-20 shrink-0 flex-col items-center justify-center gap-0.5 border-l sm:w-24"
           style={{ borderColor: "var(--line)", backgroundColor: meta.bg }}
         >
           <span

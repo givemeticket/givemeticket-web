@@ -49,7 +49,7 @@ export function InlineSortFilter({
   const inactiveStyle = { borderColor: "var(--line)", color: "var(--muted)" };
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-1.5">
       {sortOptions.map((opt) => {
         const active = opt.value === sortValue;
         return (

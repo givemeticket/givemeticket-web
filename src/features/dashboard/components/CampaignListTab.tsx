@@ -247,7 +247,9 @@ export function CampaignListTab({
           : undefined
       }
     >
-      <FadeSlide className="flex items-center justify-between">
+      {/* 정렬 필터 + "행사 추가" 버튼을 합치면 좁은 화면 폭을 넘을 수 있어서
+          flex-wrap을 걸어둠 — 안 들어가면 버튼이 다음 줄로 자연스럽게 넘어감 */}
+      <FadeSlide className="flex flex-wrap items-center justify-between gap-2">
         <InlineSortFilter
           sortOptions={sortOptions}
           sortValue={sortBy}

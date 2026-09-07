@@ -57,7 +57,10 @@ export function CampaignFormFields({
         />
       </Field>
 
-      <div className="flex gap-4">
+      {/* 좁은 화면(640px 미만)에서는 세로로 쌓음 — 정원/오픈시각을 절반씩
+          나란히 두면 "신청 오픈 시각"에 들어갈 날짜+시간 텍스트가 잘려서
+          거의 안 읽히는 수준까지 좁아지는 문제가 있었음 */}
+      <div className="flex flex-col gap-4 sm:flex-row">
         <div className="flex-1">
           <Field label="정원" info={totalStockInfo}>
             <input
