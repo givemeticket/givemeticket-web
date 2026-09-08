@@ -104,7 +104,17 @@ function Field({
         {label}
         {info && (
           <Tooltip content={info}>
-            <CircleAlert size={14} strokeWidth={2} className="text-(--muted)" />
+            {/* 아이콘 자체(14px)는 그대로 두고, 실제 터치 가능 영역만 패딩으로
+                넓힘(-m-2로 그 패딩만큼 다시 당겨서 레이아웃엔 영향 없게 함) —
+                14px 그대로면 모바일에서 손가락으로 정확히 조준하기 어려워
+                꾹 누르기 자체가 잘 안 먹히는 문제가 있었음(실측 확인함) */}
+            <span className="-m-2 inline-flex p-2">
+              <CircleAlert
+                size={14}
+                strokeWidth={2}
+                className="text-(--muted)"
+              />
+            </span>
           </Tooltip>
         )}
       </span>

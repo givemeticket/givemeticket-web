@@ -26,6 +26,10 @@ import type { FilterTab } from "../lib/dashboardFilterStore";
 interface CampaignListTabProps {
   /** owned="내가 만든 행사", participated="나의 티켓" */
   scope: CampaignScope;
+  /** 페이지 상단에 큼직하게 보여주는 제목("나의 티켓"/"나의 행사"). 헤더의
+   * 탭(HeaderTabs.tsx)엔 활성 표시가 없어서, "지금 어느 목록을 보고 있는지"를
+   * 여기서 대신 알려줌 */
+  pageTitle: string;
   emptyIcon: ReactNode;
   emptyTitle: string;
   emptyDescription: string;
@@ -47,6 +51,7 @@ interface CampaignListTabProps {
 // 값 자체는 안 사라짐 — 여기로 옮기는 게 더 응집도 높은 구조라 이전함.
 export function CampaignListTab({
   scope,
+  pageTitle,
   emptyIcon,
   emptyTitle,
   emptyDescription,
@@ -247,6 +252,16 @@ export function CampaignListTab({
           : undefined
       }
     >
+      {/* 헤더의 탭(HeaderTabs.tsx)엔 활성 표시가 없어서, "지금 나의 티켓/나의
+          행사 중 어느 걸 보고 있는지"를 이 제목이 대신 알려줌.
+          CampaignSubPageShell의 title 스타일과 통일. 아래 정렬 필터 줄과 같이
+          FadeSlide로 감싸서, 탭을 전환할 때(매번 새로 마운트됨) 둘이 같이
+          페이드인되도록 함 — 안 그러면 필터 줄만 페이드되고 제목은 그냥
+          뚝 나타나서 어색했음. */}
+      <FadeSlide>
+        <h1 className="text-lg font-bold">{pageTitle}</h1>
+      </FadeSlide>
+
       {/* 정렬 필터 + "행사 추가" 버튼을 합치면 좁은 화면 폭을 넘을 수 있어서
           flex-wrap을 걸어둠 — 안 들어가면 버튼이 다음 줄로 자연스럽게 넘어감 */}
       <FadeSlide className="flex flex-wrap items-center justify-between gap-2">

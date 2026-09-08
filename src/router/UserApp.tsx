@@ -3,6 +3,7 @@ import {
   createBrowserRouter,
   RouterProvider,
   useLocation,
+  useNavigationType,
   useOutlet,
 } from "react-router-dom";
 import { AnimatePresence, LayoutGroup } from "motion/react";
@@ -51,6 +52,7 @@ import { POST_ANIMATION_DELAY_MS } from "@/shared/animation/animationDurations";
 // 순간 문서 높이가 줄면서 카드가 갑자기 위로 튀어오르는 것처럼 보였음.
 function RootLayout() {
   const location = useLocation();
+  const navigationType = useNavigationType();
   const element = useOutlet();
   const animationKey = getAnimationKey(location.pathname);
   // 직전 렌더의 경로를 기억해둠 — "떠나는 페이지"가 어디였는지 알아야
@@ -81,6 +83,7 @@ function RootLayout() {
       supportsScrollOffsetTrick(
         scrollOffsetMarkedForPathname,
         location.pathname,
+        navigationType,
       )
     ) {
       markPendingScrollOffset(
@@ -90,8 +93,22 @@ function RootLayout() {
     setScrollOffsetMarkedForPathname(location.pathname);
   }
 
-  // 스크롤 저장은 떠나는 순간 바로, 복원은 애니메이션이 끝나는 시점에 딱 한 번만
+  // 스크롤 저장은 떠나는 순간 바로(방향과 무관하게 항상) 하고, 복원은
+  // "뒤로가기(POP)로 도착했을 때만" 함 — 애니메이션이 끝나는 시점에 딱 한 번만
   // (window.scrollTo 한 번) 실행함.
+  //
+  // 저장을 무조건 다 해두는 이유: 목록→상세는 정방향 이동(PUSH)인데, 나중에
+  // 상세에서 뒤로가기를 눌렀을 때(POP) 목록 스크롤을 복원하려면 저장 자체는
+  // "떠날 때"(=정방향으로 들어가는 그 순간) 미리 해둬야 함 — 저장을 POP일 때만
+  // 하면 애초에 저장할 기회 자체가 없어짐.
+  //
+  // 반대로 복원은 POP일 때만 하는 이유: 탭 전환(나의 티켓→나의 행사)이나 상세
+  // 페이지에서 헤더의 탭을 눌러 바로 이동하는 것도 전부 PUSH인데, 예전엔 이런
+  // 정방향 이동에도 "그 경로에 마지막으로 저장돼있던 스크롤 값"을 무조건
+  // 복원해버려서, 사실상 처음 들어가는 것과 다름없는 화면인데도 예전에 스크롤해
+  // 뒀던 위치로 갑자기 튀어 보이는 문제가 있었음(사용자 피드백으로 확인).
+  // "뒤로가는 게 아니면 항상 맨 위에서 시작"이 직관적인 기본값이라, 복원은
+  // POP일 때만으로 좁힘.
   //
   // 단, 카드 클릭/뒤로가기로 인한 목록↔상세 전환은 예외 — 그 경우엔 스크롤 오프셋
   // 방식(scrollOffsetStore.ts, 위에서 표시함)이 대신 처리하니, 여기서 평소처럼
@@ -118,14 +135,18 @@ function RootLayout() {
     if (consumePendingScrollOffsetForRootLayout()) return;
 
     const timer = setTimeout(() => {
-      // 도착한 페이지에 저장된 값이 있으면 그 위치로, 처음 오는 페이지면 맨 위로
-      window.scrollTo(0, getScrollPosition(arrivingPathname));
+      // POP(뒤로가기)로 도착했을 때만 저장된 값을 복원하고, 그 외(탭 전환,
+      // 카드/링크 클릭 등 정방향 이동)엔 맨 위(0)에서 시작함.
+      window.scrollTo(
+        0,
+        navigationType === "POP" ? getScrollPosition(arrivingPathname) : 0,
+      );
     }, POST_ANIMATION_DELAY_MS);
 
     return () => {
       clearTimeout(timer);
     };
-  }, [location.pathname]);
+  }, [location.pathname, navigationType]);
 
   return (
     <LayoutGroup>

@@ -175,7 +175,16 @@ export function DateTimePickerField({
         {label}
         {labelInfo && (
           <Tooltip content={labelInfo}>
-            <CircleAlert size={14} strokeWidth={2} className="text-(--muted)" />
+            {/* 아이콘 자체(14px)는 그대로 두고, 실제 터치 가능 영역만 패딩으로
+                넓힘(-m-2로 그 패딩만큼 다시 당겨서 레이아웃엔 영향 없게 함) —
+                CampaignFormFields.tsx의 같은 패턴 참고 */}
+            <span className="-m-2 inline-flex p-2">
+              <CircleAlert
+                size={14}
+                strokeWidth={2}
+                className="text-(--muted)"
+              />
+            </span>
           </Tooltip>
         )}
       </span>

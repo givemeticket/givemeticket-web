@@ -1,6 +1,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { BrandLogo } from "@/shared/components/BrandLogo";
+import { HeaderTabs } from "@/features/dashboard/components/HeaderTabs";
 import { UserMenu } from "@/features/auth/components/UserMenu";
 import { useLogout } from "@/features/auth/hooks/useLogout";
 import { useMe } from "@/features/auth/hooks/useMe";
@@ -13,15 +14,24 @@ import {
 } from "@/shared/animation/pageTransition/pageTransitionStore";
 import { useBlockUserScroll } from "@/shared/animation/hooks/useBlockUserScroll";
 
-// 로그인/OAuth 콜백 화면을 뺀 모든 화면이 공유하는 최상위 레이아웃. 로고+아바타
+// 로그인/OAuth 콜백 화면을 뺀 모든 화면이 공유하는 최상위 레이아웃. 로고+탭+아바타
 // 헤더가 여기 있어서, 리액트 라우터의 중첩 레이아웃 성질상 하위 라우트(RootLayout,
 // 대시보드, 캠페인 상세 등)가 아무리 바뀌어도 이 컴포넌트 자체는 리마운트되지
 // 않음 — 그래서 헤더가 페이지 전환 애니메이션의 영향을 전혀 안 받고 항상 고정으로
 // 보임 (예전엔 각 페이지가 헤더를 따로 들고 있어서 페이지 전환마다 같이 사라졌다
 // 나타났었음).
 //
-// 비로그인 상태에서도(예: 공유 링크로 캠페인 상세를 보는 게스트) 아바타는 항상
-// 보이고, 눌렀을 때 로그인 버튼만 뜨는 식으로 처리함 (UserMenu가 me=null을 처리함).
+// 탭(나의 티켓/나의 행사)도 원래 DashboardLayout 안에서 대시보드 라우트일 때만
+// 조건부로 보이던 걸 여기로 옮겨서 항상 보이게 함(HeaderTabs.tsx 참고) — 어느
+// 화면에서든 바로 대시보드로 이동할 수 있는 전역 내비게이션으로 성격이 바뀜.
+// 활성 탭 표시(밑줄 등)는 일부러 안 둠 — 상세/수정/신청자목록 같은 하위 화면에선
+// 어느 탭도 "정답"이 아니라서, 억지로 하나를 활성으로 고르는 대신 아예 활성 표시
+// 자체를 없앰. "지금 어디 있는지"는 대신 각 목록 페이지 자신의 제목이 알려줌.
+//
+// 비로그인 상태에서도(예: 공유 링크로 캠페인 상세를 보는 게스트) 아바타/탭은 항상
+// 보이고, 탭을 누르면 ProtectedRoute가 알아서 로그인으로 보냈다가 되돌려줌
+// (UserMenu가 me=null을 처리하는 것과 같은 원칙 — 로그인 상태를 여기서 미리
+// 따지지 않고, 각자 필요한 곳에서 자연스럽게 처리되게 둠).
 export function UserAppShell() {
   const navigate = useNavigate();
   const logout = useLogout();
@@ -66,16 +76,43 @@ export function UserAppShell() {
           돌아오는 순간 갑자기 나타나는 것처럼 보였음(사실 페이드 문제가 아니라
           스크롤 위치 문제였음). sticky면 스크롤 값과 무관하게 항상 화면에 보여서
           이 문제 자체가 없어짐. bg-(--ink)를 명시적으로 줘야 함 — 안 그러면 sticky로
-          고정된 상태에서 스크롤되는 콘텐츠가 투명한 헤더 뒤로 비쳐 보임. */}
-      <header className="sticky top-0 z-40 mx-auto flex w-full max-w-2xl items-center gap-2 bg-(--ink) px-6 pt-8">
-        <BrandLogo />
+          고정된 상태에서 스크롤되는 콘텐츠가 투명한 헤더 뒤로 비쳐 보임.
 
-        <div className="ml-auto flex items-center">
-          <UserMenu
-            me={me ?? null}
-            onLogout={logout}
-            onWithdraw={() => setIsWithdrawConfirmOpen(true)}
-          />
+          이 헤더는 pt-8만 있고 원래 bottom padding이 없었음 — 아래 여백은 이
+          헤더가 아니라 그다음에 오는 각 페이지 쪽(DashboardLayout의 main,
+          CampaignSubPageShell/CampaignDetailPage의 pt-8)이 대신 만들어주고
+          있었음. 스크롤 안 한 상태에선 둘 다 똑같이 "빈 여백"이라
+          구분이 안 갔는데, sticky로 고정된 채 스크롤하면 그 아래 여백은
+          콘텐츠와 함께 스크롤되어 사라지고 헤더만 화면에 남아서, 헤더 바로
+          밑에 다른 콘텐츠가 여백/경계 없이 바로 붙어버리는 것처럼 보였음.
+          border-b + pb-8를 헤더 자신에게 줘서, 스크롤 여부와 무관하게 헤더
+          스스로 항상 뚜렷한 경계를 갖게 함(각 페이지의 자체 여백은 안
+          건드림 — 그 경계 밑에 원래 있던 그 페이지 여백이 그대로 추가로
+          더해지는 것뿐이라, 다른 곳을 손볼 필요가 없음).
+
+          구분선(border-b)은 header 자신이 아니라, 안쪽에 새로 둔 div에
+          줌 — header는 px-6짜리 패딩이 있는 상자라, header 자체에 테두리를
+          주면 패딩 바깥쪽(전체 672px)까지 꽉 차게 그려져서, 그 아래 각
+          페이지의 실제 콘텐츠 폭(패딩을 뺀 624px)보다 선이 더 넓어 보이는
+          어긋남이 있었음. 로고/아바타를 담는 안쪽 div는 header의 패딩
+          안쪽에서 실제 콘텐츠 폭(624px)만큼만 차지하므로, 그 div에 테두리를
+          주면 페이지 콘텐츠와 정확히 같은 폭으로 맞춰짐. */}
+      <header className="sticky top-0 z-40 mx-auto w-full max-w-2xl bg-(--ink) px-6 pt-8">
+        {/* border-(--line) 대신 rgba를 직접 줌 — --line은 인풋/카드 등 앱 전체가
+            공유하는 토큰이라, 여기서 더 진하게 바꾸면 그 값을 쓰는 다른 모든
+            테두리도 같이 진해짐. 이 헤더 구분선만 살짝 더 진하게 하려고
+            별도 값(0.1 → 0.16)을 씀. */}
+        <div className="flex items-center gap-4 border-b-2 border-dashed border-[rgba(17,24,39,0.16)] pb-8">
+          <BrandLogo />
+          <HeaderTabs />
+
+          <div className="ml-auto flex items-center">
+            <UserMenu
+              me={me ?? null}
+              onLogout={logout}
+              onWithdraw={() => setIsWithdrawConfirmOpen(true)}
+            />
+          </div>
         </div>
       </header>
 

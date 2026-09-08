@@ -1,13 +1,15 @@
-import { useLocation, useNavigate, Outlet } from "react-router-dom";
-import { resetFilterState, type FilterTab } from "../lib/dashboardFilterStore";
+import { Outlet } from "react-router-dom";
 import { FadeSlide } from "@/shared/animation/components/FadeSlide";
 
-// /mytickets, /mycampaigns 두 라우트가 공유하는 레이아웃 — 탭만 담당.
-// 헤더(로고+아바타)는 이제 UserAppShell이 전역으로 고정 처리함 (여기서 빠짐).
-// 정렬/삭제표시 필터와 행사추가 버튼은 CampaignListTab이 각자 직접 관리함.
-// 전환 중 클릭 차단도 UserAppShell이 전역으로 처리함(예전엔 여기서 useIsPresent()로
-// 개별 처리했는데, 탭 전환처럼 AnimatePresence 키가 안 바뀌는 전환은 못 잡는 빈틈이
-// 있었음 — pageTransitionStore.ts 참고).
+// /mytickets, /mycampaigns 두 라우트가 공유하는 레이아웃 — 이제 배경 페이드
+// 레이어랑 콘텐츠 폭(max-w-2xl px-6)만 담당함. 헤더(로고+탭+아바타)는
+// UserAppShell이 전역으로 고정 처리함(여기서 빠짐) — 탭도 원래는 여기 있었는데,
+// "어느 화면에서든 항상 보이는 전역 내비게이션"으로 바뀌면서 UserAppShell 쪽으로
+// 옮겨감(HeaderTabs.tsx). 정렬/삭제표시 필터와 행사추가 버튼, 그리고 "지금
+// 나의 티켓/나의 행사 중 뭘 보고 있는지" 제목은 CampaignListTab이 각자 직접
+// 관리함. 전환 중 클릭 차단도 UserAppShell이 전역으로 처리함(예전엔 여기서
+// useIsPresent()로 개별 처리했는데, 탭 전환처럼 AnimatePresence 키가 안 바뀌는
+// 전환은 못 잡는 빈틈이 있었음 — pageTransitionStore.ts 참고).
 export function DashboardLayout() {
   return (
     <div className="relative flow-root h-full text-(--paper)">
@@ -16,63 +18,11 @@ export function DashboardLayout() {
           거의 끝까지 안 보이다가 마지막 순간에 갑자기 드러나는 문제가 생김. */}
       <FadeSlide className="absolute inset-0 -z-10 bg-(--ink)" slide={false} />
 
-      {/* 상세 페이지로 이동할 땐 이 탭이 사라지는 화면이라, "나머지 요소" 페이드
-          대상에 포함시킴. main(카드가 들어있는 곳)은 감싸지 않음 — 카드는 형제
-          컴포넌트로 독립적인 이동 애니메이션을 가져야 해서. */}
-      <FadeSlide>
-        <nav className="mx-auto mt-8 flex max-w-2xl px-6">
-          <div className="relative flex w-36">
-            <TabLink to="/mytickets" tab="mytickets" label="나의 티켓" />
-            <TabLink to="/mycampaigns" tab="mycampaigns" label="나의 행사" />
-          </div>
-        </nav>
-      </FadeSlide>
-
-      <main className="mx-auto max-w-2xl px-6 pb-10 pt-4">
+      {/* pt-8 — CampaignSubPageShell/CampaignDetailPage와 같은 값으로 맞춤(둘
+          다 헤더 바로 아래 오는 콘텐츠 컨테이너라 동일한 여백 컨벤션을 씀) */}
+      <main className="mx-auto max-w-2xl px-6 pt-8 pb-10">
         <Outlet />
       </main>
     </div>
-  );
-}
-
-function TabLink({
-  to,
-  tab,
-  label,
-}: {
-  to: string;
-  tab: FilterTab;
-  label: string;
-}) {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const isActive = location.pathname === to;
-
-  function handleClick() {
-    if (isActive) return; // 이미 있는 탭을 다시 눌렀을 땐 리셋 안 함
-    // navigate() 직전에 동기적으로 리셋함 — 이펙트(useLayoutEffect 등)에서 하면,
-    // 같은 전환으로 새로 마운트되는 CampaignListTab의 렌더링이 그 이펙트보다 먼저
-    // 일어나서 리셋 전의 낡은 값을 읽어가 버림 (BackButton에서 겪었던 것과 같은
-    // 타이밍 문제). 여기서 직접 하면 그 문제가 없음.
-    resetFilterState(tab);
-    navigate(to);
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className={`relative flex-1 pb-2.5 text-center text-sm font-medium transition-colors ${
-        isActive ? "text-(--paper)" : "text-(--muted) hover:text-(--paper)/80"
-      }`}
-    >
-      {label}
-      {isActive && (
-        <span
-          className="absolute inset-x-0 -bottom-px h-0.5 rounded-full"
-          style={{ backgroundColor: "var(--brand-blue)" }}
-        />
-      )}
-    </button>
   );
 }

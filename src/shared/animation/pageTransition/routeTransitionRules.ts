@@ -26,16 +26,34 @@ const CARD_LIST_PATHNAMES = new Set(["/mytickets", "/mycampaigns"]);
 // 이미 맞은 것처럼 보이게 하는 방식)을 서로 지원하는 화면 사이의 전환인지 확인.
 // 이 조합이 아니면 오프셋을 걸어도 어차피 아무도 안 읽어서 의미가 없고, 다음
 // 전환 때까지 안 쓰이고 남아있게 둘 이유도 없어서 아예 안 건다.
+//
+// 목록→상세(카드 클릭) 방향은 항상 PUSH라 navigationType과 무관하게 허용함.
+// 상세→목록 방향은 navigationType이 "POP"(뒤로가기)일 때만 허용함 — 헤더의
+// 탭(HeaderTabs.tsx)이 생기면서, 상세 페이지에서 "뒤로가기"가 아니라 탭을
+// 직접 눌러 목록으로 PUSH 이동하는 경로가 새로 생김. 이 경우엔 실제로 돌아갈
+// 특정 카드가 없어서(returningCardStore에 아무것도 안 표시됨 — 그건 BackButton
+// 클릭 시에만 표시됨) layoutId 카드 애니메이션 자체가 안 걸리는데도, 이 트릭만
+// 걸려서 목록 스크롤이 예전 위치로 부적절하게 복원돼버리는 문제가 있었음(사용자
+// 피드백으로 확인). POP일 때만 허용하면, 진짜 "돌아가는" 경우에만 이 트릭이
+// 걸리고 탭 클릭 같은 정방향 이동은 걸리지 않게 됨.
 export function supportsScrollOffsetTrick(
   leavingPathname: string,
   arrivingPathname: string,
+  navigationType: "POP" | "PUSH" | "REPLACE",
 ): boolean {
-  return (
-    (CARD_LIST_PATHNAMES.has(leavingPathname) &&
-      isCardDetailPathname(arrivingPathname)) ||
-    (isCardDetailPathname(leavingPathname) &&
-      CARD_LIST_PATHNAMES.has(arrivingPathname))
-  );
+  if (
+    CARD_LIST_PATHNAMES.has(leavingPathname) &&
+    isCardDetailPathname(arrivingPathname)
+  ) {
+    return true;
+  }
+  if (
+    isCardDetailPathname(leavingPathname) &&
+    CARD_LIST_PATHNAMES.has(arrivingPathname)
+  ) {
+    return navigationType === "POP";
+  }
+  return false;
 }
 
 // /mytickets, /mycampaigns는 같은 DashboardLayout 안에서 탭 내용만 바뀌는 거라
