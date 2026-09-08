@@ -13,6 +13,9 @@ interface IconButtonProps {
   disabled?: boolean;
   /** warn이면 색 자체를 경고색으로 고정(삭제 같은 위험한 동작용) */
   tone?: "default" | "warn";
+  /** 내부 Tooltip에 그대로 전달함 — 화면/컨테이너 왼쪽 가장자리에 가까운
+   * 버튼이면 "left"로 줘서 툴팁이 잘리지 않게 함(Tooltip.tsx 참고) */
+  align?: "center" | "left";
 }
 
 // 원형 아이콘 버튼. 예전엔 필터/달력 이전달·다음달/행사 만들기/관리 아이콘들이
@@ -26,6 +29,7 @@ export function IconButton({
   active = false,
   disabled = false,
   tone = "default",
+  align = "center",
 }: IconButtonProps) {
   const sizeClass = size === "sm" ? "h-8 w-8" : "h-9 w-9";
   const color =
@@ -36,7 +40,7 @@ export function IconButton({
         : "var(--muted)";
 
   return (
-    <Tooltip content={label}>
+    <Tooltip content={label} align={align}>
       <button
         type="button"
         onClick={onClick}

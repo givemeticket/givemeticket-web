@@ -213,13 +213,17 @@ export function CampaignDetailPage() {
                         leadingContent={
                           <CopyLinkButton
                             url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
+                            align="left"
                           />
                         }
                       />
                     ) : (
+                      // 여기도 같은 줄(페이지 왼쪽 여백에 바로 붙음)이라 위
+                      // OwnerPanel 쪽과 같은 이유로 align="left"
                       <div className="flex items-center gap-2">
                         <CopyLinkButton
                           url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
+                          align="left"
                         />
                       </div>
                     )}

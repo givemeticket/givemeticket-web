@@ -128,6 +128,7 @@ export function CampaignApplicantsPage() {
                   }
                   label="정렬 순서 변경"
                   active={sortDirection === "desc"}
+                  align="left"
                 >
                   <ArrowUpDown size={16} strokeWidth={2} />
                 </IconButton>

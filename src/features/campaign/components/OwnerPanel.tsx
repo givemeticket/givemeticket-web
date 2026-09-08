@@ -41,6 +41,13 @@ export function OwnerPanel({
 
   return (
     <div className="flex items-center gap-2">
+      {/* 이 줄 전체가 페이지 왼쪽 여백에 바로 붙어있어서(특히 좁은 화면), 중앙
+          정렬 툴팁은 왼쪽이 화면 밖으로 잘릴 위험이 있음 — 그래서 이 줄의
+          버튼은 기본적으로 align="left"로 통일함(오른쪽 끝 버튼(삭제)까지도
+          왼쪽 가장자리와는 거리가 있어 필수는 아니지만, 위험도를 버튼마다
+          따로 재기보다 이 줄 전체를 하나의 정책으로 통일하는 쪽이 더 안전).
+          "신청자 목록"만 예외 — CopyLinkButton 다음이라 왼쪽 가장자리와
+          충분히 떨어져 있어서 center로도 안 잘림(실사용 확인됨). */}
       {leadingContent}
 
       <IconButton
@@ -77,13 +84,19 @@ export function OwnerPanel({
             });
           }}
           label="수정"
+          align="left"
         >
           <Pencil size={17} strokeWidth={1.7} />
         </IconButton>
       )}
 
       {!isClosed && (
-        <IconButton onClick={onClose} label="종료" disabled={isActing}>
+        <IconButton
+          onClick={onClose}
+          label="종료"
+          disabled={isActing}
+          align="left"
+        >
           <Ban size={17} strokeWidth={1.7} />
         </IconButton>
       )}
@@ -93,6 +106,7 @@ export function OwnerPanel({
         label="삭제"
         disabled={isActing}
         tone="warn"
+        align="left"
       >
         <Trash2 size={17} strokeWidth={1.7} />
       </IconButton>
