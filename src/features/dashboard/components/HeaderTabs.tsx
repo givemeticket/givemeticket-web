@@ -1,6 +1,8 @@
+import { flushSync } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { resetFilterState, type FilterTab } from "../lib/dashboardFilterStore";
+import { announceLeavingCardBehind } from "@/shared/animation/pageTransition/leavingCardBehindStore";
 
 // 원래 DashboardLayout(대시보드 라우트에서만 조건부로 렌더링) 안에 있던 탭을
 // UserAppShell의 고정 헤더로 옮겨서, 로그인/비로그인·페이지 종류와 무관하게
@@ -49,6 +51,16 @@ function HeaderTabLink({
       return;
     }
 
+    // 혹시 지금 캠페인 상세 페이지가 떠있다면(카드가 layoutId를 갖고 있는
+    // 상태라면), 그 카드의 짝이 도착할 탭 목록에 없을 수도 있음(예: "나의
+    // 행사"에만 있는 캠페인) — 미리 알 방법이 없어서 항상 "짝 없음"으로
+    // 가정하고 즉시 layoutId를 끄도록 알림. 안 그러면 카드가 방치되다가
+    // 다른 요소들 페이드가 다 끝나야 사라지는 버그가 생김(animation.md 3번).
+    // navigate()보다 먼저, flushSync로 동기적으로 반영되게 함(OwnerPanel의
+    // onBeforeNavigateToNonCardPage와 같은 이유).
+    flushSync(() => {
+      announceLeavingCardBehind();
+    });
     navigate(to);
   }
 

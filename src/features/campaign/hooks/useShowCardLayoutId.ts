@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigationType } from "react-router-dom";
 import { consumeLeftToNonCardPage } from "@/shared/animation/pageTransition/leftToNonCardPageStore";
 import { isInitialDetailPageMount } from "@/shared/animation/pageTransition/initialDetailMountStore";
+import { subscribeToLeavingCardBehind } from "@/shared/animation/pageTransition/leavingCardBehindStore";
 
 /** 어디서 이 페이지로 들어왔는지 — 대시보드 탭에서 카드 클릭 시에만 명시적으로 실어서 넘김.
  * 공유 링크로 직접 들어오거나 주소를 직접 입력한 경우엔 이 값이 없어서 뒤로가기 버튼이 안 보임. */
@@ -44,6 +45,15 @@ export function useShowCardLayoutId(shortCode: string | undefined) {
   // OwnerPanel이 그 버튼을 누르는 순간(navigate 직전) 동기적으로 이 값을 켜줌.
   const [isNavigatingToNonCardPage, setIsNavigatingToNonCardPage] =
     useState(false);
+  // 헤더의 전역 탭(HeaderTabs.tsx)처럼 이 페이지 트리 바깥에 있는 내비게이션
+  // 요소도 같은 목적으로 이 값을 켤 수 있게, 전역 방송 신호를 구독함
+  // (leavingCardBehindStore.ts 참고) — 그쪽은 이 컴포넌트의 setter에 직접
+  // 접근할 방법이 없어서 프롭 대신 구독 방식을 씀.
+  useEffect(() => {
+    return subscribeToLeavingCardBehind(() => {
+      setIsNavigatingToNonCardPage(true);
+    });
+  }, []);
   // 목록 카드는 항상(예외 없이) layoutId를 갖고 있음(CampaignListTab.tsx 참고) —
   // 그래서 상세 쪽이 layoutId를 켤지 말지는 "지금 목록에 정말 그 짝이 있는지"를
   // 최대한 정확히 추정해야 함. 처음엔 "목록 클릭(PUSH)으로 들어왔는지"만 보면

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { NavigateFunction } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   applyToCampaign,
   cancelApplication,
@@ -31,6 +32,7 @@ export function useCampaignActions({
 }) {
   const [actionError, setActionError] = useState("");
   const [isActing, setIsActing] = useState(false);
+  const queryClient = useQueryClient();
 
   async function handleApply() {
     if (!isAuthenticated) {
@@ -40,8 +42,25 @@ export function useCampaignActions({
     setIsActing(true);
     setActionError("");
     try {
-      await applyToCampaign(campaign!.id);
+      const result = await applyToCampaign(campaign!.id);
       await Promise.all([refetch(), refetchStock()]);
+      // 방금 refetch()한 응답이 신청 처리 직후의 읽기 지연(read-after-write
+      // lag)으로 myApplication을 아직 예전 값(null)으로 돌려주는 경우가 가끔
+      // 있었음 — 신청은 정상 처리됐는데 버튼이 "신청하기"로 그대로 보이다가
+      // 새로고침해야만 "신청취소"로 바뀌는 버그의 원인이었음(사용자 재현
+      // 확인함). applyToCampaign의 응답은 이 요청 자체에 대한 서버의 확정
+      // 응답이라 100% 정확하므로, refetch 이후에 이 값으로 한 번 더 덮어써서
+      // 화면이 항상 정확히 반영되도록 함.
+      queryClient.setQueryData<CampaignDetail>(
+        ["campaign", shortCode],
+        (old) =>
+          old
+            ? {
+                ...old,
+                myApplication: { id: result.id, status: result.status },
+              }
+            : old,
+      );
     } catch (e) {
       const code = getApiErrorCode(e);
       if (code === "SOLD_OUT") setActionError("남은 티켓이 없어요.");
@@ -57,11 +76,25 @@ export function useCampaignActions({
 
   async function handleCancel() {
     if (!campaign!.myApplication) return;
+    const applicationId = campaign!.myApplication.id;
     setIsActing(true);
     setActionError("");
     try {
-      await cancelApplication(campaign!.myApplication.id);
+      await cancelApplication(applicationId);
       await Promise.all([refetch(), refetchStock()]);
+      // handleApply와 같은 이유 — refetch() 응답이 아직 예전 상태(CONFIRMED)를
+      // 돌려줄 수 있어서, 취소 요청이 실제로 성공한 뒤엔(여기까지 왔다는 건
+      // cancelApplication이 안 던졌다는 뜻) 확정적으로 CANCELLED로 덮어씀.
+      queryClient.setQueryData<CampaignDetail>(
+        ["campaign", shortCode],
+        (old) =>
+          old && old.myApplication
+            ? {
+                ...old,
+                myApplication: { ...old.myApplication, status: "CANCELLED" },
+              }
+            : old,
+      );
     } catch {
       setActionError("취소 중 문제가 발생했어요.");
     } finally {
