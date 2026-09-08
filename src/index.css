@@ -1,6 +1,27 @@
 @import "tailwindcss";
 @import "pretendard/dist/web/static/pretendard.css";
 
+/* index.html의 <link rel="preload">와 짝을 이루는 @font-face — 가장 많이 쓰이는
+   두 굵기(기본 400, font-semibold 600)만, pretendard.css가 참조하는 (빌드마다
+   해시가 바뀌는) 경로 대신 public/fonts에 고정 경로로 복사해둔 파일을 가리키게
+   재선언함. 같은 (font-family, weight) 조합에 대해 @font-face는 나중에 나온
+   선언이 이기므로(소스 순서 기준 — 위 @import보다 아래에 있어야 함), 이 두
+   굵기는 실제로 이 파일을 쓰게 되고, preload가 미리 받아둔 바로 그 파일과
+   일치해서 헛수고 없이 그대로 재사용됨. 나머지 굵기는 여전히 pretendard.css
+   쪽 선언 그대로 씀. */
+@font-face {
+  font-family: "Pretendard";
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/Pretendard-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Pretendard";
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/Pretendard-SemiBold.woff2") format("woff2");
+}
+
 /* 스크롤바가 나타날 때/없을 때 콘텐츠 너비가 달라지는 걸 방지 —
    스크롤이 실제로 필요 없는 페이지도 그만큼의 공간을 항상 미리 확보해둠.
    scrollbar-gutter는 같은 요소에 overflow가 auto/scroll/hidden으로
@@ -18,6 +39,60 @@
 html {
   scrollbar-gutter: stable;
   overflow-y: scroll;
+}
+
+/* "나의 티켓/나의 행사" 목록, 신청자 목록 등은 다 페이지 자체가 스크롤되고
+   (별도 스크롤 컨테이너 없음) 위 html이 그 스크롤 주체라, 스크롤바 스타일도
+   여기 html에 줌. 색은 사이트 팔레트에 있는 --line/--muted 계열 무채색
+   톤을 그대로 가져다 씀(새 색을 만들지 않음).
+
+   처음엔 표준 스펙(scrollbar-width/scrollbar-color)과 크로미움 전용
+   (::-webkit-scrollbar 계열)을 같은 html 요소에 같이 선언해서 "표준으로
+   기본을 깔고 웹킷으로 세부 조정만 덮어쓴다"는 방식으로 짰는데, 실제
+   크롬에서 확인해보니 의도한 대로 안 됨 — 두께가 의도(10px)보다 훨씬
+   얇게 보이고, ::-webkit-scrollbar-button { display: none }을 줬는데도
+   위아래 화살표 버튼이 그대로 보임. 두 시스템(표준 scrollbar-width/color와
+   구식 webkit 슈도 엘리먼트)을 같은 요소에 동시에 선언하면 크롬이 내부적으로
+   충돌/혼용하는 것으로 보임(정확한 내부 동작은 불명확하지만, 실제로 재현됨).
+   그래서 @supports selector()로 두 시스템이 같은 요소에 절대 같이 안
+   걸리도록 분리함 — 웹킷 슈도 엘리먼트를 지원하는 브라우저(크롬/엣지/사파리)는
+   webkit 쪽만, 그렇지 않은 브라우저(파이어폭스)는 표준 스펙만 적용받음. */
+@supports selector(::-webkit-scrollbar) {
+  html::-webkit-scrollbar {
+    /* 실제 보이는 썸 두께를 10px로 맞추려는 것 — 아래 썸의 인셋 테두리
+       (3px, 양옆 합쳐 6px)만큼 트랙을 더 넓게 잡아야 함(10 + 6 = 16) */
+    width: 16px;
+  }
+  html::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  html::-webkit-scrollbar-thumb {
+    background-color: rgba(17, 24, 39, 0.22);
+    border-radius: 999px;
+    /* 트랙 폭(10px)보다 썸을 얇게 그려서, 창 끝과 스크롤바 사이에 여백처럼
+       보이게 하는 트릭 — border를 투명하게 주고 background-clip으로 패딩
+       영역까지만 배경을 칠하면, border 두께만큼 안쪽으로 들어간 썸이 그려짐.
+       (예전엔 이게 scrollbar-width/color와 충돌해서 "의도보다 훨씬 얇아
+       보이는" 원인 중 하나였는데, 지금은 @supports로 분리해뒀으니 안전함) */
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  html::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(17, 24, 39, 0.4);
+    background-clip: padding-box;
+  }
+  /* 위아래 화살표 버튼 제거 (Windows 크롬/엣지 기본 스크롤바에 있던 것) */
+  html::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(17, 24, 39, 0.22) transparent;
+  }
 }
 
 :root {
@@ -94,74 +169,64 @@ button:not(:disabled) {
 /* 상태 뱃지/재고 스텁처럼 채도 높은 색(meta.bg)으로 채워진 작은 UI 조각에
    얹는 종이 질감. .paper-texture와 달리 background-blend-mode: multiply를
    씀 — 노란색처럼 밝은 배경 위에서는 기본(normal) 알파 합성으로는 결이 거의
-   안 보였기 때문(자세한 이유는 아래 .stub-perforated 주석 참고). */
+   안 보였기 때문(자세한 이유는 아래 .stub-dashed 주석 참고). */
 .status-texture {
   background-image: url("/paper.png");
   background-blend-mode: multiply;
 }
 
 /* 카드 오른쪽의 재고 스텁(보딩패스 스타일) 전용 배경 — 카드 본문과 같은 종이
-   질감(url("/paper.png"))에, 왼쪽 경계를 실선 대신 펀치홀(원형 절취선)로
-   그려서 "여기서 뜯어낸다"는 티켓 느낌을 냄. 두 배경을 겹겹이 쌓아야 해서
-   (원 패턴 + 종이 질감) .paper-texture와 별도 클래스로 둠 — 같은 요소에
-   background-image를 두 클래스에서 각각 선언하면 하나만 적용되고 합쳐지지
-   않기 때문. 스텁 배경색(상태별 meta.bg)은 그대로 인라인 style로 받고, 이
-   두 배경이 그 위에 얹힘.
+   질감(url("/paper.png"))에, 왼쪽 경계를 실선 대신 흰 점선(각 선 끝이
+   둥긂)으로 그려서 "여기서 뜯어낸다"는 티켓 느낌을 냄. 두 배경을 겹겹이
+   쌓아야 해서(점선 패턴 + 종이 질감) .paper-texture와 별도 클래스로 둠 —
+   같은 요소에 background-image를 두 클래스에서 각각 선언하면 하나만
+   적용되고 합쳐지지 않기 때문. 스텁 배경색(상태별 meta.bg)은 그대로 인라인
+   style로 받고, 이 두 배경이 그 위에 얹힘.
 
-   두 가지 시행착오를 거침:
-   1. 처음엔 원(펀치홀) 레이어의 background-size를 "100% 11px"로 줬는데,
-      이러면 그 원을 그리는 캔버스 자체가 스텁 전체 너비가 돼버려서 원이
-      캔버스 정중앙(=스텁 정중앙)에 그려짐 — 구분선이 아니라 스텁 한가운데
-      점으로 보이는 버그였음. 캔버스 너비를 6px로 좁게 주고 왼쪽에 붙여서
-      해결.
-   2. 종이 질감을 배경색 위에 그냥 알파로 얹으면(기본 normal 블렌드), 텍스처
+   선 끝을 둥글게 하는 건 CSS 네이티브 gradient/border-style로는 불가능해서
+   (border-style: dashed도 각진 사각형 조각만 나옴) SVG
+   <line stroke-linecap="round">를 데이터 URI로 만들어 세로로 반복시킴.
+
+   시행착오를 거침:
+   1. 종이 질감을 배경색 위에 그냥 알파로 얹으면(기본 normal 블렌드), 텍스처
       자체가 밝은 회색 계열이라 마찬가지로 밝은 노란색(OPEN 상태) 위에서는
       명도차가 거의 없어 결이 안 보였음. background-blend-mode를 종이 질감
       레이어에만 multiply로 주면(그래픽 툴에서 종이 질감을 색 위에 합성할 때
       쓰는 표준 방식) 밑에 있는 색을 항상 곱해서 어둡게 만들기 때문에, 배경이
-      밝든 어둡든 결이 일관되게 드러남 — 노랑/빨강/파랑 모두 확인함. 원(펀치홀)
-      레이어는 그대로 normal로 둬야 원래 의도한 점 색(흰색)이 그대로 유지됨.
-   3. background-position을 "left"(=0px)로 두면, 원이 자기 타일(6px 너비)의
-      가운데인 3px 지점에 그려져서 색 경계(스텁의 왼쪽 끝, 0px)보다 3px
-      안쪽에 찍힘 — "경계선이 절취선 오른쪽에 붙어있다"는 느낌이 났던 원인.
-      "-3px"만큼 왼쪽으로 밀어서 원의 중심 자체를 경계(0px)에 맞추면, 스텁
-      쪽에서는 원의 오른쪽 절반만 보임(왼쪽 절반은 스텁 박스 밖이라 잘림).
-   4. 3번만 하고 나니 이번엔 반대로 "펀치홀이 반만 보이고 잘린 것처럼
-      보인다"는 문제가 생김 — 당연한 결과였음, 원의 나머지 왼쪽 절반은
-      스텁이 아니라 그 옆 카드 본문(mid) 영역에 그려져야 완전한 원이 되는데,
-      mid 쪽엔 대응하는 배경이 전혀 없었기 때문. 그래서 mid 쪽에도 짝이 되는
-      원 레이어를 추가함(.stub-divider-mirror, 아래) — mid의 오른쪽 끝이
-      정확히 스텁의 왼쪽 끝과 맞닿아 있으므로, 그쪽에서 "right -3px"로 원의
-      왼쪽 절반을 그리면 스텁 쪽 오른쪽 절반과 경계에서 이어져 완전한 원 하나로
-      보임. */
-.stub-perforated {
+      밝든 어둡든 결이 일관되게 드러남 — 노랑/빨강/파랑 모두 확인함. 점선
+      레이어는 그대로 normal로 둬야 원래 의도한 흰색이 그대로 유지됨.
+   2. 처음엔 "선이니까 테두리처럼 스텁 쪽에만 그려도 되겠지"라고 생각해서
+      background-position을 "left"(=0px)로 뒀는데, 이러면 선이 자기 타일
+      (3px 너비)의 가운데인 1.5px 지점에 그려져서 색 경계(스텁의 왼쪽 끝,
+      0px)보다 1.5px 안쪽에 찍힘 — "경계선이 점선 바로 안쪽에 붙어있다"는
+      느낌이 났던 원인. "-1.5px"만큼 왼쪽으로 밀어서 선의 중심 자체를 경계
+      (0px)에 맞추면, 스텁 쪽에서는 선의 오른쪽 절반만 보임(왼쪽 절반은
+      스텁 박스 밖이라 잘림) — 나머지 왼쪽 절반은 카드 본문(mid) 영역에
+      짝 클래스(.stub-dashed-mirror, 아래)로 그려서, 경계에서 두 절반이
+      이어져 완전한 점선 하나로 보이게 함. */
+.stub-dashed {
   background-image:
-    radial-gradient(circle, #ffffff 1.6px, transparent 1.6px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='3' height='11'%3E%3Cline x1='1.5' y1='1.5' x2='1.5' y2='6' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"),
     url("/paper.png");
   background-size:
-    6px 11px,
+    3px 11px,
     auto;
   background-repeat: repeat-y, repeat;
   background-position:
-    -3px center,
+    -1.5px center,
     0 0;
   background-blend-mode: normal, multiply;
 }
 
-/* .stub-perforated의 짝 — 카드 본문(mid) 영역의 오른쪽 끝에 붙여서, 스텁
-   쪽 반원과 이어져 완전한 원(펀치홀)으로 보이게 함. mid 자신은 배경이 따로
-   없어(카드 바깥 컨테이너의 .paper-texture가 비쳐 보이는 구조) 원 레이어 하나만
-   추가하면 됨 — 종이 질감은 이미 바깥 컨테이너 것이 그대로 보이므로 중복으로
-   깔 필요 없음. */
-.stub-divider-mirror {
-  background-image: radial-gradient(
-    circle,
-    #ffffff 1.6px,
-    transparent 1.6px
-  );
-  background-size: 6px 11px;
+/* .stub-dashed의 짝 — mid 영역 오른쪽 끝에 붙여서 점선의 나머지 절반을
+   그림(위 .stub-dashed 주석의 2번 참고). mid는 배경이 따로 없어(바깥
+   컨테이너의 .paper-texture가 비쳐 보이는 구조) 선 레이어 하나만 추가하면
+   됨. */
+.stub-dashed-mirror {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='3' height='11'%3E%3Cline x1='1.5' y1='1.5' x2='1.5' y2='6' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-size: 3px 11px;
   background-repeat: repeat-y;
-  background-position: right -3px center;
+  background-position: right -1.5px center;
 }
 
 @media (prefers-reduced-motion: no-preference) {

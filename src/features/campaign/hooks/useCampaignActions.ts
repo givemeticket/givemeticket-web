@@ -1,6 +1,5 @@
 import { useState } from "react";
 import type { NavigateFunction } from "react-router-dom";
-import axios from "axios";
 import {
   applyToCampaign,
   cancelApplication,
@@ -8,6 +7,7 @@ import {
   deleteCampaign,
   type CampaignDetail,
 } from "../api/campaignApi";
+import { getApiErrorCode } from "@/shared/lib/apiError";
 
 /**
  * 상세 페이지의 "신청/취소/삭제/종료" 액션 핸들러 + 그 진행 상태(isActing)/에러
@@ -43,9 +43,7 @@ export function useCampaignActions({
       await applyToCampaign(campaign!.id);
       await Promise.all([refetch(), refetchStock()]);
     } catch (e) {
-      const code = axios.isAxiosError(e)
-        ? (e.response?.data as { code?: string })?.code
-        : undefined;
+      const code = getApiErrorCode(e);
       if (code === "SOLD_OUT") setActionError("남은 티켓이 없어요.");
       else if (code === "ALREADY_APPLIED")
         setActionError("이미 신청한 행사예요.");

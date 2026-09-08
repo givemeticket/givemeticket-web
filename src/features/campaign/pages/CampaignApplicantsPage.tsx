@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { SearchX, X } from "lucide-react";
+import { ArrowUpDown, Search, SearchX, X } from "lucide-react";
 import {
   getCampaign,
   getCampaignApplicants,
@@ -52,6 +52,15 @@ export function CampaignApplicantsPage() {
   const [cancelTarget, setCancelTarget] = useState<Applicant | null>(null);
   const [isActing, setIsActing] = useState(false);
 
+  // 검색/정렬 둘 다 서버 API 없이 이미 받아온 목록을 클라이언트에서 그대로
+  // 가공함 — 신청자 목록 API가 애초에 전체를 한 번에 다 내려주고(페이지네이션
+  // 없음) 검색/정렬 파라미터도 안 받아서, 매 keystroke마다 다시 계산해도
+  // 네트워크 왕복이 없어 디바운스 없이 즉시 반영해도 부담이 없음.
+  const [searchQuery, setSearchQuery] = useState("");
+  // 정렬 기준은 "신청 순" 하나뿐이라 여러 기준을 고르는 InlineSortFilter류
+  // 대신 단순 방향 토글만 둠. "asc"가 API가 원래 내려주는 순서(신청 순) 그대로.
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
   async function handleConfirmCancel() {
     if (!cancelTarget || !campaignId) return;
     setIsActing(true);
@@ -78,6 +87,21 @@ export function CampaignApplicantsPage() {
 
   const applicants = applicantsResult?.applicants ?? [];
 
+  // rank는 검색/정렬과 무관하게 "몇 번째로 신청했는지"(선착순 순번)를 항상
+  // 그대로 유지해야 해서, 원본(API가 내려준 그대로의) 순서 기준으로 딱 한 번만
+  // 매겨둠 — 그 뒤에 필터링/역순 정렬을 적용해도 이 번호 자체는 안 바뀜.
+  const rankedApplicants = applicants.map((a, i) => ({ ...a, rank: i + 1 }));
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredApplicants = normalizedQuery
+    ? rankedApplicants.filter((a) =>
+        a.nickname.toLowerCase().includes(normalizedQuery),
+      )
+    : rankedApplicants;
+  const visibleApplicants =
+    sortDirection === "desc"
+      ? [...filteredApplicants].reverse()
+      : filteredApplicants;
+
   return (
     <>
       <LoadingFade isLoading={isLoading}>
@@ -92,23 +116,69 @@ export function CampaignApplicantsPage() {
           >
             <p className="mt-1 text-sm text-(--muted)">
               {campaign.title} · 총 {applicantsResult?.totalCount ?? 0}명
+              {normalizedQuery && ` · 검색 결과 ${visibleApplicants.length}명`}
             </p>
 
-            <div className="mt-6 flex flex-col gap-2">
+            {applicants.length > 0 && (
+              <div className="mt-4 flex items-center gap-2">
+                <IconButton
+                  size="sm"
+                  onClick={() =>
+                    setSortDirection((d) => (d === "asc" ? "desc" : "asc"))
+                  }
+                  label="정렬 순서 변경"
+                  active={sortDirection === "desc"}
+                >
+                  <ArrowUpDown size={16} strokeWidth={2} />
+                </IconButton>
+                <div className="relative w-48">
+                  <Search
+                    size={15}
+                    strokeWidth={2}
+                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-(--muted)"
+                  />
+                  {/* .input의 padding: 0.75rem 1rem이 Tailwind 유틸리티 레이어보다
+                      우선순위가 높아서(레이어 밖 커스텀 CSS라 @layer utilities 안의
+                      pl-9/py-1.5 같은 클래스보다 항상 이김), 왼쪽 여백(아이콘과
+                      안 겹치게)과 위아래 여백(버튼과 높이를 맞추려고 살짝 줄임)
+                      둘 다 클래스 대신 인라인 style로 직접 줌. */}
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="닉네임으로 검색"
+                    className="input w-full"
+                    style={{
+                      paddingLeft: "2.25rem",
+                      paddingTop: "0.5rem",
+                      paddingBottom: "0.5rem",
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 flex flex-col gap-2">
               {applicants.length === 0 && (
                 <p className="py-16 text-center text-sm text-(--muted)">
                   아직 신청자가 없어요.
                 </p>
               )}
 
-              {applicants.map((a, idx) => (
+              {applicants.length > 0 && visibleApplicants.length === 0 && (
+                <p className="py-16 text-center text-sm text-(--muted)">
+                  검색 결과가 없어요.
+                </p>
+              )}
+
+              {visibleApplicants.map((a) => (
                 <div
                   key={a.applicationId}
                   className="flex items-center gap-3 rounded-xl border p-3"
                   style={{ borderColor: "var(--line)" }}
                 >
                   <span className="w-6 shrink-0 text-center text-xs text-(--muted)">
-                    {idx + 1}
+                    {a.rank}
                   </span>
                   <Avatar src={a.profileImageUrl} name={a.nickname} size={36} />
                   <div className="min-w-0 flex-1">

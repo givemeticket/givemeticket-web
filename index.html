@@ -4,6 +4,29 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- 첫 화면에서 폰트 로딩 전 시스템 폰트로 잠깐 보였다가 Pretendard로
+         바뀌면서 깨져 보이는 문제 완화용. 실제로 가장 많이 쓰이는 두 굵기
+         (기본 400, font-semibold 600)만 미리 받아두기 시작함 — CSS가
+         파싱되기도 전에 다운로드를 먼저 시작해서, 교체까지 걸리는 시간을
+         줄임. index.css가 import하는 pretendard.css는 Vite가 빌드할 때 파일명에
+         해시를 붙여서 경로를 예측할 수 없어, 이 두 파일만 public/fonts에
+         따로 복사해두고 아래 index.css의 커스텀 @font-face가 그 경로를
+         그대로 쓰도록 함(preload 경로와 실제 사용 경로가 정확히 일치해야
+         효과가 있음 — 다르면 그냥 안 쓰는 파일을 하나 더 받는 셈이 됨). -->
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/Pretendard-Regular.woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/Pretendard-SemiBold.woff2"
+      crossorigin
+    />
     <title>givemeticket: 선착순 행사 플랫폼</title>
   </head>
   <body>

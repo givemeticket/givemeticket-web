@@ -102,11 +102,11 @@ export function CampaignCard({
         className="m-3 h-16 w-16 shrink-0 self-center rounded-lg object-cover sm:h-25.5 sm:w-25.5"
       />
 
-      {/* 메인 정보 영역. 재고 스텁이 있을 때만 stub-divider-mirror를 붙임 —
-          스텁 쪽 절취선 반원과 짝을 이뤄 경계에서 완전한 원으로 보이게 하는
-          용도라, 스텁 자체가 없으면 필요 없음 */}
+      {/* 메인 정보 영역. 재고 스텁이 있을 때만 stub-dashed-mirror를 붙임 —
+          스텁 쪽 점선과 짝을 이뤄 경계선이 점선 중앙을 관통하는 것처럼
+          보이게 하는 용도라, 스텁 자체가 없으면 필요 없음. */}
       <div
-        className={`min-w-0 flex-1 py-4 pr-4 ${hasStock ? "stub-divider-mirror" : ""}`}
+        className={`min-w-0 flex-1 py-4 pr-4 ${hasStock ? "stub-dashed-mirror" : ""}`}
       >
         <span
           className="status-texture inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold"
@@ -130,11 +130,11 @@ export function CampaignCard({
       </div>
 
       {/* 상태 색상으로 채운 스텁 — 잔여 좌석을 숫자로 강조.
-          stub-perforated가 왼쪽 경계에 종이 질감 + 펀치홀 절취선을 그려주므로
-          border-l은 따로 안 씀(카드 본문과 재질이 다르게 보이던 문제 해결) */}
+          왼쪽 경계에 종이 질감 + 흰 점선 구분선을 그려주므로 border-l은
+          따로 안 씀(카드 본문과 재질이 다르게 보이던 문제 해결) */}
       {hasStock && (
         <div
-          className="stub-perforated flex w-20 shrink-0 flex-col items-center justify-center gap-0.5 pl-1.5 sm:w-24"
+          className="stub-dashed flex w-20 shrink-0 flex-col items-center justify-center gap-0.5 pl-1.5 sm:w-24"
           style={{ backgroundColor: meta.bg }}
         >
           <span
