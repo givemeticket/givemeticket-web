@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getServerTimeOffset } from "@/shared/lib/serverTime";
 import { PrimaryButton } from "@/shared/components/buttons/PrimaryButton";
+import { FixedWidthLabel } from "@/shared/components/buttons/FixedWidthLabel";
 
 // 오픈 전(SCHEDULED) 상태일 때 쓰는 카운트다운 버튼.
 // 서버 시각으로 오차를 보정하고, 클릭하면 실제 신청 API를 그대로 호출함
@@ -77,23 +78,18 @@ export function CountdownApplyButton({
     ? "처리 중..."
     : remainingMs <= 0
       ? "신청하기"
-      : `오픈까지 ${formatCountdown(remainingMs)} 남았어요`;
+      : formatCountdown(remainingMs);
 
   const isUrgent = remainingMs > 0 && remainingMs <= 60_000;
 
-  // 카운트다운 텍스트 길이가 계속 바뀌면서(며칠 단위 -> 시:분:초 단위 -> "신청하기")
-  // 버튼 크기도 같이 늘었다 줄었다 하면 산만해 보임. "오픈까지 00:00:00 남았어요"
-  // (가장 긴 경우)를 안 보이게 같은 자리에 겹쳐서, 그 텍스트 크기만큼 버튼 너비를
-  // 항상 확보해둠 — CSS Grid로 두 텍스트를 같은 칸에 겹쳐두면, 그 칸의 크기는
-  // 둘 중 더 큰 쪽(안 보이는 최대 길이 텍스트)에 맞춰짐.
+  // 카운트다운이 끝나 "신청하기"로 바뀐 뒤에도, 오픈 이후 새로고침해서
+  // ApplySection이 이 컴포넌트 대신 평범한 "신청하기" 버튼을 그릴 때도 버튼
+  // 너비가 똑같아야 함 — 그래서 너비를 맞추는 트릭을 이 컴포넌트 안에 두는
+  // 대신 FixedWidthLabel로 분리해서 "신청하기"/"신청 취소" 버튼과 같은
+  // minWidthText("00:00:00")를 공유함.
   return (
     <PrimaryButton onClick={handleClick} disabled={isActing} urgent={isUrgent}>
-      <span className="grid">
-        <span className="invisible col-start-1 row-start-1" aria-hidden="true">
-          오픈까지 00:00:00 남았어요
-        </span>
-        <span className="col-start-1 row-start-1">{label}</span>
-      </span>
+      <FixedWidthLabel text={label} minWidthText="00:00:00" />
     </PrimaryButton>
   );
 }

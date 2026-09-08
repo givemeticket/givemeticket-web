@@ -134,18 +134,31 @@ function RootLayout() {
     // 도착 페이지가 알아서 스크롤까지 책임지고 처리하니 여기서는 아무것도 안 함
     if (consumePendingScrollOffsetForRootLayout()) return;
 
-    const timer = setTimeout(() => {
-      // POP(뒤로가기)로 도착했을 때만 저장된 값을 복원하고, 그 외(탭 전환,
-      // 카드/링크 클릭 등 정방향 이동)엔 맨 위(0)에서 시작함.
-      window.scrollTo(
-        0,
-        navigationType === "POP" ? getScrollPosition(arrivingPathname) : 0,
-      );
-    }, POST_ANIMATION_DELAY_MS);
+    // POP(뒤로가기)로 도착했을 때만 저장된 값을 복원하고, 그 외(탭 전환,
+    // 카드/링크 클릭 등 정방향 이동)엔 맨 위(0)에서 시작함.
+    //
+    // 복원(POP)은 애니메이션이 끝난 뒤로 미룸 — 도착 페이지의 카드/목록이
+    // layoutId 애니메이션까지 포함해 완전히 자리잡은 뒤에 정확한 좌표로
+    // 스크롤해야, 잘못된(레이아웃이 아직 안 굳은) 위치로 스크롤되는 걸 피함.
+    //
+    // 반대로 리셋(0)은 지연 없이 바로 실행함 — 예전엔 이것도 같은
+    // setTimeout을 공유해서, 스크롤을 내려둔 채로 다른 탭/행사 추가 화면으로
+    // 이동하면 도착 화면이 (아직 옛 스크롤 위치인 채로) 애니메이션되다가
+    // 애니메이션이 끝나야 맨 위로 튀어 오르는 문제가 있었음(사용자 피드백으로
+    // 확인). "0으로 되돌리는 것"은 도착 페이지 레이아웃이 어떻든 항상 같은
+    // 값이라 지연이 필요 없음 — 나가는 페이지가 사라지는 도중에 화면이 살짝
+    // 다르게 보일 수 있는 트레이드오프는 있지만(사라지는 중이라 페이드로
+    // 거의 안 보임), 스크롤이 내려간 채로 한참 방치되는 것보단 나음.
+    if (navigationType === "POP") {
+      const timer = setTimeout(() => {
+        window.scrollTo(0, getScrollPosition(arrivingPathname));
+      }, POST_ANIMATION_DELAY_MS);
+      return () => {
+        clearTimeout(timer);
+      };
+    }
 
-    return () => {
-      clearTimeout(timer);
-    };
+    window.scrollTo(0, 0);
   }, [location.pathname, navigationType]);
 
   return (

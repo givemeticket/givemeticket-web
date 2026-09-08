@@ -7,6 +7,7 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 import { Trash2, SearchX } from "lucide-react";
 import { BackButton } from "@/shared/components/BackButton";
 import { SecondaryButton } from "@/shared/components/buttons/SecondaryButton";
+import { FixedWidthLabel } from "@/shared/components/buttons/FixedWidthLabel";
 import { FullPageMessage } from "@/shared/components/feedback/FullPageMessage";
 import { LoadingFade } from "@/shared/components/feedback/LoadingFade";
 import { CampaignCard } from "../components/CampaignCard";
@@ -83,6 +84,8 @@ export function CampaignDetailPage() {
       navigate,
       refetch,
       refetchStock,
+      cameFrom,
+      setIsNavigatingToNonCardPage,
     });
 
   // "취소/삭제/종료"는 되돌릴 수 없거나 영향이 커서 확인창을 거침. 어떤 액션을
@@ -246,7 +249,14 @@ export function CampaignDetailPage() {
                             onClick={() => setConfirmAction("cancel")}
                             disabled={isActing}
                           >
-                            {isActing ? "처리 중..." : "신청 취소"}
+                            {/* minWidthText는 신청하기/카운트다운 버튼과 동일하게
+                                "00:00:00" — 같은 자리에서 바뀌는 버튼은 아니지만,
+                                시각적으로 나란히/번갈아 보이는 액션 버튼들의 너비를
+                                통일해 둠(ApplySection.tsx 참고). */}
+                            <FixedWidthLabel
+                              text={isActing ? "처리 중..." : "신청 취소"}
+                              minWidthText="00:00:00"
+                            />
                           </SecondaryButton>
                         )}
                       </div>
@@ -307,7 +317,7 @@ export function CampaignDetailPage() {
                 ? "삭제"
                 : confirmAction === "close"
                   ? "종료"
-                  : "취소하기"
+                  : "확인"
             }
             danger={confirmAction === "delete"}
             onConfirm={() => {

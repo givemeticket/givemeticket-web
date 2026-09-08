@@ -35,16 +35,32 @@ const store: Record<FilterTab, FilterState> = {
   mycampaigns: { ...DEFAULT_FILTER_STATE.mycampaigns },
 };
 
+// 이미 보고 있는 탭을 또 눌렀을 때(URL이 안 바뀌어서 CampaignListTab이
+// 리마운트되지 않는 경우) resetFilterState를 호출해도, 그걸 구독하는
+// 컴포넌트가 없으면 store 값만 조용히 바뀌고 화면(정렬/필터 UI, 그 결과로
+// 그려지는 목록)은 예전 값 그대로 남아있는 문제가 있었음(실제로 겪은 버그).
+// useDashboardFilters.ts가 useSyncExternalStore로 이 신호를 구독함.
+const listeners = new Set<() => void>();
+
+export function subscribeToFilterState(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
 export function getFilterState(tab: FilterTab): FilterState {
   return store[tab];
 }
 
 export function setFilterState(tab: FilterTab, next: Partial<FilterState>) {
   store[tab] = { ...store[tab], ...next };
+  listeners.forEach((listener) => listener());
 }
 
 /** 탭 전환 시 호출 — 그 탭의 정렬/필터 상태를 기본값으로 되돌림.
  * 상세 화면 왕복 시엔 호출하면 안 됨(그땐 값이 유지되는 게 맞음) */
 export function resetFilterState(tab: FilterTab) {
   store[tab] = { ...DEFAULT_FILTER_STATE[tab] };
+  listeners.forEach((listener) => listener());
 }
