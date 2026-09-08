@@ -1,4 +1,4 @@
-import { getAccessToken } from "@/shared/lib/authToken";
+import { getAccessToken, isAccessTokenExpired } from "@/shared/lib/authToken";
 
 interface UseAuthResult {
   isAuthenticated: boolean;
@@ -11,16 +11,23 @@ interface UseAuthResult {
 const DEV_BYPASS_AUTH =
   import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_AUTH === "true";
 
-// TODO: 지금은 "토큰이 저장돼 있는지"만 확인함 (만료/위조 여부는 검사 안 함).
-// 백엔드에 "내 정보 조회" 같은 인증 확인용 API가 생기면, react-query로 그 API를
-// 호출해서 성공 여부로 판단하는 방식으로 교체하는 게 더 정확함.
+// 토큰이 "저장돼 있는지"뿐 아니라 JWT의 exp 클레임으로 "이미 만료됐는지"까지
+// 확인함(authToken.ts의 isAccessTokenExpired 참고) — 네트워크 요청 없이 즉시
+// 판단 가능해서 화면이 그려지기 전에 바로 반영됨. 다만 서명 검증은 안 하므로
+// "서버가 이 특정 토큰을 강제로 무효화(로그아웃 처리 등)"한 경우까지는 못
+// 잡음 — 그건 여전히 실제 API 호출 후 401을 받아야 알 수 있고, axiosClient.ts의
+// 응답 인터셉터가 그 사후 처리를 맡음. 즉 이 둘은 서로 대체가 아니라 상호보완:
+// 여기서는 "당연히 만료된 것"을 화면이 뜨기도 전에 미리 거르고, 그 외의
+// 서버 쪽 무효화는 axiosClient가 처리함.
 export function useAuth(): UseAuthResult {
   if (DEV_BYPASS_AUTH) {
     return { isAuthenticated: true, isLoading: false };
   }
 
+  const token = getAccessToken();
+
   return {
-    isAuthenticated: Boolean(getAccessToken()),
+    isAuthenticated: token !== null && !isAccessTokenExpired(token),
     isLoading: false,
   };
 }
