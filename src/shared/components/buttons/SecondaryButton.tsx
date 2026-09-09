@@ -18,7 +18,7 @@ export function SecondaryButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="rounded-full border px-4 py-3 text-sm font-semibold disabled:opacity-40"
+      className="rounded-full border px-4 py-3 text-sm font-semibold disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--brand-blue)"
       style={{ borderColor: "var(--line)", color: "var(--paper)" }}
     >
       {children}

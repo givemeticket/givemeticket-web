@@ -51,7 +51,9 @@ export function CampaignCreatePage() {
   }
 
   return (
-    <CampaignSubPageShell title="행사 추가" backButtonFallback="/mycampaigns">
+    <>
+      <title>행사 추가 - GIVEMETICKET</title>
+      <CampaignSubPageShell title="행사 추가" backButtonFallback="/mycampaigns">
       <form
         onSubmit={handleSubmit}
         className="mt-8 flex flex-col gap-6 rounded-2xl border p-6"
@@ -74,6 +76,7 @@ export function CampaignCreatePage() {
           </PrimaryButton>
         </div>
       </form>
-    </CampaignSubPageShell>
+      </CampaignSubPageShell>
+    </>
   );
 }

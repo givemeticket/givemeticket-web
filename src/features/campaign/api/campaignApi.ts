@@ -82,6 +82,8 @@ export interface CampaignItem {
   location?: string;
   imageUrl?: string;
   myApplicationStatus?: ApplicationStatus;
+  /** 내 신청 시각 (ISO 8601). 아직 화면에서 쓰는 곳은 없음(api-docs 확인) */
+  myAppliedAt?: string;
 }
 
 export type CampaignScope = "owned" | "participated";

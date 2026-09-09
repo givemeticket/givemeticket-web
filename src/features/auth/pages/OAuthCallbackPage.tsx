@@ -75,7 +75,13 @@ export function OAuthCallbackPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (phase === "processing") return <LoadingScreen />;
+  if (phase === "processing")
+    return (
+      <>
+        <title>GIVEMETICKET</title>
+        <LoadingScreen />
+      </>
+    );
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-(--ink) px-6 text-center text-(--paper)">

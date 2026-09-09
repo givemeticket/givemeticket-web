@@ -121,8 +121,15 @@ export function CampaignDetailPage() {
   }
 
   return (
-    <LoadingFade isLoading={!cardSource && isLoading}>
-      {cardSource && (
+    <>
+      {/* cardSource는 목록에서 넘어온 placeholder 또는 실제 상세 데이터 중
+          먼저 도착한 걸 즉시 반영함 — 아직 아무 것도 없으면(직접 URL 진입 등)
+          기본 제목을 그대로 둠. */}
+      <title>
+        {cardSource ? `${cardSource.title} - GIVEMETICKET` : "GIVEMETICKET"}
+      </title>
+      <LoadingFade isLoading={!cardSource && isLoading}>
+        {cardSource && (
         <div className="relative h-full pt-8 pb-10 text-(--paper)">
           {/* 배경색 전용 레이어. 이것도 독립적으로 페이드시켜야 함 — 안 그러면 상세 페이지가
               사라지는 동안에도 이 불투명한 배경이 화면 전체를 계속 덮고 있어서, 그 밑에서
@@ -330,7 +337,8 @@ export function CampaignDetailPage() {
             onCancel={() => setConfirmAction(null)}
           />
         </div>
-      )}
-    </LoadingFade>
+        )}
+      </LoadingFade>
+    </>
   );
 }

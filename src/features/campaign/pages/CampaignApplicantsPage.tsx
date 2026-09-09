@@ -104,6 +104,11 @@ export function CampaignApplicantsPage() {
 
   return (
     <>
+      <title>
+        {campaign
+          ? `신청자 목록: ${campaign.title} - GIVEMETICKET`
+          : "GIVEMETICKET"}
+      </title>
       <LoadingFade isLoading={isLoading}>
         {campaign && (
           // 상세에서 클릭해서 들어온 경우엔 실제 뒤로가기(navigate(-1))로, 주소를

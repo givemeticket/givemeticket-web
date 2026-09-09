@@ -45,6 +45,10 @@ const TOUCH_VISIBLE_MS = 1500;
 // 토글), "툴팁만 보려고 눌렀는데 그 버튼 동작까지 같이 실행되는" 문제가 생김.
 // tapToShow가 아닐 때는 500ms 안에 손을 떼면(짧은 탭) 이 로직이 아예 개입하지
 // 않아서 평소처럼 클릭이 정상 실행됨.
+//
+// group-focus-within도 group-hover와 같이 줘서, 키보드로 트리거에 탭(Tab)해
+// 포커스가 갔을 때도 툴팁이 뜨게 함 — 원래 group-hover만 있으면 마우스/터치
+// 없이 키보드만 쓰는 사용자는 이 안내 문구를 영원히 볼 수 없었음.
 export function Tooltip({
   content,
   children,
@@ -126,7 +130,7 @@ export function Tooltip({
       {children}
       <span
         role="tooltip"
-        className={`pointer-events-none absolute z-30 w-max max-w-56 rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 ${
+        className={`pointer-events-none absolute z-30 w-max max-w-56 rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 ${
           isRight
             ? "top-1/2 left-full ml-2 -translate-y-1/2"
             : `bottom-full mb-2 ${isLeft ? "left-0" : "left-1/2 -translate-x-1/2"}`

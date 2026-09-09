@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { Avatar } from "@/shared/components/Avatar";
+import { Badge } from "@/shared/components/Badge";
 import { PAGE_TRANSITION_DURATION } from "@/shared/animation/animationDurations";
 
 // 행사 목록(나의 티켓 / 나의 행사)에서 공통으로 쓰는 카드.
@@ -108,12 +109,7 @@ export function CampaignCard({
       <div
         className={`min-w-0 flex-1 py-4 pr-4 ${hasStock ? "stub-dashed-mirror" : ""}`}
       >
-        <span
-          className="status-texture inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold"
-          style={{ backgroundColor: meta.bg, color: meta.fg }}
-        >
-          {meta.label}
-        </span>
+        <Badge label={meta.label} bg={meta.bg} fg={meta.fg} />
 
         <p className="mt-2 truncate text-base font-semibold text-(--paper)">
           {title}

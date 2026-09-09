@@ -71,6 +71,12 @@ function CampaignEditForm({ campaign }: { campaign: CampaignDetail }) {
   const [errorMessage, setErrorMessage] = useState("");
 
   const isOpen = campaign.status === "OPEN";
+  // 예정(SCHEDULED) 상태에서도 이미 확정된 신청 인원(confirmedCount)이 있을
+  // 수 있어서 — OPEN 캠페인이 정원을 현재 값 아래로 못 내리는 것과 같은
+  // 이유로, 확정 인원수보다 낮게는 못 내리게 함. confirmedCount가 0이면
+  // 굳이 별도 하한이 필요 없어서 기본값(1)을 그대로 씀.
+  const isScheduledWithConfirmed =
+    campaign.status === "SCHEDULED" && campaign.confirmedCount > 0;
   const isFormValid = title.trim().length > 0;
 
   async function handleSubmit(e: SubmitEvent<HTMLFormElement>) {
@@ -106,6 +112,13 @@ function CampaignEditForm({ campaign }: { campaign: CampaignDetail }) {
         setErrorMessage(
           "이미 오픈된 캠페인은 정원을 줄일 수 없어요. 그대로 두거나 늘리는 것만 가능해요.",
         );
+      } else if (code === "TOTAL_STOCK_BELOW_APPLICANTS") {
+        // 예정 상태에서도 이미 확정 신청자가 있으면 서버가 이 코드로 막음 —
+        // isScheduledWithConfirmed의 클라이언트 측 min 제약과 같은 규칙을
+        // 서버도 별도로 검증함(TOTAL_STOCK_BELOW_APPLICANTS, api-docs 확인).
+        setErrorMessage(
+          `이미 신청한 ${campaign.confirmedCount}명보다 적은 정원으로는 설정할 수 없어요.`,
+        );
       } else if (code === "CAMPAIGN_CLOSED") {
         setErrorMessage("종료된 캠페인은 오픈 시각을 바꿀 수 없어요.");
       } else {
@@ -116,10 +129,12 @@ function CampaignEditForm({ campaign }: { campaign: CampaignDetail }) {
   }
 
   return (
-    // 상세에서 클릭해서 들어온 경우엔 실제 뒤로가기(navigate(-1))로, 주소를
-    // 직접 입력해서 들어온 경우엔(cameFromDetail이 없음) 엉뚱한 이전 페이지(새
-    // 탭의 이전 방문 기록 등)로 가지 않도록 강제로 이 캠페인의 상세 페이지로 보냄.
-    <CampaignSubPageShell
+    <>
+      <title>{`수정: ${campaign.title} - GIVEMETICKET`}</title>
+      {/* 상세에서 클릭해서 들어온 경우엔 실제 뒤로가기(navigate(-1))로, 주소를
+      직접 입력해서 들어온 경우엔(cameFromDetail이 없음) 엉뚱한 이전 페이지(새
+      탭의 이전 방문 기록 등)로 가지 않도록 강제로 이 캠페인의 상세 페이지로 보냄. */}
+      <CampaignSubPageShell
       title="행사 수정"
       backButtonFallback={`/campaigns/${campaign.shortCode}`}
       backButtonForceFallback={!cameFromDetail}
@@ -134,9 +149,19 @@ function CampaignEditForm({ campaign }: { campaign: CampaignDetail }) {
           onTitleChange={setTitle}
           totalStock={totalStock}
           onTotalStockChange={setTotalStock}
-          totalStockMin={isOpen ? (campaign.totalStock ?? 1) : 1}
+          totalStockMin={
+            isOpen
+              ? (campaign.totalStock ?? 1)
+              : isScheduledWithConfirmed
+                ? campaign.confirmedCount
+                : 1
+          }
           totalStockInfo={
-            isOpen ? "정원 유지 또는 증원만 가능합니다." : undefined
+            isOpen
+              ? "정원 유지 또는 증원만 가능합니다."
+              : isScheduledWithConfirmed
+                ? `이미 신청한 ${campaign.confirmedCount}명보다 적게 설정할 수 없습니다.`
+                : undefined
           }
           openAt={openAt}
           onOpenAtChange={setOpenAt}
@@ -158,6 +183,7 @@ function CampaignEditForm({ campaign }: { campaign: CampaignDetail }) {
           </PrimaryButton>
         </div>
       </form>
-    </CampaignSubPageShell>
+      </CampaignSubPageShell>
+    </>
   );
 }

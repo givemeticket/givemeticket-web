@@ -1,7 +1,5 @@
-import type { ReactNode } from "react";
-import { CircleAlert } from "lucide-react";
 import { DateTimePickerField } from "@/shared/components/datetime/DateTimePickerField";
-import { Tooltip } from "@/shared/components/overlay/Tooltip";
+import { TextField } from "@/shared/components/TextField";
 
 interface CampaignFormFieldsProps {
   title: string;
@@ -46,31 +44,28 @@ export function CampaignFormFields({
 }: CampaignFormFieldsProps) {
   return (
     <>
-      <Field label="행사 이름">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => onTitleChange(e.target.value)}
-          placeholder={titlePlaceholder}
-          maxLength={100}
-          className="input"
-        />
-      </Field>
+      <TextField
+        label="행사 이름"
+        type="text"
+        value={title}
+        onChange={(e) => onTitleChange(e.target.value)}
+        placeholder={titlePlaceholder}
+        maxLength={100}
+      />
 
       {/* 좁은 화면(640px 미만)에서는 세로로 쌓음 — 정원/오픈시각을 절반씩
           나란히 두면 "신청 오픈 시각"에 들어갈 날짜+시간 텍스트가 잘려서
           거의 안 읽히는 수준까지 좁아지는 문제가 있었음 */}
       <div className="flex flex-col gap-4 sm:flex-row">
         <div className="flex-1">
-          <Field label="정원" info={totalStockInfo}>
-            <input
-              type="number"
-              min={totalStockMin}
-              value={totalStock}
-              onChange={(e) => onTotalStockChange(e.target.value)}
-              className="input"
-            />
-          </Field>
+          <TextField
+            label="정원"
+            info={totalStockInfo}
+            type="number"
+            min={totalStockMin}
+            value={totalStock}
+            onChange={(e) => onTotalStockChange(e.target.value)}
+          />
         </div>
 
         <div className="flex-1">
@@ -86,39 +81,5 @@ export function CampaignFormFields({
         </div>
       </div>
     </>
-  );
-}
-
-function Field({
-  label,
-  info,
-  children,
-}: {
-  label: string;
-  info?: string;
-  children: ReactNode;
-}) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="flex items-center gap-1 text-sm font-medium text-(--paper)">
-        {label}
-        {info && (
-          <Tooltip content={info} placement="right" tapToShow>
-            {/* 아이콘 자체(14px)는 그대로 두고, 실제 터치 가능 영역만 패딩으로
-                넓힘(-m-2로 그 패딩만큼 다시 당겨서 레이아웃엔 영향 없게 함) —
-                14px 그대로면 모바일에서 손가락으로 정확히 조준하기 어려워
-                꾹 누르기 자체가 잘 안 먹히는 문제가 있었음(실측 확인함) */}
-            <span className="-m-2 inline-flex p-2">
-              <CircleAlert
-                size={14}
-                strokeWidth={2}
-                className="text-(--muted)"
-              />
-            </span>
-          </Tooltip>
-        )}
-      </span>
-      {children}
-    </label>
   );
 }
