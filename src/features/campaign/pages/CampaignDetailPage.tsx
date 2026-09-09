@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { motion } from "motion/react";
 import axios from "axios";
 import { type CampaignItem } from "../api/campaignApi";
 import { formatDateTimeKo } from "@/shared/lib/formatDate";
@@ -11,6 +12,8 @@ import { FixedWidthLabel } from "@/shared/components/buttons/FixedWidthLabel";
 import { FullPageMessage } from "@/shared/components/feedback/FullPageMessage";
 import { LoadingFade } from "@/shared/components/feedback/LoadingFade";
 import { CampaignCard } from "../components/CampaignCard";
+import { getCampaignCardBackground } from "../lib/campaignCardBackground";
+import { PAGE_TRANSITION_DURATION } from "@/shared/animation/animationDurations";
 import { OwnerPanel } from "../components/OwnerPanel";
 import { ApplySection } from "../components/ApplySection";
 import { CopyLinkButton } from "../components/CopyLinkButton";
@@ -177,28 +180,48 @@ export function CampaignDetailPage() {
                 없는 페이지로 이동 중) layoutId를 아예 안 주고, 대신 카드도 다른 요소들처럼
                 페이드로 처리함. */}
             <FadeSlide className="mt-4" disabled={showCardLayoutId}>
-              <CampaignCard
-                title={cardSource.title}
-                status={cardSource.status}
-                soldOut={soldOut}
-                openAtLabel={`${formatDateTimeKo(cardSource.openAt)} 오픈`}
-                remainingStock={
-                  cardSource.totalStock != null && hasStockValue
-                    ? remainingStock
-                    : undefined
-                }
-                totalStock={cardSource.totalStock ?? undefined}
-                ownerNickname={cardSource.owner.nickname}
-                ownerProfileImageUrl={cardSource.owner.profileImageUrl}
-                imageUrl={cardImageUrl}
-                interactive={false}
+              {/* 상세 페이지의 카드는 목록과 달리 클릭/호버 동작이 없고
+                  (눌러서 어디로 이동할 이유가 없음), animateMove 개념 자체도
+                  없음(목록처럼 "이동해야 하는 카드"와 "밀리기만 하는 카드"를
+                  구분할 필요가 없어서) — 항상 PAGE_TRANSITION_DURATION으로
+                  도착 애니메이션을 재생함. layoutDurationOverride는 스크롤
+                  오프셋 상쇄 시점에만 0으로 강제됨(CampaignListTab.tsx의 같은
+                  이유 참고). */}
+              <motion.div
                 layoutId={
                   showCardLayoutId
                     ? getCampaignCardLayoutId(cardSource.id)
                     : undefined
                 }
-                layoutDurationOverride={hasSnappedScrollOffset ? 0 : undefined}
-              />
+                transition={{
+                  layout: {
+                    duration: hasSnappedScrollOffset
+                      ? 0
+                      : PAGE_TRANSITION_DURATION,
+                    ease: "easeInOut" as const,
+                  },
+                }}
+                className="paper-texture flex w-full overflow-hidden rounded-lg text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)]"
+                style={{
+                  backgroundColor: getCampaignCardBackground(cardSource.status),
+                }}
+              >
+                <CampaignCard
+                  title={cardSource.title}
+                  status={cardSource.status}
+                  soldOut={soldOut}
+                  openAtLabel={`${formatDateTimeKo(cardSource.openAt)} 오픈`}
+                  remainingStock={
+                    cardSource.totalStock != null && hasStockValue
+                      ? remainingStock
+                      : undefined
+                  }
+                  totalStock={cardSource.totalStock ?? undefined}
+                  ownerNickname={cardSource.owner.nickname}
+                  ownerProfileImageUrl={cardSource.owner.profileImageUrl}
+                  imageUrl={cardImageUrl}
+                />
+              </motion.div>
             </FadeSlide>
 
             {/* 카드 아래쪽 — 링크복사/관리 + 신청하기·취소 + 에러 문구. 역시 카드와 형제 요소.

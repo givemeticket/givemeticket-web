@@ -2,6 +2,7 @@ import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "motion/react";
 import { Archive, Plus } from "lucide-react";
 import { EmptyState } from "@/shared/components/feedback/EmptyState";
 import { LoadingFade } from "@/shared/components/feedback/LoadingFade";
@@ -12,7 +13,9 @@ import {
   type CampaignScope,
 } from "@/features/campaign/api/campaignApi";
 import { getCampaignCardLayoutId } from "@/features/campaign/lib/campaignCardLayoutId";
+import { getCampaignCardBackground } from "@/features/campaign/lib/campaignCardBackground";
 import { formatDateTimeKo } from "@/shared/lib/formatDate";
+import { PAGE_TRANSITION_DURATION } from "@/shared/animation/animationDurations";
 import { FadeSlide } from "@/shared/animation/components/FadeSlide";
 import { useScrollOffsetSnap } from "@/shared/animation/pageTransition/useScrollOffsetSnap";
 import { consumeReturningCampaignId } from "@/shared/animation/pageTransition/returningCardStore";
@@ -184,31 +187,50 @@ export function CampaignListTab({
       <div className="flex flex-col gap-3">
         {visibleCampaigns.map((c) => {
           const isTransitioning = c.id === transitioningId;
+          const isDeleted = c.status === "DELETED";
+          // layoutId는 항상(예외 없이) 줌 — Framer Motion이 기준점을 미리 알고
+          // 있어야 하기 때문. 실제로 이동해야 하는 카드인지는 아래 duration
+          // 계산으로만 구분함. 마운트 시점에 한 번 결정하고 이후 절대 안 바꾸는
+          // 게 원칙인데(animation.md 1번), "항상 켜짐"은 그 자체로 이미 이
+          // 원칙에 안전하게 부합함.
+          //
+          // 위치/크기 이동 애니메이션(layout)의 기본값은 스프링(물리 기반)이라,
+          // 감쇠가 부족하면 목표 지점을 지나쳤다가 되돌아오는 튕김 현상이 생김.
+          // duration 기반 easing으로 명시적으로 바꿔서 한 번에 부드럽게
+          // 도착하도록 함. 실제로 이동해야 하는 카드(isTransitioning)만 정해진
+          // duration, 나머지(옆 카드가 빠지면서 자리가 밀리기만 하는 카드)는
+          // 0초 — 안 그러면 밀리는 것까지 다 슬라이드 애니메이션이 걸려서
+          // 지저분해짐. 스크롤 오프셋 보정(scrollOffsetStore.ts)에서 오프셋을
+          // 없애는 순간엔, 카드의 측정 위치가 바뀌는 걸 Framer Motion이 "또
+          // 다른 이동"으로 착각해서 자체적으로 두 번째 애니메이션을 걸어버리는
+          // 문제가 있어서, 그 순간만 0으로 강제함(hasSnappedScrollOffset).
+          const listLayoutDuration =
+            isTransitioning && hasSnappedScrollOffset
+              ? 0
+              : isTransitioning
+                ? PAGE_TRANSITION_DURATION
+                : 0;
           const card = (
-            <CampaignCard
-              title={c.title}
-              status={c.status}
-              soldOut={c.soldOut ?? false}
-              openAtLabel={`${formatDateTimeKo(c.openAt)} 오픈`}
-              remainingStock={
-                c.totalStock != null && c.remainingStock != null
-                  ? c.remainingStock
+            <motion.button
+              layoutId={getCampaignCardLayoutId(c.id)}
+              transition={{
+                layout: { duration: listLayoutDuration, ease: "easeInOut" as const },
+              }}
+              // CSS transition-transform 대신 Framer Motion 자체의
+              // whileHover/whileTap을 씀 — CSS 트랜지션이 transform을 건드리면,
+              // layoutId 이동 애니메이션이 매 프레임 만들어내는 transform 값을
+              // CSS가 또 한 번 따로 부드럽게 쫓아가려고 해서, 두 시스템이 같은
+              // 속성을 동시에 조작하며 충돌함(카드가 두 개로 보이던 원인).
+              whileHover={
+                !isDeleted
+                  ? { scale: 1.01, boxShadow: "0 10px 24px rgba(17,24,39,0.12)" }
                   : undefined
               }
-              totalStock={c.totalStock ?? undefined}
-              ownerNickname={c.owner.nickname}
-              ownerProfileImageUrl={c.owner.profileImageUrl}
-              imageUrl={c.imageUrl}
-              // layoutId는 항상(예외 없이) 줌 — Framer Motion이 기준점을 미리 알고
-              // 있어야 하기 때문. 실제로 이동해야 하는 카드인지는 animateMove로만
-              // 구분함. 마운트 시점에 한 번 결정하고 이후 절대 안 바꾸는 게 원칙인데
-              // (animation.md 1번), "항상 켜짐"은 그 자체로 이미 이 원칙에 안전하게
-              // 부합함.
-              layoutId={getCampaignCardLayoutId(c.id)}
-              animateMove={isTransitioning}
-              layoutDurationOverride={
-                isTransitioning && hasSnappedScrollOffset ? 0 : undefined
-              }
+              whileTap={!isDeleted ? { scale: 0.99 } : undefined}
+              type="button"
+              disabled={isDeleted}
+              className="paper-texture flex w-full overflow-hidden rounded-lg text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)] transition-shadow duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) disabled:cursor-default"
+              style={{ backgroundColor: getCampaignCardBackground(c.status) }}
               onClick={() => {
                 // setTransitioningId만 하고 바로 navigate하면, 그 상태 변경이 화면에
                 // 실제로 반영되기 전에 라우터 전환이 먼저 처리돼버릴 수 있음(navigate가
@@ -223,7 +245,23 @@ export function CampaignListTab({
                   state: { from: fromKey, campaign: c },
                 });
               }}
-            />
+            >
+              <CampaignCard
+                title={c.title}
+                status={c.status}
+                soldOut={c.soldOut ?? false}
+                openAtLabel={`${formatDateTimeKo(c.openAt)} 오픈`}
+                remainingStock={
+                  c.totalStock != null && c.remainingStock != null
+                    ? c.remainingStock
+                    : undefined
+                }
+                totalStock={c.totalStock ?? undefined}
+                ownerNickname={c.owner.nickname}
+                ownerProfileImageUrl={c.owner.profileImageUrl}
+                imageUrl={c.imageUrl}
+              />
+            </motion.button>
           );
 
           // 이동 중인 카드는 페이드 관련 prop 없이(=순수 이동만), 나머지는 페이드

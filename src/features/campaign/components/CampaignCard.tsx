@@ -1,12 +1,24 @@
-import { motion } from "motion/react";
 import { Avatar } from "@/shared/components/Avatar";
 import { Badge } from "@/shared/components/Badge";
-import { PAGE_TRANSITION_DURATION } from "@/shared/animation/animationDurations";
 
-// 행사 목록(나의 티켓 / 나의 행사)에서 공통으로 쓰는 카드.
-// "보딩패스" 스타일 — 오른쪽에 상태 색상으로 채운 스텁을 붙이고,
-// 그 안에 아이콘 대신 잔여 좌석 수를 큼직하게 보여줌.
-
+// 행사 목록(나의 티켓 / 나의 행사)·상세 페이지에서 공통으로 쓰는 카드의
+// "내용"만 그림. "보딩패스" 스타일 — 오른쪽에 상태 색상으로 채운 스텁을
+// 붙이고, 그 안에 아이콘 대신 잔여 좌석 수를 큼직하게 보여줌.
+//
+// 카드를 감싸는 바깥 요소(배경색/모서리/그림자 + 페이지 전환 시 카드 이동
+// 애니메이션에 쓰이는 motion.div/motion.button + layoutId/whileHover 등)는
+// 일부러 이 컴포넌트가 안 갖고 있고, 쓰는 쪽(CampaignListTab.tsx의 목록
+// 렌더링, CampaignDetailPage.tsx)이 직접 감싸게 함 — 그래야 이 컴포넌트의
+// props가 "카드에 뭘 보여줄지"만 다루고, "페이지 전환 시 어떻게 움직일지"
+// (layoutId/animateMove 등 이 앱의 특정 라우팅 애니메이션 시스템 관심사)는
+// 몰라도 됨. 실제 애니메이션 동작 자체는 전혀 안 바꿨음 — 원래 이 컴포넌트가
+// 직접 렌더링하던 motion.div/motion.button을 그 모양 그대로 두 호출부로
+// 옮겼을 뿐(className/prop 값 전부 동일, DOM 중첩 구조도 동일). 그 바깥
+// 요소의 배경색 계산(status -> 색상)은 lib/campaignCardBackground.ts의
+// getCampaignCardBackground로 옮김 — 컴포넌트 파일이 컴포넌트 외의 것도
+// export하면 Fast Refresh가 깨져서(react-refresh/only-export-components),
+// campaignCardLayoutId.ts와 같은 자리에 둠.
+//
 // 백엔드 실제 응답 기준 (2026-08 swagger 확인): 캠페인 상태는 FULL이 따로 없고,
 // OPEN이면서 soldOut=true인 경우를 매진으로 취급함.
 export type CampaignStatus = "SCHEDULED" | "OPEN" | "CLOSED" | "DELETED";
@@ -26,26 +38,6 @@ interface CampaignCardProps {
   /** 행사 썸네일. 아직 등록 기능이 없어서 항상 비어있지만(null), API 스펙에
    * 맞춰 nullable로 받아두고, 없으면 플레이스홀더(gray_logo.png)로 채움 */
   imageUrl?: string | null;
-  onClick?: () => void;
-  /** false면 순수 표시용(클릭/호버 효과 없음) — 상세 페이지에서 티켓 자체를 보여줄 때처럼
-   * 눌러서 어디로 이동할 이유가 없는 경우에 씀 */
-  interactive?: boolean;
-  /** 목록의 카드와 상세 페이지의 카드가 같은 값을 받으면, 페이지 이동 시
-   * "같은 카드가 그 위치로 이동"하는 애니메이션으로 자동 연결됨 (Framer Motion 공유 레이아웃).
-   * 모든 카드에 항상(처음 마운트될 때부터) 붙여둬야 함 — 클릭한 순간에야 붙이면,
-   * Framer Motion이 "이 요소가 원래 어디 있었는지" 기준점을 못 잡아서 첫 번째
-   * 시도에서만 애니메이션이 아예 안 걸리는 문제가 있었음 */
-  layoutId?: string;
-  /** true면 이 카드가 실제로 이동해야 하는 그 카드 — 정해진 시간(0.35초) 동안 부드럽게
-   * 이동함. false(기본값)면, 옆 카드가 빠지면서 자리가 밀려도 즉시(0초) 제자리로
-   * 스냅되기만 함 — 밀리는 것까지 다 같이 슬라이드 애니메이션이 걸리면 지저분해짐 */
-  animateMove?: boolean;
-  /** layout 이동 duration을 강제로 덮어씀(주로 0). 스크롤 오프셋 보정
-   * (scrollOffsetStore.ts)에서 오프셋을 없애는 순간, 카드의 측정 위치가 바뀌는
-   * 걸 Framer Motion이 "또 다른 이동"으로 착각해서 자체적으로 두 번째 애니메이션을
-   * 걸어버리는 문제가 있었음. 그 순간만 이 값을 0으로 줘서 즉시 반영되게 함 —
-   * 안 주면(undefined) 평소처럼 animateMove 기준으로 자동 계산됨. */
-  layoutDurationOverride?: number;
 }
 
 const STATUS_META: Record<
@@ -72,11 +64,6 @@ export function CampaignCard({
   ownerNickname,
   ownerProfileImageUrl,
   imageUrl,
-  onClick,
-  interactive = true,
-  layoutId,
-  animateMove = false,
-  layoutDurationOverride,
 }: CampaignCardProps) {
   // 매진은 별도 상태가 아니라 OPEN + soldOut 조합이라, 뱃지 표시만 그때 덮어씀
   const meta =
@@ -85,10 +72,8 @@ export function CampaignCard({
       : STATUS_META[status];
   const hasStock =
     typeof remainingStock === "number" && typeof totalStock === "number";
-  const cardBg = status === "DELETED" ? "var(--deleted)" : "var(--ink-soft)";
-  const isDeleted = status === "DELETED";
 
-  const content = (
+  return (
     <>
       {/* 썸네일 — 등록된 게 없으면(아직 등록 기능 자체가 없어서 항상 이 경우) 플레이스홀더.
           좁은 화면(640px 미만)에서는 작게 줄여서, 그 옆 제목/닉네임 영역이
@@ -148,66 +133,5 @@ export function CampaignCard({
         </div>
       )}
     </>
-  );
-
-  // 위치/크기 이동 애니메이션(layout)의 기본값은 스프링(물리 기반)이라, 감쇠가
-  // 부족하면 목표 지점을 지나쳤다가 되돌아오는 튕김 현상이 생김. duration 기반
-  // easing으로 명시적으로 바꿔서 한 번에 부드럽게 도착하도록 함.
-  // layoutDurationOverride가 있으면 그 값을 최우선으로 씀(주로 스크롤 오프셋
-  // 상쇄 시점에 0으로 강제할 때 씀).
-  if (!interactive) {
-    // 상세 페이지의 카드는 animateMove 개념 자체가 없음(목록처럼 "이동해야 하는
-    // 카드"와 "밀리기만 하는 카드"를 구분할 필요가 없어서) — 항상
-    // PAGE_TRANSITION_DURATION으로 도착 애니메이션을 재생함.
-    const detailLayoutDuration =
-      layoutDurationOverride ?? PAGE_TRANSITION_DURATION;
-    return (
-      <motion.div
-        layoutId={layoutId}
-        transition={{
-          layout: {
-            duration: detailLayoutDuration,
-            ease: "easeInOut" as const,
-          },
-        }}
-        className="paper-texture flex w-full overflow-hidden rounded-lg text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)]"
-        style={{ backgroundColor: cardBg }}
-      >
-        {content}
-      </motion.div>
-    );
-  }
-
-  // 목록의 카드: 실제로 이동해야 하는 카드(animateMove)만 정해진 duration, 나머지
-  // (옆 카드가 빠지면서 자리가 밀리기만 하는 카드)는 0초 — 안 그러면 밀리는 것까지
-  // 다 슬라이드 애니메이션이 걸려서 지저분해짐.
-  const listLayoutDuration =
-    layoutDurationOverride ?? (animateMove ? PAGE_TRANSITION_DURATION : 0);
-  const layoutTransition = {
-    layout: { duration: listLayoutDuration, ease: "easeInOut" as const },
-  };
-
-  return (
-    <motion.button
-      layoutId={layoutId}
-      transition={layoutTransition}
-      // CSS transition-transform 대신 Framer Motion 자체의 whileHover/whileTap을
-      // 씀 — CSS 트랜지션이 transform을 건드리면, layoutId 이동 애니메이션이 매 프레임
-      // 만들어내는 transform 값을 CSS가 또 한 번 따로 부드럽게 쫓아가려고 해서,
-      // 두 시스템이 같은 속성을 동시에 조작하며 충돌함(카드가 두 개로 보이던 원인).
-      whileHover={
-        !isDeleted
-          ? { scale: 1.01, boxShadow: "0 10px 24px rgba(17,24,39,0.12)" }
-          : undefined
-      }
-      whileTap={!isDeleted ? { scale: 0.99 } : undefined}
-      type="button"
-      onClick={onClick}
-      disabled={isDeleted}
-      className="paper-texture flex w-full overflow-hidden rounded-lg text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)] transition-shadow duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) disabled:cursor-default"
-      style={{ backgroundColor: cardBg }}
-    >
-      {content}
-    </motion.button>
   );
 }
