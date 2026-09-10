@@ -57,31 +57,14 @@ function formatTimeLabel(value: string): string {
   return new Intl.DateTimeFormat("ko-KR", {
     hour: "numeric",
     minute: "2-digit",
-    hour12: true,
+    hour12: false,
   }).format(d);
 }
 
-/** 24시간제 → { 12시간제 시, 오전/오후(0|1) } */
-function to12Hour(hour24: number): { hour12: number; meridiem: 0 | 1 } {
-  const meridiem: 0 | 1 = hour24 < 12 ? 0 : 1;
-  let hour12 = hour24 % 12;
-  if (hour12 === 0) hour12 = 12;
-  return { hour12, meridiem };
-}
-
-/** { 12시간제 시, 오전/오후 } → 24시간제 */
-function to24Hour(hour12: number, meridiem: 0 | 1): number {
-  const base = hour12 % 12;
-  return meridiem === 1 ? base + 12 : base;
-}
-
-const MERIDIEM_ITEMS = [
-  { value: 0, label: "오전" },
-  { value: 1, label: "오후" },
-];
-const HOUR_ITEMS = Array.from({ length: 12 }, (_, i) => ({
-  value: i + 1,
-  label: String(i + 1),
+// 오전/오후 없이 0~23시 그대로 — MINUTE_ITEMS와 동일하게 두 자리로 패딩함
+const HOUR_ITEMS = Array.from({ length: 24 }, (_, i) => ({
+  value: i,
+  label: String(i).padStart(2, "0"),
 }));
 const MINUTE_ITEMS = Array.from({ length: 60 }, (_, i) => ({
   value: i,
@@ -116,7 +99,6 @@ export function DateTimePickerField({
   // 갱신 전 값을 읽어버리는 레이스가 있었음(가끔 시각이 어긋나던 버그의
   // 원인). 확인 시점엔 이 state 대신, 각 휠의 실제 스크롤 위치를 직접
   // 조회(getCurrentValue)해서 화면에 보이는 값과 항상 일치하도록 함.
-  const meridiemRef = useRef<WheelColumnHandle>(null);
   const hourRef = useRef<WheelColumnHandle>(null);
   const minuteRef = useRef<WheelColumnHandle>(null);
 
@@ -133,14 +115,11 @@ export function DateTimePickerField({
   }
 
   function handleConfirm() {
-    const m = (meridiemRef.current?.getCurrentValue() ?? meridiem) as 0 | 1;
-    const h = hourRef.current?.getCurrentValue() ?? hour12;
+    const h = hourRef.current?.getCurrentValue() ?? draftHour;
     const min = minuteRef.current?.getCurrentValue() ?? draftMinute;
-    onChange(toValue(draftDate, to24Hour(h, m), min));
+    onChange(toValue(draftDate, h, min));
     setIsOpen(false);
   }
-
-  const { hour12, meridiem } = to12Hour(draftHour);
 
   const year = viewMonth.getFullYear();
   const month = viewMonth.getMonth();
@@ -309,20 +288,21 @@ export function DateTimePickerField({
               }}
             />
             <WheelColumn
-              ref={meridiemRef}
-              items={MERIDIEM_ITEMS}
-              selectedValue={meridiem}
-              onChange={(m) => setDraftHour(to24Hour(hour12, m as 0 | 1))}
-              circular={false}
-            />
-            <WheelColumn
               ref={hourRef}
               items={HOUR_ITEMS}
-              selectedValue={hour12}
-              onChange={(h) => setDraftHour(to24Hour(h, meridiem))}
-              circular={false}
+              selectedValue={draftHour}
+              onChange={setDraftHour}
             />
-            <span className="flex items-center text-sm text-(--muted)">:</span>
+            {/* 콜론도 WheelColumn(relative z-10)과 같은 레이어에 둬야 함 —
+                안 그러면 가운데 하이라이트 밴드(position:absolute)가 일반
+                콘텐츠보다 나중에 그려져서 이 콜론을 그대로 덮어버림(실제로
+                안 보이는 버그로 발견됨). */}
+            {/* 숫자 휠(text-base font-semibold text-(--paper))과 명도/굵기를
+                맞춰서 잘 안 보이던 문제를 없앰 — 원래 text-sm text-(--muted)는
+                하이라이트 밴드 위에서 대비가 약했음. */}
+            <span className="relative z-10 flex items-center text-base font-bold text-(--paper)">
+              :
+            </span>
             <WheelColumn
               ref={minuteRef}
               items={MINUTE_ITEMS}

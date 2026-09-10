@@ -35,8 +35,8 @@ export interface WheelColumnHandle {
   getCurrentValue(): number;
 }
 
-// 세로 스크롤 + snap으로 동작하는 휠 하나. DateTimePickerField의 오전오후/시/분 3개가
-// 각각 이 컴포넌트의 별도 인스턴스임.
+// 세로 스크롤 + snap으로 동작하는 휠 하나. DateTimePickerField의 시/분 2개가
+// 각각 이 컴포넌트의 별도 인스턴스임(둘 다 순환).
 export function WheelColumn({
   items,
   selectedValue,
@@ -47,7 +47,8 @@ export function WheelColumn({
   items: { value: number; label: string }[];
   selectedValue: number;
   onChange: (value: number) => void;
-  /** false면 항목을 반복하지 않음 (예: 오전/오후처럼 2개뿐인 휠) */
+  /** false면 항목을 반복하지 않음 (항목이 몇 개 안 돼서 순환이 부자연스러운
+   * 휠을 위해 남겨둔 옵션 — 현재는 시/분 둘 다 순환이라 실제 사용처는 없음) */
   circular?: boolean;
   // React 19부터는 forwardRef 없이 함수 컴포넌트가 ref를 일반 prop으로 받을 수 있음
   ref?: Ref<WheelColumnHandle>;
@@ -226,7 +227,7 @@ export function WheelColumn({
   // invocation" 경고만 뜸(스크롤 자체는 안 막힘). useBlockUserScroll.ts에서 이미
   // 같은 이유로 쓰는 방식대로, 네이티브 addEventListener로 직접 등록하면서
   // { passive: false }를 명시해야 함. circular/n은 실제로 이 컴포넌트가 살아있는
-  // 동안 안 바뀌지만(오전오후/시/분 각각 고정된 설정), 혹시 바뀌는 경우까지
+  // 동안 안 바뀌지만(시/분 각각 고정된 설정), 혹시 바뀌는 경우까지
   // 대비해서 의존성 배열에 넣어 항상 최신값으로 다시 등록되게 함.
   useEffect(() => {
     const el = containerRef.current;
@@ -247,7 +248,7 @@ export function WheelColumn({
       const base =
         wheelTargetIndexRef.current ?? Math.round(el!.scrollTop / ROW_HEIGHT);
       const rawNext = base + steps;
-      // circular=false(오전오후/시처럼 끝이 있는 휠)는 브라우저가 실제 스크롤
+      // circular=false(끝이 있는 휠)는 브라우저가 실제 스크롤
       // 위치를 [0, (n-1)*ROW_HEIGHT] 범위로 알아서 clamp함. 근데 여기서 추적하는
       // "우리가 마지막으로 지시한 목표 인덱스"는 그 clamp를 모르고 계속
       // 누적되기만 해서, 끝에 도달한 뒤에도 같은 방향으로 계속 스크롤하면 이

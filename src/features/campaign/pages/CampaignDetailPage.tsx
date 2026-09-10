@@ -5,7 +5,7 @@ import axios from "axios";
 import { type CampaignItem } from "../api/campaignApi";
 import { formatDateTimeKo } from "@/shared/lib/formatDate";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { Trash2, SearchX } from "lucide-react";
+import { Trash2, SearchX, Check } from "lucide-react";
 import { BackButton } from "@/shared/components/BackButton";
 import { SecondaryButton } from "@/shared/components/buttons/SecondaryButton";
 import { FixedWidthLabel } from "@/shared/components/buttons/FixedWidthLabel";
@@ -21,6 +21,8 @@ import { useCampaignDetailData } from "../hooks/useCampaignDetailData";
 import { useShowCardLayoutId } from "../hooks/useShowCardLayoutId";
 import { useCampaignActions } from "../hooks/useCampaignActions";
 import { ConfirmDialog } from "@/shared/components/overlay/ConfirmDialog";
+import { Modal } from "@/shared/components/overlay/Modal";
+import { PrimaryButton } from "@/shared/components/buttons/PrimaryButton";
 import { getCampaignCardLayoutId } from "../lib/campaignCardLayoutId";
 import { FadeSlide } from "@/shared/animation/components/FadeSlide";
 import { markReturningCampaign } from "@/shared/animation/pageTransition/returningCardStore";
@@ -76,6 +78,8 @@ export function CampaignDetailPage() {
     actionError,
     setActionError,
     isActing,
+    showAppliedModal,
+    setShowAppliedModal,
     handleApply,
     handleCancel,
     handleDelete,
@@ -359,6 +363,40 @@ export function CampaignDetailPage() {
             }}
             onCancel={() => setConfirmAction(null)}
           />
+
+          {/* 신청 성공 안내 — ConfirmDialog와 달리 취소 버튼 없이 확인 하나만
+              있는 단순 안내라 Modal을 직접 써서 구성함. */}
+          <Modal
+            isOpen={showAppliedModal}
+            onClose={() => setShowAppliedModal(false)}
+          >
+            <div
+              className="w-full max-w-xs rounded-2xl border p-5"
+              style={{ backgroundColor: "var(--ink)", borderColor: "var(--line)" }}
+            >
+              <div className="flex items-center gap-2">
+                {/* 윤곽선 아이콘 대신 배경까지 색으로 채운 아이콘 — 원(--success)
+                    안에 대비되는 색(--on-brand)의 체크 표시. FullPageMessage의
+                    "원형 배경 + 아이콘" 조합과 같은 패턴이되, 거긴 옅은
+                    ink-soft 배경에 아이콘만 색이 있고 여긴 원 자체가 진한
+                    색으로 꽉 차 있다는 점이 다름(성공 상태를 더 강조). */}
+                <div
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+                  style={{ backgroundColor: "var(--success)" }}
+                >
+                  <Check size={14} strokeWidth={3} color="var(--on-brand)" />
+                </div>
+                <h2 className="text-base font-bold text-(--paper)">
+                  신청되었습니다.
+                </h2>
+              </div>
+              <div className="mt-5 flex justify-end">
+                <PrimaryButton onClick={() => setShowAppliedModal(false)}>
+                  확인
+                </PrimaryButton>
+              </div>
+            </div>
+          </Modal>
         </div>
         )}
       </LoadingFade>

@@ -192,3 +192,30 @@ Apple SD Gothic Neo, Malgun Gothic, sans-serif`인데, 여기서 진짜 브랜�
 - 렌더 검증(playwright)을 아직 한 번도 안 돌려봤다 — 다음 sync에서
   기회가 되면 설치해서 실제로 빈 화면으로 렌더링되는 컴포넌트가 없는지
   확인할 것.
+- **Pretendard 400/600 중복 @font-face** — 다음 sync 후 claude.ai/design
+  쪽 자체 점검(render-check)에서 지적받음. `src/index.css`가
+  `pretendard/dist/web/static/pretendard.css`를 통째로 `@import`한 뒤
+  바로 아래에서 400/600 두 굵기만 고정 경로(`/fonts/...`)로 재선언하는데
+  (위 12~23번째 줄, 소스 순서상 나중 선언이 이겨서 실제 렌더링엔 문제
+  없음 — 의도된 동작), 이 두 굵기에 대해 `pretendard.css` 쪽 원본
+  선언과 우리 재선언이 둘 다 최종 CSS(빌드 산출물)에 남아 있어서
+  design-sync의 폰트 추출기가 "중복 선언"으로 잡아낸 것. 다음
+  `/design-sync` 실행 전에 이 중복을 정리할지(예: 400/600 이외의 실제로
+  안 쓰는 굵기까지 포함해서 `pretendard.css` 전체 import 대신 필요한
+  굵기만 개별 import하는 방식 검토) 사용자와 상의할 것 — 실제 프로덕션
+  CSS 용량에도 영향 있는 부분이라 design-sync와 무관하게 고칠 가치가
+  있을 수 있음.
+- **미분류(unclassified) 토큰 8종** — 마찬가지로 render-check 지적.
+  전부 Tailwind 내부 변수(`--tw-*`, `--default-transition-*`)로, 우리가
+  실제로 정의한 디자인 토큰(`--ink`, `--brand-yellow` 등)이 아니라
+  Tailwind가 유틸리티 클래스 내부적으로 쓰는 것. 다음 sync 때 이 8개
+  변수에 `/* @kind other */` 주석을 붙이거나 애초에 동기화 대상(토큰
+  스캔 범위)에서 제외하는 방법을 확인할 것 — 어느 파일(`cssEntry`
+  산출물 자체라 소스에서 직접 주석을 못 달 수도 있음)에 붙여야
+  하는지는 다음 sync 시작 전에 컨버터 동작을 먼저 확인해볼 것.
+- Templates(`templates/compact-ticket-row`, `templates/home-overview`,
+  `templates/square-ticket-card`)는 사용자가 claude.ai/design 쪽에서
+  직접 만든 것으로, `.design-sync/entry.mjs`가 다루는 `components/**`
+  경로와 무관함 — 다음 sync가 `components/**`만 writes 대상으로 잡는 한
+  이 템플릿들은 영향받지 않음. 세 템플릿 중 실제 코드로 포팅할 것은
+  아직 미정(사용자 확인 필요).

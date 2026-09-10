@@ -46,6 +46,9 @@ export function useCampaignActions({
 }) {
   const [actionError, setActionError] = useState("");
   const [isActing, setIsActing] = useState(false);
+  // 신청 성공을 알리는 모달 표시 여부 — handleApply가 성공했을 때만 켜고,
+  // 실제로 닫는 시점(확인 버튼/배경 클릭/Escape)은 CampaignDetailPage가 결정함.
+  const [showAppliedModal, setShowAppliedModal] = useState(false);
   const queryClient = useQueryClient();
 
   async function handleApply() {
@@ -75,6 +78,7 @@ export function useCampaignActions({
               }
             : old,
       );
+      setShowAppliedModal(true);
     } catch (e) {
       const code = getApiErrorCode(e);
       if (code === "SOLD_OUT") setActionError("남은 티켓이 없어요.");
@@ -177,6 +181,8 @@ export function useCampaignActions({
     // 경우가 있어서(CampaignDetailPage의 onCampaignOpened 참고) setter 자체를 노출함.
     setActionError,
     isActing,
+    showAppliedModal,
+    setShowAppliedModal,
     handleApply,
     handleCancel,
     handleDelete,
