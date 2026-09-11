@@ -12,6 +12,7 @@ import { FixedWidthLabel } from "@/shared/components/buttons/FixedWidthLabel";
 import { FullPageMessage } from "@/shared/components/feedback/FullPageMessage";
 import { LoadingFade } from "@/shared/components/feedback/LoadingFade";
 import { CampaignCard } from "../components/CampaignCard";
+import { CampaignInfoGrid } from "../components/CampaignInfoGrid";
 import { getCampaignCardBackground } from "../lib/campaignCardBackground";
 import { PAGE_TRANSITION_DURATION } from "@/shared/animation/animationDurations";
 import { OwnerPanel } from "../components/OwnerPanel";
@@ -145,7 +146,13 @@ export function CampaignDetailPage() {
           <FadeSlide className="absolute inset-0 -z-10 bg-(--ink)" slide={false} />
 
           <div
-            className="mx-auto max-w-2xl px-6"
+            // 폭을 max-w-2xl(672px)에서 max-w-220(880px)으로 넓힘 — 카드(264px
+            // 고정)+정보 컬럼 2단 레이아웃이 여유 있게 보이려면 필요함
+            // (DashboardLayout.tsx의 그리드 폭 변경과 같은 값 — 우연히 딱
+            // 맞아떨어져서 두 페이지가 같은 폭을 공유함). UserAppShell.tsx
+            // 전역 헤더도 이제 같은 880px로 넓혀서, 이 페이지에서 헤더와
+            // 콘텐츠 폭이 정확히 일치함.
+            className="mx-auto max-w-220 px-6"
             style={
               isScrollOffsetActive && pendingScrollOffset !== null
                 ? { marginTop: pendingScrollOffset }
@@ -178,66 +185,90 @@ export function CampaignDetailPage() {
               </div>
             </FadeSlide>
 
-            {/* [캠페인 카드] — 목록 카드와 같은 layoutId로 이동 애니메이션만 독립적으로 진행.
-                진짜 상세 데이터가 아직이면 넘겨받은 목록 데이터(cardSource)로 즉시 그림.
-                showCardLayoutId가 꺼져있으면(새로고침으로 들어온 최초 마운트, 또는 카드
-                없는 페이지로 이동 중) layoutId를 아예 안 주고, 대신 카드도 다른 요소들처럼
-                페이드로 처리함. */}
-            <FadeSlide className="mt-4" disabled={showCardLayoutId}>
-              {/* 상세 페이지의 카드는 목록과 달리 클릭/호버 동작이 없고
-                  (눌러서 어디로 이동할 이유가 없음), animateMove 개념 자체도
-                  없음(목록처럼 "이동해야 하는 카드"와 "밀리기만 하는 카드"를
-                  구분할 필요가 없어서) — 항상 PAGE_TRANSITION_DURATION으로
-                  도착 애니메이션을 재생함. layoutDurationOverride는 스크롤
-                  오프셋 상쇄 시점에만 0으로 강제됨(CampaignListTab.tsx의 같은
-                  이유 참고). */}
-              <motion.div
-                layoutId={
-                  showCardLayoutId
-                    ? getCampaignCardLayoutId(cardSource.id)
-                    : undefined
-                }
-                transition={{
-                  layout: {
-                    duration: hasSnappedScrollOffset
-                      ? 0
-                      : PAGE_TRANSITION_DURATION,
-                    ease: "easeInOut" as const,
-                  },
-                }}
-                className="paper-texture flex w-full overflow-hidden rounded-lg text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)]"
-                style={{
-                  backgroundColor: getCampaignCardBackground(cardSource.status),
-                }}
-              >
-                <CampaignCard
-                  title={cardSource.title}
-                  status={cardSource.status}
-                  soldOut={soldOut}
-                  openAtLabel={`${formatDateTimeKo(cardSource.openAt)} 오픈`}
-                  remainingStock={
-                    cardSource.totalStock != null && hasStockValue
-                      ? remainingStock
+            {/* 데스크톱 2단 레이아웃 — 왼쪽 264px 카드 + 오른쪽 정보 컬럼.
+                카드/정보 두 블록 각각의 내부 로직(placeholder 즉시 렌더링,
+                layoutId 애니메이션, hasActiveApplication 분기 등)은 전혀 안
+                건드리고 이 grid로 감싸기만 함. 모바일 전용 레이아웃은 아직
+                없어서(후속 작업), 좁은 화면에서는 이 2단 구성이 그대로
+                찌그러질 수 있음 — 이번 범위에서 의도적으로 감수함. */}
+            <div className="mt-4 grid grid-cols-[264px_minmax(0,1fr)] items-start gap-10">
+              {/* [캠페인 카드] — 목록 카드와 같은 layoutId로 이동 애니메이션만 독립적으로 진행.
+                  진짜 상세 데이터가 아직이면 넘겨받은 목록 데이터(cardSource)로 즉시 그림.
+                  showCardLayoutId가 꺼져있으면(새로고침으로 들어온 최초 마운트, 또는 카드
+                  없는 페이지로 이동 중) layoutId를 아예 안 주고, 대신 카드도 다른 요소들처럼
+                  페이드로 처리함. */}
+              <FadeSlide disabled={showCardLayoutId}>
+                {/* 상세 페이지의 카드는 목록과 달리 클릭/호버 동작이 없고
+                    (눌러서 어디로 이동할 이유가 없음), animateMove 개념 자체도
+                    없음(목록처럼 "이동해야 하는 카드"와 "밀리기만 하는 카드"를
+                    구분할 필요가 없어서) — 항상 PAGE_TRANSITION_DURATION으로
+                    도착 애니메이션을 재생함. layoutDurationOverride는 스크롤
+                    오프셋 상쇄 시점에만 0으로 강제됨(CampaignListTab.tsx의 같은
+                    이유 참고). 목록 카드와 완전히 같은 264px 고정 폭이라(스퀘어
+                    티켓 카드 리디자인으로 목록/상세 카드 크기를 통일함),
+                    layoutId 전환이 확대/축소 없이 순수 위치 이동만 함. */}
+                <motion.div
+                  layoutId={
+                    showCardLayoutId
+                      ? getCampaignCardLayoutId(cardSource.id)
                       : undefined
                   }
-                  totalStock={cardSource.totalStock ?? undefined}
-                  ownerNickname={cardSource.owner.nickname}
-                  ownerProfileImageUrl={cardSource.owner.profileImageUrl}
-                  imageUrl={cardImageUrl}
-                />
-              </motion.div>
-            </FadeSlide>
+                  transition={{
+                    layout: {
+                      duration: hasSnappedScrollOffset
+                        ? 0
+                        : PAGE_TRANSITION_DURATION,
+                      ease: "easeInOut" as const,
+                    },
+                  }}
+                  className="flex w-66 flex-col overflow-hidden rounded-xl text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)]"
+                  style={{
+                    backgroundColor: getCampaignCardBackground(
+                      cardSource.status,
+                    ),
+                  }}
+                >
+                  <CampaignCard
+                    title={cardSource.title}
+                    status={cardSource.status}
+                    soldOut={soldOut}
+                    openAtLabel={`${formatDateTimeKo(cardSource.openAt)} 오픈`}
+                    remainingStock={
+                      cardSource.totalStock != null && hasStockValue
+                        ? remainingStock
+                        : undefined
+                    }
+                    totalStock={cardSource.totalStock ?? undefined}
+                    ownerNickname={cardSource.owner.nickname}
+                    ownerProfileImageUrl={cardSource.owner.profileImageUrl}
+                    imageUrl={cardImageUrl}
+                  />
+                </motion.div>
+              </FadeSlide>
 
-            {/* 카드 아래쪽 — 링크복사/관리 + 신청하기·취소 + 에러 문구. 역시 카드와 형제 요소.
-                여긴 viewerRole/myApplication처럼 진짜 상세 데이터가 있어야만 정확히 그릴 수
-                있어서, campaign(진짜 데이터)이 도착하기 전까진 간단한 대기 문구만 보여줌 */}
-            <FadeSlide>
-              {!campaign ? (
-                <p className="mt-4 text-sm text-(--muted)">불러오는 중...</p>
-              ) : (
-                <>
-                  {/* 링크 복사(누구나) + 관리 아이콘(수정/삭제/종료, 관리자만) — 같은 줄 */}
-                  <div className="mt-4">
+              {/* 오른쪽 정보 컬럼 — 제목/오픈·주최·잔여 정보/관리아이콘/신청영역/에러문구.
+                  카드와 형제 요소(그리드 안 두 번째 트랙)라 카드의 투명도엔 영향 없음.
+                  여긴 viewerRole/myApplication처럼 진짜 상세 데이터가 있어야만 정확히
+                  그릴 수 있어서, campaign(진짜 데이터)이 도착하기 전까진 간단한
+                  대기 문구만 보여줌 */}
+              <FadeSlide>
+                {!campaign ? (
+                  <p className="text-sm text-(--muted)">불러오는 중...</p>
+                ) : (
+                  <div className="flex flex-col items-start gap-5">
+                    <h2 className="text-2xl font-bold text-pretty">
+                      {campaign.title}
+                    </h2>
+
+                    <CampaignInfoGrid
+                      openAtLabel={formatDateTimeKo(campaign.openAt)}
+                      ownerNickname={campaign.owner.nickname}
+                      ownerProfileImageUrl={campaign.owner.profileImageUrl}
+                      remainingStock={hasStockValue ? remainingStock : undefined}
+                      totalStock={campaign.totalStock ?? undefined}
+                    />
+
+                    {/* 링크 복사(누구나) + 관리 아이콘(수정/삭제/종료, 관리자만) — 같은 줄 */}
                     {campaign.viewerRole === "OWNER" ? (
                       <OwnerPanel
                         campaign={campaign}
@@ -255,8 +286,6 @@ export function CampaignDetailPage() {
                         }
                       />
                     ) : (
-                      // 여기도 같은 줄(페이지 왼쪽 여백에 바로 붙음)이라 위
-                      // OwnerPanel 쪽과 같은 이유로 align="left"
                       <div className="flex items-center gap-2">
                         <CopyLinkButton
                           url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
@@ -264,12 +293,12 @@ export function CampaignDetailPage() {
                         />
                       </div>
                     )}
-                  </div>
 
-                  {/* 신청하기 / 신청취소 — 역할과 무관하게 공통 처리 (관리자도 신청 가능) */}
-                  <div className="mt-6 flex justify-center">
+                    {/* 신청하기 / 신청취소 — 역할과 무관하게 공통 처리 (관리자도 신청 가능).
+                        예전엔 카드 아래 중앙 정렬이었는데, 이제 오른쪽 컬럼 안이라 나머지
+                        요소들과 같은 왼쪽 정렬로 바꿈. */}
                     {hasActiveApplication && campaign.myApplication ? (
-                      <div className="flex flex-col items-center gap-3">
+                      <div className="flex flex-col items-start gap-3">
                         <p className="text-sm text-(--muted)">
                           신청시각:{" "}
                           <span className="font-semibold text-(--paper)">
@@ -306,14 +335,14 @@ export function CampaignDetailPage() {
                         }}
                       />
                     )}
-                  </div>
 
-                  {actionError && (
-                    <p className="mt-4 text-xs text-(--warn)">{actionError}</p>
-                  )}
-                </>
-              )}
-            </FadeSlide>
+                    {actionError && (
+                      <p className="text-xs text-(--warn)">{actionError}</p>
+                    )}
+                  </div>
+                )}
+              </FadeSlide>
+            </div>
           </div>
 
           {/* 스크롤 오프셋(margin-top)이 정확한 위치 보정을 담당하는 동안, 그 아래 실제

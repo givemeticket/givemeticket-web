@@ -184,7 +184,18 @@ export function CampaignListTab({
     }
 
     return (
-      <div className="flex flex-col gap-3">
+      // 예전엔 세로 1열 목록(flex-col)이었는데, 스퀘어 티켓 카드로 리디자인하며
+      // 그리드로 바꿈. 트랙 폭을 고정(264px)한 이유: 카드가 목록/상세 어디서든
+      // 완전히 같은 크기여야 한다는 요구사항 때문 — minmax(240px,1fr) 같은
+      // 신축 트랙을 쓰면 넓은 화면에서 카드가 264px보다 커져버려서 상세 페이지
+      // 카드와 크기가 달라짐(그러면 layoutId 전환 때 확대/축소가 생김). 대가로
+      // 컬럼 수가 안 맞아떨어지는 만큼의 공간은 그냥 행 끝에 빈 여백으로 남음.
+      // justify-center: DashboardLayout.tsx의 컨테이너 폭을 3열 정확히 꽉
+      // 채우는 값(880px)으로 맞춰뒀지만, 그건 "정확히 3개 이상"일 때 얘기고
+      // 행사가 1~2개뿐이면 auto-fill이 만든 3개 트랙 중 일부가 비어서 카드가
+      // 왼쪽으로 쏠려 보임 — justify-center로 실제 채워진 트랙들을 가운데
+      // 정렬해서 이 경우에도 자연스럽게 보이게 함.
+      <div className="grid grid-cols-[repeat(auto-fill,264px)] justify-center gap-5">
         {visibleCampaigns.map((c) => {
           const isTransitioning = c.id === transitioningId;
           const isDeleted = c.status === "DELETED";
@@ -229,7 +240,7 @@ export function CampaignListTab({
               whileTap={!isDeleted ? { scale: 0.99 } : undefined}
               type="button"
               disabled={isDeleted}
-              className="paper-texture flex w-full overflow-hidden rounded-lg text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)] transition-shadow duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) disabled:cursor-default"
+              className="flex w-66 flex-col overflow-hidden rounded-xl text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)] transition-shadow duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) disabled:cursor-default"
               style={{ backgroundColor: getCampaignCardBackground(c.status) }}
               onClick={() => {
                 // setTransitioningId만 하고 바로 navigate하면, 그 상태 변경이 화면에
@@ -314,13 +325,21 @@ export function CampaignListTab({
         />
 
         {scope === "owned" && (
+          // InlineSortFilter.tsx의 활성 정렬 pill과 완전히 같은 디자인(클래스/스타일
+          // 값 그대로 복사) — 노란 강조색 대신, 목록 안 여러 UI가 같은 알약 버튼
+          // 톤을 공유하도록 통일함.
           <button
             type="button"
             onClick={() => navigate("/campaigns/create")}
-            className="flex items-center gap-1 rounded-full px-4 py-2 text-[13px] font-semibold text-(--on-yellow) shadow-[0_2px_8px_rgba(17,24,39,0.15)] transition-transform hover:scale-[1.03] active:scale-[0.97]"
-            style={{ backgroundColor: "var(--brand-yellow)" }}
+            className="flex items-center gap-1 whitespace-nowrap rounded-full border px-3 py-2 text-sm font-medium"
+            style={{
+              backgroundColor: "var(--ink)",
+              borderColor: "var(--line)",
+              color: "var(--paper)",
+              boxShadow: "inset 0 0 0 1.5px var(--paper)",
+            }}
           >
-            <Plus size={15} strokeWidth={2.5} />
+            <Plus size={14} strokeWidth={2} />
             행사 추가
           </button>
         )}

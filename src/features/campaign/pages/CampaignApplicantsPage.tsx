@@ -164,15 +164,19 @@ export function CampaignApplicantsPage() {
               </div>
             )}
 
-            <div className="mt-4 flex flex-col gap-2">
+            {/* 한 줄에 3개씩 — 페이지 폭이 넓어지면서(CampaignSubPageShell.tsx
+                880px) 세로 1열로는 옆 여백이 너무 커 보여서 그리드로 바꿈.
+                빈 상태 문구는 그리드 아이템 하나가 아니라 전체 폭을 가로질러
+                보여야 해서 col-span-3을 따로 줌. */}
+            <div className="mt-4 grid grid-cols-3 gap-2">
               {applicants.length === 0 && (
-                <p className="py-16 text-center text-sm text-(--muted)">
+                <p className="col-span-3 py-16 text-center text-sm text-(--muted)">
                   아직 신청자가 없어요.
                 </p>
               )}
 
               {applicants.length > 0 && visibleApplicants.length === 0 && (
-                <p className="py-16 text-center text-sm text-(--muted)">
+                <p className="col-span-3 py-16 text-center text-sm text-(--muted)">
                   검색 결과가 없어요.
                 </p>
               )}

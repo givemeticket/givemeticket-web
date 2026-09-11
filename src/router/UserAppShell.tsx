@@ -92,12 +92,21 @@ export function UserAppShell() {
 
           구분선(border-b)은 header 자신이 아니라, 안쪽에 새로 둔 div에
           줌 — header는 px-6짜리 패딩이 있는 상자라, header 자체에 테두리를
-          주면 패딩 바깥쪽(전체 672px)까지 꽉 차게 그려져서, 그 아래 각
-          페이지의 실제 콘텐츠 폭(패딩을 뺀 624px)보다 선이 더 넓어 보이는
+          주면 패딩 바깥쪽(전체 폭)까지 꽉 차게 그려져서, 그 아래 각
+          페이지의 실제 콘텐츠 폭(패딩을 뺀 나머지)보다 선이 더 넓어 보이는
           어긋남이 있었음. 로고/아바타를 담는 안쪽 div는 header의 패딩
-          안쪽에서 실제 콘텐츠 폭(624px)만큼만 차지하므로, 그 div에 테두리를
-          주면 페이지 콘텐츠와 정확히 같은 폭으로 맞춰짐. */}
-      <header className="sticky top-0 z-40 mx-auto w-full max-w-2xl bg-(--ink) px-6 pt-8">
+          안쪽에서 실제 콘텐츠 폭만큼만 차지하므로, 그 div에 테두리를
+          주면 페이지 콘텐츠와 정확히 같은 폭으로 맞춰짐.
+
+          max-w는 원래 앱 전체가 공유하던 max-w-2xl(672px)이었는데, 스퀘어
+          카드 리디자인으로 DashboardLayout/CampaignDetailPage가
+          880px(max-w-220)로 넓어지면서 그 두 페이지에서 헤더가 콘텐츠보다
+          좁아 보이는 어긋남이 생겨 헤더도 같은 880px로 맞춤. 다만
+          CampaignSubPageShell(수정/생성/신청자목록)과 LoginPage는 아직
+          672px 그대로라, 반대로 그 페이지들에서는 헤더가 콘텐츠보다 넓어
+          보이는 어긋남이 새로 생김 — 모든 페이지의 목표 폭이 정리되기
+          전까지는 일단 감수함(트레이드오프). */}
+      <header className="sticky top-0 z-40 mx-auto w-full max-w-220 bg-(--ink) px-6 pt-8">
         {/* border-(--line) 대신 rgba를 직접 줌 — --line은 인풋/카드 등 앱 전체가
             공유하는 토큰이라, 여기서 더 진하게 바꾸면 그 값을 쓰는 다른 모든
             테두리도 같이 진해짐. 이 헤더 구분선만 살짝 더 진하게 하려고

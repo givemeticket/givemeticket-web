@@ -166,77 +166,68 @@ button:not(:disabled) {
   display: none; /* Chrome/Safari */
 }
 
-/* 카드 배경에 얹는 은은한 종이 질감. 처음엔 SVG 노이즈 필터(feTurbulence)로
-   직접 만들어봤는데, 감마 보정으로 대비를 최대한 올려도 결이 "종이"보다는
-   "노이즈"처럼 보이는 느낌이 강했음 — 결국 transparenttextures.com에서 받은
-   실제 종이 섬유 텍스처 PNG(투명 배경 위에 옅은 결무늬만 있는 알파 채널
-   이미지, public/paper.png)로 교체함. 알파 채널이 있어서 카드마다 배경색이
-   달라도(정상=--ink-soft, 삭제됨=--deleted) 그 위에 자연스럽게 겹쳐짐. */
-.paper-texture {
-  background-image: url("/paper.png");
+/* 캠페인 썸네일이 없을 때(아직 등록 기능 자체가 없어서 항상 이 경우) 쓰는
+   플레이스홀더 배경 — claude.ai/design 템플릿의 "이미지 자리" 목업과 같은
+   대각선 줄무늬. CampaignCard.tsx에서 티켓 아이콘과 함께 씀(템플릿엔 아이콘
+   아래 "campaign image" 라벨도 있었는데, 실제 화면에서는 불필요한 글자라
+   생략함). */
+.campaign-image-placeholder {
+  background: repeating-linear-gradient(
+    135deg,
+    #e6e8ec 0 6px,
+    #eff1f4 6px 12px
+  );
 }
 
-/* 상태 뱃지/재고 스텁처럼 채도 높은 색(meta.bg)으로 채워진 작은 UI 조각에
-   얹는 종이 질감. .paper-texture와 달리 background-blend-mode: multiply를
-   씀 — 노란색처럼 밝은 배경 위에서는 기본(normal) 알파 합성으로는 결이 거의
-   안 보였기 때문(자세한 이유는 아래 .stub-dashed 주석 참고). */
-.status-texture {
-  background-image: url("/paper.png");
-  background-blend-mode: multiply;
-}
+/* 카드 아래쪽의 재고 스텁(스퀘어 티켓 카드 스타일) 위쪽 경계 — claude.ai/design의
+   SquareCardList 템플릿이 쓰는 CSS를 그대로 옮김(직접 재설계하려다 두 번
+   실패함 — 세로 점선 시절 방식을 억지로 가로로 변형하면서 나름의 방식을
+   시도했지만 실제로 깨졌음. 이제 템플릿 원본 그대로 포팅함).
 
-/* 카드 오른쪽의 재고 스텁(보딩패스 스타일) 전용 배경 — 카드 본문과 같은 종이
-   질감(url("/paper.png"))에, 왼쪽 경계를 실선 대신 흰 점선(각 선 끝이
-   둥긂)으로 그려서 "여기서 뜯어낸다"는 티켓 느낌을 냄. 두 배경을 겹겹이
-   쌓아야 해서(점선 패턴 + 종이 질감) .paper-texture와 별도 클래스로 둠 —
-   같은 요소에 background-image를 두 클래스에서 각각 선언하면 하나만
-   적용되고 합쳐지지 않기 때문. 스텁 배경색(상태별 meta.bg)은 그대로 인라인
-   style로 받고, 이 두 배경이 그 위에 얹힘.
-
-   선 끝을 둥글게 하는 건 CSS 네이티브 gradient/border-style로는 불가능해서
-   (border-style: dashed도 각진 사각형 조각만 나옴) SVG
-   <line stroke-linecap="round">를 데이터 URI로 만들어 세로로 반복시킴.
-
-   시행착오를 거침:
-   1. 종이 질감을 배경색 위에 그냥 알파로 얹으면(기본 normal 블렌드), 텍스처
-      자체가 밝은 회색 계열이라 마찬가지로 밝은 노란색(OPEN 상태) 위에서는
-      명도차가 거의 없어 결이 안 보였음. background-blend-mode를 종이 질감
-      레이어에만 multiply로 주면(그래픽 툴에서 종이 질감을 색 위에 합성할 때
-      쓰는 표준 방식) 밑에 있는 색을 항상 곱해서 어둡게 만들기 때문에, 배경이
-      밝든 어둡든 결이 일관되게 드러남 — 노랑/빨강/파랑 모두 확인함. 점선
-      레이어는 그대로 normal로 둬야 원래 의도한 흰색이 그대로 유지됨.
-   2. 처음엔 "선이니까 테두리처럼 스텁 쪽에만 그려도 되겠지"라고 생각해서
-      background-position을 "left"(=0px)로 뒀는데, 이러면 선이 자기 타일
-      (3px 너비)의 가운데인 1.5px 지점에 그려져서 색 경계(스텁의 왼쪽 끝,
-      0px)보다 1.5px 안쪽에 찍힘 — "경계선이 점선 바로 안쪽에 붙어있다"는
-      느낌이 났던 원인. "-1.5px"만큼 왼쪽으로 밀어서 선의 중심 자체를 경계
-      (0px)에 맞추면, 스텁 쪽에서는 선의 오른쪽 절반만 보임(왼쪽 절반은
-      스텁 박스 밖이라 잘림) — 나머지 왼쪽 절반은 카드 본문(mid) 영역에
-      짝 클래스(.stub-dashed-mirror, 아래)로 그려서, 경계에서 두 절반이
-      이어져 완전한 점선 하나로 보이게 함. */
-.stub-dashed {
+   템플릿 기법: 스텁(position:relative) 안에 이 오버레이 요소 하나를
+   position:absolute로 위로 2px 튀어나오게 배치해서(top:-2px, height:4px)
+   카드 본문(위쪽 2px)과 스텁(아래쪽 2px) 양쪽에 걸치게 함 — 점선을 두
+   요소에 나눠 그리는 대신, 딱 이 오버레이 하나에서 전부 해결함(다른
+   요소와의 경계 픽셀에 의존하지 않아 안전함). 레이어 3개를 위에서부터:
+   1) 회색 점선(카드 본문 쪽 밝은 배경과 대비) — center top에 둬서
+      오버레이의 위쪽 절반(=본문 쪽)에 보임.
+   2) 흰 점선(스텁 쪽 진한 상태색과 대비) — center bottom에 둬서
+      오버레이의 아래쪽 절반(=스텁 쪽)에 보임.
+   3) 위/아래 절반의 색을 각각 본문색·스텁색으로 나눈 세로 그라디언트 —
+      오버레이 자신의 배경이 주변과 자연스럽게 이어지게 함.
+   스텁색(--stub-boundary-color)만 상태마다 달라서 인라인 style의 CSS
+   커스텀 프로퍼티로 받고, 본문 쪽 색(--ink-soft)은 항상 고정이라(삭제됨
+   말고는 카드 배경이 전부 --ink-soft) 여기 고정값으로 둠. */
+.stub-boundary {
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='3' height='11'%3E%3Cline x1='1.5' y1='1.5' x2='1.5' y2='6' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"),
-    url("/paper.png");
-  background-size:
-    3px 11px,
-    auto;
-  background-repeat: repeat-y, repeat;
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='2'%3E%3Cline x1='1' y1='1' x2='6.5' y2='1' stroke='%23b6bcc6' stroke-width='2'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='2'%3E%3Cline x1='1' y1='1' x2='6.5' y2='1' stroke='white' stroke-width='2'/%3E%3C/svg%3E"),
+    linear-gradient(
+      to bottom,
+      var(--ink-soft) 0 50%,
+      var(--stub-boundary-color) 50% 100%
+    );
+  background-repeat: repeat-x, repeat-x, no-repeat;
   background-position:
-    -1.5px center,
+    center top,
+    center bottom,
     0 0;
-  background-blend-mode: normal, multiply;
+  background-size:
+    11px 2px,
+    11px 2px,
+    auto;
 }
 
-/* .stub-dashed의 짝 — mid 영역 오른쪽 끝에 붙여서 점선의 나머지 절반을
-   그림(위 .stub-dashed 주석의 2번 참고). mid는 배경이 따로 없어(바깥
-   컨테이너의 .paper-texture가 비쳐 보이는 구조) 선 레이어 하나만 추가하면
-   됨. */
-.stub-dashed-mirror {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='3' height='11'%3E%3Cline x1='1.5' y1='1.5' x2='1.5' y2='6' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-size: 3px 11px;
-  background-repeat: repeat-y;
-  background-position: right -1.5px center;
+/* 종료(CLOSED)·삭제됨(DELETED) 전용 — 스텁 배경(meta.bg)이 카드 본문 배경과
+   똑같은 톤이라(둘 다 --ink-soft 또는 둘 다 --deleted) 위/아래를 나눠
+   그릴 이유가 없음. 템플릿의 "마감" 예시와 동일하게, 굵은 회색 점선 하나를
+   가운데 그대로 둠. */
+.stub-boundary-muted {
+  background-color: var(--stub-boundary-color);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='4'%3E%3Cline x1='1' y1='2' x2='6.5' y2='2' stroke='%23b6bcc6' stroke-width='4'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: center;
+  background-size: 11px 4px;
 }
 
 @media (prefers-reduced-motion: no-preference) {
