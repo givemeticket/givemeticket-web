@@ -56,12 +56,28 @@ export function supportsScrollOffsetTrick(
   return false;
 }
 
-// /mytickets, /mycampaigns는 같은 DashboardLayout 안에서 탭 내용만 바뀌는 거라
-// 페이지 전환 애니메이션이 필요 없음 — 둘을 같은 키("dashboard")로 묶어서,
-// 이 둘 사이 이동에서는 AnimatePresence가 키 변화를 감지 못하게(=애니메이션 안 걸리게) 함.
-// 그 외(상세/생성/체크아웃 등) 진짜 다른 페이지로 넘어갈 때만 실제로 키가 바뀌어서 애니메이션이 걸림.
+// "/"(홈), /mywish, /mytickets, /mycampaigns 네 탭은 같은 DashboardLayout
+// 안에서 탭 내용만 바뀌는 거라 페이지 전환 애니메이션이 필요 없음 — 넷을
+// 같은 키("dashboard")로 묶어서, 이 넷 사이 이동에서는 AnimatePresence가 키
+// 변화를 감지 못하게(=애니메이션 안 걸리게) 함. 그 외(상세/생성/체크아웃
+// 등) 진짜 다른 페이지로 넘어갈 때만 실제로 키가 바뀌어서 애니메이션이 걸림.
+//
+// "/"/"/mywish" 추가 전에는 이 둘이 여기 없어서, 예를 들어 홈↔찜한 행사를
+// 오가면 서로 다른 키로 취급돼 AnimatePresence가 진짜 페이지 전환처럼
+// 다뤘음(mode="popLayout"이 나가는 요소를 잠깐 겹쳐서 유지). HomeTab/
+// MyWishTab이 다른 탭들과 달리 FadeSlide로 감싸져 있지 않아서(그냥 텍스트
+// 하나뿐인 placeholder), 그 겹치는 구간 동안 두 텍스트가 아무 페이드도 없이
+// 그대로 겹쳐 보이다가 툭 사라지는 것처럼 보였음(실제 사용자가 재현해서
+// 발견함) — 애초에 이 네 탭 사이 전환엔 애니메이션 자체가 필요 없으니,
+// 다른 두 탭처럼 같은 키로 묶어서 문제를 근본적으로 없앰.
+const DASHBOARD_TAB_PATHNAMES = new Set([
+  "/",
+  "/mywish",
+  "/mytickets",
+  "/mycampaigns",
+]);
+
 export function getAnimationKey(pathname: string): string {
-  if (pathname === "/mytickets" || pathname === "/mycampaigns")
-    return "dashboard";
+  if (DASHBOARD_TAB_PATHNAMES.has(pathname)) return "dashboard";
   return pathname;
 }

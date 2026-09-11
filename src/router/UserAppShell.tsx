@@ -1,8 +1,9 @@
 import { useState, useSyncExternalStore } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { BrandLogo } from "@/shared/components/BrandLogo";
 import { HeaderTabs } from "@/features/dashboard/components/HeaderTabs";
 import { UserMenu } from "@/features/auth/components/UserMenu";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useLogout } from "@/features/auth/hooks/useLogout";
 import { useMe } from "@/features/auth/hooks/useMe";
 import { withdrawUser } from "@/features/auth/api/authApi";
@@ -14,12 +15,24 @@ import {
 } from "@/shared/animation/pageTransition/pageTransitionStore";
 import { useBlockUserScroll } from "@/shared/animation/hooks/useBlockUserScroll";
 
-// 로그인/OAuth 콜백 화면을 뺀 모든 화면이 공유하는 최상위 레이아웃. 로고+탭+아바타
-// 헤더가 여기 있어서, 리액트 라우터의 중첩 레이아웃 성질상 하위 라우트(RootLayout,
-// 대시보드, 캠페인 상세 등)가 아무리 바뀌어도 이 컴포넌트 자체는 리마운트되지
-// 않음 — 그래서 헤더가 페이지 전환 애니메이션의 영향을 전혀 안 받고 항상 고정으로
-// 보임 (예전엔 각 페이지가 헤더를 따로 들고 있어서 페이지 전환마다 같이 사라졌다
+// OAuth 콜백 화면과 "/"의 비로그인용 안내 화면(LandingPage)을 뺀 모든 화면이
+// 공유하는 최상위 레이아웃. 로고+탭+아바타 헤더가 여기 있어서, 리액트
+// 라우터의 중첩 레이아웃 성질상 하위 라우트(RootLayout, 대시보드, 캠페인
+// 상세 등)가 아무리 바뀌어도 이 컴포넌트 자체는 리마운트되지 않음 — 그래서
+// 헤더가 페이지 전환 애니메이션의 영향을 전혀 안 받고 항상 고정으로 보임
+// (예전엔 각 페이지가 헤더를 따로 들고 있어서 페이지 전환마다 같이 사라졌다
 // 나타났었음).
+//
+// "/"는 예전엔 이 트리 바깥의 완전히 별개 라우트였는데(비로그인이면
+// LandingPage, 로그인이면 /mytickets로 즉시 리다이렉트라 "/" 자체엔 콘텐츠가
+// 없었음), 로그인 상태에서 "/"에 "홈" 탭 콘텐츠를 보여주는 라우팅 구조 확장
+// 이후로는 "/"도 이 트리 **안**의 정상 라우트가 됐음(RootRoute.tsx 참고,
+// docs/animation.md 13번 — 트리 바깥 경로로 다니면 이 컴포넌트가
+// 언마운트/재마운트돼서 위 "리마운트 안 됨" 불변조건이 깨짐). 대신 "/" +
+// 비로그인일 때만 헤더 자체를 그리지 않도록 이 컴포넌트가 직접 판단함(아래
+// hideShellChrome) — 그래야 게스트에게는 지금처럼 헤더 없는 풀스크린
+// 안내 화면이 그대로 보이면서도, UserAppShell 인스턴스 자체는 절대
+// 리마운트되지 않음.
 //
 // 탭(나의 티켓/나의 행사)도 원래 DashboardLayout 안에서 대시보드 라우트일 때만
 // 조건부로 보이던 걸 여기로 옮겨서 항상 보이게 함(HeaderTabs.tsx 참고) — 어느
@@ -31,9 +44,14 @@ import { useBlockUserScroll } from "@/shared/animation/hooks/useBlockUserScroll"
 // 비로그인 상태에서도(예: 공유 링크로 캠페인 상세를 보는 게스트) 아바타/탭은 항상
 // 보이고, 탭을 누르면 ProtectedRoute가 알아서 로그인으로 보냈다가 되돌려줌
 // (UserMenu가 me=null을 처리하는 것과 같은 원칙 — 로그인 상태를 여기서 미리
-// 따지지 않고, 각자 필요한 곳에서 자연스럽게 처리되게 둠).
+// 따지지 않고, 각자 필요한 곳에서 자연스럽게 처리되게 둠). "/"만 예외적으로
+// 로그인 여부를 직접 따지는 건, "/"가 유일하게 "로그인 여부로 헤더 유무
+// 자체가 갈리는" 화면이라서임 — 다른 화면들은 헤더는 항상 뜨고 콘텐츠
+// 접근만 ProtectedRoute가 가로채는 것과 성격이 다름.
 export function UserAppShell() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
   const logout = useLogout();
   const { data: me } = useMe();
   const [isWithdrawConfirmOpen, setIsWithdrawConfirmOpen] = useState(false);
@@ -52,6 +70,16 @@ export function UserAppShell() {
   // 신호(isTransitioning)를 그대로 씀 — "지금은 화면을 건드리면 안 되는 상태"라는
   // 느낌을 일관되게 주려고.
   useBlockUserScroll(isTransitioning);
+
+  // "/" + 비로그인이면 이 컴포넌트가 그리는 헤더/탈퇴 다이얼로그 등 아무것도
+  // 없이 자식(LandingPage)을 그대로 통과시킴 — 위 컴포넌트 설명 주석 참고.
+  // 이 조기 반환은 반드시 위의 모든 훅 호출 다음, 실제 헤더 JSX를 그리는
+  // return보다 앞에 둬야 함(훅은 매 렌더 항상 같은 순서로 호출돼야 하는
+  // 규칙 — 훅 자체를 조건부로 건너뛰면 안 되지만, 훅을 다 부른 뒤 반환값을
+  // 조건부로 쓰는 건 안전함).
+  if (location.pathname === "/" && !isAuthenticated) {
+    return <Outlet />;
+  }
 
   // TODO: 테스트용 임시 버튼. 실제 회원탈퇴 플로우(탈퇴 사유 입력 등)는
   // 나중에 제대로 화면으로 뺄 예정. 지금은 API 동작 확인용.
@@ -102,7 +130,7 @@ export function UserAppShell() {
           카드 리디자인으로 DashboardLayout/CampaignDetailPage가
           880px(max-w-220)로 넓어지면서 그 두 페이지에서 헤더가 콘텐츠보다
           좁아 보이는 어긋남이 생겨 헤더도 같은 880px로 맞춤. 다만
-          CampaignSubPageShell(수정/생성/신청자목록)과 LoginPage는 아직
+          CampaignSubPageShell(수정/생성/신청자목록)과 LandingPage는 아직
           672px 그대로라, 반대로 그 페이지들에서는 헤더가 콘텐츠보다 넓어
           보이는 어긋남이 새로 생김 — 모든 페이지의 목표 폭이 정리되기
           전까지는 일단 감수함(트레이드오프). */}

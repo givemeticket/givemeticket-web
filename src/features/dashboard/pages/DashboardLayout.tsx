@@ -1,8 +1,9 @@
+import type { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
 import { FadeSlide } from "@/shared/animation/components/FadeSlide";
 
-// /mytickets, /mycampaigns 두 라우트가 공유하는 레이아웃 — 이제 배경 페이드
-// 레이어랑 콘텐츠 폭(max-w-220 px-6)만 담당함. 헤더(로고+탭+아바타)는
+// /mywish, /mytickets, /mycampaigns 라우트가 공유하는 레이아웃 — 이제 배경
+// 페이드 레이어랑 콘텐츠 폭(max-w-220 px-6)만 담당함. 헤더(로고+탭+아바타)는
 // UserAppShell이 전역으로 고정 처리함(여기서 빠짐) — 탭도 원래는 여기 있었는데,
 // "어느 화면에서든 항상 보이는 전역 내비게이션"으로 바뀌면서 UserAppShell 쪽으로
 // 옮겨감(HeaderTabs.tsx). 정렬/삭제표시 필터와 행사추가 버튼, 그리고 "지금
@@ -10,7 +11,12 @@ import { FadeSlide } from "@/shared/animation/components/FadeSlide";
 // 관리함. 전환 중 클릭 차단도 UserAppShell이 전역으로 처리함(예전엔 여기서
 // useIsPresent()로 개별 처리했는데, 탭 전환처럼 AnimatePresence 키가 안 바뀌는
 // 전환은 못 잡는 빈틈이 있었음 — pageTransitionStore.ts 참고).
-export function DashboardLayout() {
+//
+// children은 선택적 — 위 세 라우트처럼 라우트 중첩(`<Outlet/>`)으로 쓰이는 게
+// 기본이지만, RootRoute.tsx가 로그인 상태의 "/"에서 이 레이아웃을 라우트가
+// 아니라 컴포넌트로 직접 조립해서(`<DashboardLayout><HomeTab /></DashboardLayout>`)
+// "홈" 탭 콘텐츠를 끼워 넣을 수 있게 함.
+export function DashboardLayout({ children }: { children?: ReactNode } = {}) {
   return (
     <div className="relative flow-root h-full text-(--paper)">
       {/* 배경색 전용 레이어. 독립적으로 페이드시켜야 함 — 안 그러면 이 화면이 사라지는
@@ -33,7 +39,7 @@ export function DashboardLayout() {
           하나로 통일됨(그 덕에 UserAppShell.tsx 헤더도 같은 880px로 넓힘 —
           더 이상 "어느 쪽 폭에 맞출지" 고민할 필요가 없어짐). */}
       <main className="mx-auto max-w-220 px-6 pt-8 pb-10">
-        <Outlet />
+        {children ?? <Outlet />}
       </main>
     </div>
   );

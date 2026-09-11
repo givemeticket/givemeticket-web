@@ -10,15 +10,22 @@ import { announceLeavingCardBehind } from "@/shared/animation/pageTransition/lea
 // UserAppShell이 "지금 대시보드 라우트인지"를 알아야 했음 — 항상 떠있는
 // 전역 내비게이션으로 바꾸면서 그 구분 자체를 없앰(활성 표시는 대신 각 목록
 // 페이지 상단의 제목(CampaignListTab의 pageTitle)이 담당함 — 어느 화면에서든
-// 똑같이 보이는 단순한 링크 두 개일 뿐임).
+// 똑같이 보이는 단순한 링크 네 개일 뿐임).
 //
-// 로그인 여부 확인도 따로 안 함 — /mytickets, /mycampaigns 둘 다 이미
-// ProtectedRoute로 보호돼 있어서, 비로그인 상태로 navigate()해도
+// 로그인 여부 확인도 따로 안 함 — /mywish, /mytickets, /mycampaigns 모두
+// 이미 ProtectedRoute로 보호돼 있어서, 비로그인 상태로 navigate()해도
 // ProtectedRoute가 알아서 "/?redirect=..."로 보내고 로그인 후 원래
 // 목적지로 되돌려줌(ProtectedRoute.tsx 참고) — 여기서 별도 처리 불필요.
+// "/"(홈)만 예외 — ProtectedRoute 없이도 로그인 여부에 따라 스스로 다른
+// 콘텐츠를 보여줌(RootRoute.tsx 참고).
 export function HeaderTabs() {
   return (
     <div className="flex items-center gap-4">
+      {/* 홈/찜한 행사는 아직 정렬·필터 UI가 없는 placeholder라 tab prop을
+          안 줌(dashboardFilterStore.ts의 FilterTab 유니온에 편입 안 시킴 —
+          나중에 "찜한 행사"에 진짜 정렬/필터가 생기면 그때 추가). */}
+      <HeaderTabLink to="/" label="홈" />
+      <HeaderTabLink to="/mywish" label="찜한 행사" />
       <HeaderTabLink to="/mytickets" tab="mytickets" label="나의 티켓" />
       <HeaderTabLink to="/mycampaigns" tab="mycampaigns" label="나의 행사" />
     </div>
@@ -31,7 +38,9 @@ function HeaderTabLink({
   label,
 }: {
   to: string;
-  tab: FilterTab;
+  /** 정렬/필터 상태가 있는 탭만 넘김(dashboardFilterStore.ts 참고) —
+   * 없으면 클릭 시 필터 리셋을 건너뜀 */
+  tab?: FilterTab;
   label: string;
 }) {
   const location = useLocation();
@@ -39,7 +48,7 @@ function HeaderTabLink({
   const queryClient = useQueryClient();
 
   function handleClick() {
-    resetFilterState(tab);
+    if (tab) resetFilterState(tab);
 
     if (location.pathname === to) {
       // 이미 그 페이지에 있는데 같은 탭을 또 눌렀을 땐 navigate()를 불러도

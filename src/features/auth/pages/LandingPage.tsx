@@ -18,9 +18,19 @@ function handleNaverLogin(redirect: string) {
   window.location.href = buildAuthorizeUrl("naver", state);
 }
 
-export function LoginPage() {
+// "/"의 비로그인용 안내 화면. 예전엔 이름이 LoginPage였는데, 라우팅 구조
+// 확장으로 "/sign"이 별도 로그인 전용 화면으로 생기면서 이 컴포넌트는
+// "로그인 액션이 일어나는 화면"이 아니라 "/"에서 보여주는 안내
+// 화면(비로그인 전용)이라는 성격이 더 정확해져서 이름을 바꿈. 카카오/네이버
+// 로그인 버튼 로직은 지금 당장은 그대로 여기 남아있음(/sign은 아직
+// placeholder라 실제 로그인 기능이 없음).
+export function LandingPage() {
   const [searchParams] = useSearchParams();
-  const redirect = searchParams.get("redirect") ?? "/mytickets";
+  // redirect 파라미터가 없으면(ProtectedRoute를 거치지 않고 그냥 "/"로 바로
+  // 들어와서 로그인하는 경우) 로그인 후 "/"(홈 탭)로 돌아오는 게 기본값 —
+  // 예전엔 "/mytickets"였는데, "/"가 이제 리다이렉트 없이 홈 탭을 직접
+  // 보여주는 정상 목적지가 됐으니 그쪽이 자연스러운 기본값임.
+  const redirect = searchParams.get("redirect") ?? "/";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-(--ink) text-(--paper)">

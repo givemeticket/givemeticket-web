@@ -11,12 +11,15 @@ import { RootRoute } from "./RootRoute";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { UserAppShell } from "./UserAppShell";
 import { DashboardLayout } from "@/features/dashboard/pages/DashboardLayout";
+import { MyWishTab } from "@/features/dashboard/components/MyWishTab";
 import { MyTicketsTab } from "@/features/dashboard/components/MyTicketsTab";
 import { MyCampaignsTab } from "@/features/dashboard/components/MyCampaignsTab";
 import { CampaignCreatePage } from "@/features/campaign/pages/CampaignCreatePage";
 import { CampaignEditPage } from "@/features/campaign/pages/CampaignEditPage";
 import { CampaignApplicantsPage } from "@/features/campaign/pages/CampaignApplicantsPage";
 import { CampaignDetailPage } from "@/features/campaign/pages/CampaignDetailPage";
+import { SearchResultsPage } from "@/features/search/pages/SearchResultsPage";
+import { SignInPage } from "@/features/auth/pages/SignInPage";
 import { OAuthCallbackPage } from "@/features/auth/pages/OAuthCallbackPage";
 import { FullPageMessage } from "@/shared/components/feedback/FullPageMessage";
 import { MapPinOff } from "lucide-react";
@@ -193,9 +196,13 @@ function NotFoundPage() {
 }
 
 const router = createBrowserRouter([
-  // 로그인 화면(비로그인 시 "/") / OAuth 콜백은 UserAppShell(고정 헤더) 바깥에 둠 —
-  // 이 두 화면엔 로고+아바타 헤더가 뜨면 안 되므로.
-  { path: "/", element: <RootRoute /> },
+  // 로그인 전용 화면(/sign) / OAuth 콜백만 UserAppShell(고정 헤더) 바깥에 둠 —
+  // 이 두 화면엔 로고+아바타 헤더가 뜨면 안 되므로. "/"는 예전엔 여기 있었는데,
+  // 로그인 상태에서 "홈" 탭 콘텐츠를 보여주려면 UserAppShell이 리마운트되면
+  // 안 되기 때문에 트리 안으로 옮김(RootRoute.tsx, UserAppShell.tsx의
+  // hideShellChrome 참고 — 비로그인일 땐 그쪽에서 헤더를 숨겨서 결과적으로
+  // 지금과 똑같이 헤더 없는 화면으로 보임).
+  { path: "/sign", element: <SignInPage /> },
   { path: "/oauth/:provider", element: <OAuthCallbackPage /> },
 
   {
@@ -207,8 +214,13 @@ const router = createBrowserRouter([
       {
         element: <RootLayout />,
         children: [
-          // 비로그인도 접근 가능한 라우트
+          // 비로그인도 접근 가능한 라우트. "/"는 로그인 여부에 따라 스스로
+          // 다른 콘텐츠를 보여줌(RootRoute.tsx) — ProtectedRoute를 안 거침
+          // (거치면 비로그인 시 "/?redirect=%2F"로 자기 자신에게 리다이렉트
+          // 루프가 생김).
+          { path: "/", element: <RootRoute /> },
           { path: "/campaigns/:shortCode", element: <CampaignDetailPage /> },
+          { path: "/search", element: <SearchResultsPage /> },
 
           // 로그인 필요한 라우트
           {
@@ -216,9 +228,10 @@ const router = createBrowserRouter([
             children: [
               {
                 // path 없는 레이아웃 라우트: URL에 세그먼트를 추가하지 않고
-                // /mytickets, /mycampaigns 두 라우트에 탭 UI만 공유시킴
+                // /mywish, /mytickets, /mycampaigns 세 라우트에 탭 UI만 공유시킴
                 element: <DashboardLayout />,
                 children: [
+                  { path: "/mywish", element: <MyWishTab /> },
                   { path: "/mytickets", element: <MyTicketsTab /> },
                   { path: "/mycampaigns", element: <MyCampaignsTab /> },
                 ],
