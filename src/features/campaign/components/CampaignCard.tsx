@@ -50,7 +50,10 @@ const STATUS_META: Record<
     fg: "var(--on-brand)",
   },
   OPEN: { label: "진행중", bg: "var(--brand-yellow)", fg: "var(--on-yellow)" },
-  CLOSED: { label: "종료", bg: "var(--ink-soft)", fg: "var(--muted)" },
+  // 글자색을 --muted(대비 약 3.9:1)에서 --paper(15:1)로 올림 — 배경(--ink-soft)은
+  // 그대로 둬서 "종료 = 조용한 톤"이라는 인상 자체는 카드 본문이 이미 만들고
+  // 있으니 유지되고, 뱃지 글자만 읽기 쉬워짐.
+  CLOSED: { label: "종료", bg: "var(--ink-soft)", fg: "var(--paper)" },
   DELETED: { label: "삭제됨", bg: "var(--deleted)", fg: "var(--paper)" },
 };
 

@@ -14,8 +14,12 @@ export function EmptyState({ icon, title, description }: EmptyStateProps) {
       className="flex flex-col items-center gap-3 rounded-2xl border px-6 py-16 text-center"
       style={{ borderColor: "var(--line)" }}
     >
+      {/* 아이콘 색을 --brand-blue에서 --muted로 낮춤 — 액션이 없는 빈 화면에서
+          가장 강한 색이 아이콘이 되던 문제를 없애고, 아래 설명 문구와 톤을
+          맞춤. 브랜드 노랑(실제 액션 버튼)은 그대로 이 화면 안에서 가장 눈에
+          띄는 색으로 남음. */}
       <div
-        className="flex h-14 w-14 items-center justify-center rounded-full text-(--brand-blue)"
+        className="flex h-14 w-14 items-center justify-center rounded-full text-(--muted)"
         style={{ backgroundColor: "var(--ink-soft)" }}
       >
         {icon}

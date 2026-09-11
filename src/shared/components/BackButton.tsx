@@ -42,7 +42,17 @@ export function BackButton({
       type="button"
       onClick={handleClick}
       aria-label="뒤로가기"
-      className="rounded-full py-1 pr-1 pl-0 text-(--paper)"
+      // 실제 히트 영역을 IconButton과 같은 44px로 키우되(p-3.5 = 14px, 16px
+      // 아이콘 + 양옆 14px = 44px), 이 버튼은 항상 오른쪽에 제목 텍스트가
+      // 바로 붙어서 쓰이므로(flex gap-1) 레이아웃에 그대로 반영하면 아이콘과
+      // 텍스트 사이가 14px씩 더 멀어짐 — 그래서 상/하/좌는 패딩만큼 그대로
+      // 음수 마진(-m-3.5)으로 당겨서 상쇄하고, 오른쪽만 원래 간격이던
+      // pr-1(4px)이 그대로 남도록 덜 당김(-mr-2.5 = -(14-4)px). 이렇게 하면
+      // 터치 영역은 진짜로 44px지만, 다른 요소 입장에서 이 버튼이 차지하는
+      // 눈에 보이는 자리는 예전(pl-0 pr-1)과 완전히 동일하게 유지됨
+      // (Tooltip.tsx/CampaignFormFields.tsx의 "패딩 + 상쇄 음수 마진"과 같은
+      // 패턴, 다만 여긴 오른쪽만 의도적으로 덜 상쇄함).
+      className="-mt-3.5 -mb-3.5 -ml-3.5 -mr-2.5 rounded-full p-3.5 text-(--paper)"
     >
       <ChevronLeft size={16} strokeWidth={2} />
     </button>

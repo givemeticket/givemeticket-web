@@ -41,10 +41,16 @@ export function InlineSortFilter({
 
   const pillClass =
     "flex items-center gap-1 whitespace-nowrap rounded-full border px-3 py-2 text-sm font-medium";
+  // 예전엔 활성 pill을 --brand-blue로 꽉 채웠는데, 바로 아래 카드의
+  // --brand-yellow 상태 뱃지랑 강조가 겹쳐서 목록에서 먼저 읽혀야 할 상태색이
+  // 묻혔음. 채움 대신 테두리(진짜 border 대신 inset box-shadow를 씀 — border
+  // 두께를 그냥 키우면 박스 크기 자체가 달라져서 비활성 pill과 정렬이
+  // 어긋남) + 글자색만 --paper로 올려서 낮춤.
   const activeStyle = {
-    backgroundColor: "var(--brand-blue)",
-    borderColor: "var(--brand-blue)",
-    color: "var(--on-brand)",
+    backgroundColor: "var(--ink)",
+    borderColor: "var(--line)",
+    color: "var(--paper)",
+    boxShadow: "inset 0 0 0 1.5px var(--paper)",
   };
   const inactiveStyle = { borderColor: "var(--line)", color: "var(--muted)" };
 
