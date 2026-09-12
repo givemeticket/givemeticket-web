@@ -111,10 +111,10 @@ html {
                          마감/오픈 60초 이내일 때만 켬. warn(위험한 행동)과
                          색이 겹치면 "위험한 동작"과 "곧 마감"이 시각적으로
                          구분이 안 돼서 분리함 */
-  --success: #2f9e44; /* 확정/성공 상태 전용 - 아직 실제로 쓰는 곳은 없지만
-                          (신청 확정 등을 색으로 구분해서 보여주는 화면이
-                          없음), 나중에 필요할 때 바로 쓸 수 있게 미리 정의만
-                          해둠 */
+  --success: #2f9e44; /* 확정/성공 상태 전용. 신청 확정 등을 색으로 구분해서
+                          보여주는 화면은 아직 없지만, 헤더의 실시간 시계
+                          위젯(HeaderLiveClock.tsx)의 "연결됨" 표시 점에서
+                          처음 실제로 쓰임 */
   --line: rgba(17, 24, 39, 0.1);
 
   /* 채도 높은 배경(노란 버튼 등) 위에 얹는 텍스트 전용 색상.
@@ -197,11 +197,14 @@ button:not(:disabled) {
       오버레이 자신의 배경이 주변과 자연스럽게 이어지게 함.
    스텁색(--stub-boundary-color)만 상태마다 달라서 인라인 style의 CSS
    커스텀 프로퍼티로 받고, 본문 쪽 색(--ink-soft)은 항상 고정이라(삭제됨
-   말고는 카드 배경이 전부 --ink-soft) 여기 고정값으로 둠. */
+   말고는 카드 배경이 전부 --ink-soft) 여기 고정값으로 둠.
+   각 선(.stub-boundary-muted 포함)에 stroke-linecap="round"를 줘서 점선의
+   양 끝을 각지지 않고 둥글게 함(사용자 요청, 2026-09-12) — 원본 템플릿은
+   각진 끝(기본값)이었지만, 이 프로젝트에서 둥근 끝으로 바꿈. */
 .stub-boundary {
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='2'%3E%3Cline x1='1' y1='1' x2='6.5' y2='1' stroke='%23b6bcc6' stroke-width='2'/%3E%3C/svg%3E"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='2'%3E%3Cline x1='1' y1='1' x2='6.5' y2='1' stroke='white' stroke-width='2'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='2'%3E%3Cline x1='1' y1='1' x2='6.5' y2='1' stroke='%23b6bcc6' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='2'%3E%3Cline x1='1' y1='1' x2='6.5' y2='1' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"),
     linear-gradient(
       to bottom,
       var(--ink-soft) 0 50%,
@@ -224,7 +227,7 @@ button:not(:disabled) {
    가운데 그대로 둠. */
 .stub-boundary-muted {
   background-color: var(--stub-boundary-color);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='4'%3E%3Cline x1='1' y1='2' x2='6.5' y2='2' stroke='%23b6bcc6' stroke-width='4'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='4'%3E%3Cline x1='1' y1='2' x2='6.5' y2='2' stroke='%23b6bcc6' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: repeat-x;
   background-position: center;
   background-size: 11px 4px;
@@ -247,6 +250,15 @@ button:not(:disabled) {
   }
   .countdown-urgent {
     animation: countdownPulse 0.9s ease-in-out infinite;
+  }
+  /* 헤더 실시간 시계(HeaderLiveClock.tsx) 옆의 "살아있음" 표시 점 — 점 위에
+     겹쳐서 계속 확대되며 옅어지는 파문 효과. .ring-anim-1/2와 같은
+     ringPulse 키프레임을 재사용함(둘 다 "점 하나에 퍼지는 원 하나" 형태의
+     같은 시각 효과라 새 키프레임을 또 만들 이유가 없음) — 딜레이 없이 더
+     짧은 2s 주기로 계속 반복. */
+  .clock-pulse {
+    opacity: 0;
+    animation: ringPulse 2s ease-out infinite;
   }
   .tk-body {
     animation: tks-body var(--tk-cycle, 1.8s) cubic-bezier(0.4, 0, 0.35, 1)

@@ -192,30 +192,47 @@ Apple SD Gothic Neo, Malgun Gothic, sans-serif`인데, 여기서 진짜 브랜�
 - 렌더 검증(playwright)을 아직 한 번도 안 돌려봤다 — 다음 sync에서
   기회가 되면 설치해서 실제로 빈 화면으로 렌더링되는 컴포넌트가 없는지
   확인할 것.
-- **Pretendard 400/600 중복 @font-face** — 다음 sync 후 claude.ai/design
-  쪽 자체 점검(render-check)에서 지적받음. `src/index.css`가
+- **Pretendard 400/600 중복 @font-face — 조사 완료, 사용자가 "그냥 두기"로
+  확정함(다음 sync에서 재조사하지 말 것).** claude.ai/design 쪽 자체
+  점검(render-check)이 지적한 항목. `src/index.css`가
   `pretendard/dist/web/static/pretendard.css`를 통째로 `@import`한 뒤
-  바로 아래에서 400/600 두 굵기만 고정 경로(`/fonts/...`)로 재선언하는데
-  (위 12~23번째 줄, 소스 순서상 나중 선언이 이겨서 실제 렌더링엔 문제
-  없음 — 의도된 동작), 이 두 굵기에 대해 `pretendard.css` 쪽 원본
-  선언과 우리 재선언이 둘 다 최종 CSS(빌드 산출물)에 남아 있어서
-  design-sync의 폰트 추출기가 "중복 선언"으로 잡아낸 것. 다음
-  `/design-sync` 실행 전에 이 중복을 정리할지(예: 400/600 이외의 실제로
-  안 쓰는 굵기까지 포함해서 `pretendard.css` 전체 import 대신 필요한
-  굵기만 개별 import하는 방식 검토) 사용자와 상의할 것 — 실제 프로덕션
-  CSS 용량에도 영향 있는 부분이라 design-sync와 무관하게 고칠 가치가
-  있을 수 있음.
-- **미분류(unclassified) 토큰 8종** — 마찬가지로 render-check 지적.
-  전부 Tailwind 내부 변수(`--tw-*`, `--default-transition-*`)로, 우리가
-  실제로 정의한 디자인 토큰(`--ink`, `--brand-yellow` 등)이 아니라
-  Tailwind가 유틸리티 클래스 내부적으로 쓰는 것. 다음 sync 때 이 8개
-  변수에 `/* @kind other */` 주석을 붙이거나 애초에 동기화 대상(토큰
-  스캔 범위)에서 제외하는 방법을 확인할 것 — 어느 파일(`cssEntry`
-  산출물 자체라 소스에서 직접 주석을 못 달 수도 있음)에 붙여야
-  하는지는 다음 sync 시작 전에 컨버터 동작을 먼저 확인해볼 것.
-- Templates(`templates/compact-ticket-row`, `templates/home-overview`,
-  `templates/square-ticket-card`)는 사용자가 claude.ai/design 쪽에서
-  직접 만든 것으로, `.design-sync/entry.mjs`가 다루는 `components/**`
-  경로와 무관함 — 다음 sync가 `components/**`만 writes 대상으로 잡는 한
-  이 템플릿들은 영향받지 않음. 세 템플릿 중 실제 코드로 포팅할 것은
-  아직 미정(사용자 확인 필요).
+  바로 아래에서 400/600 두 굵기만 고정 경로(`/fonts/...`)로 재선언해서
+  (위 12~23번째 줄) 이 두 굵기가 최종 CSS(빌드 산출물)에 중복 선언됨.
+  실제 로딩엔 전혀 영향 없음 — 브라우저는 같은 (family, weight) 조합에
+  대해 소스 순서상 **마지막 선언만** 실제로 페치하므로(먼저 나온 pretendard.css
+  쪽 선언은 아예 안 받아옴), 이건 순수하게 "중복 선언"이라는 소스
+  위생 문제일 뿐 성능/렌더링 문제가 아님. 실제로 없애는 방법을 조사해봤는데
+  (`pretendard` 패키지의 개별 굵기 CSS — `Pretendard-Bold.css` 등 —는
+  통짜 파일 하나가 아니라 유니코드 범위별로 수십 개 조각으로 쪼개는
+  "dynamic subset" 방식이라, 이걸로 바꾸면 폰트 로딩 전략 자체가 바뀌는
+  더 큰 변경이 됨) 사용자에게 대안 세 가지(그냥 두기 / dynamic-subset
+  전환 / Vite 플러그인으로 preload 경로 자동화)를 제시했고, **"그냥
+  두기"를 선택함**(2026-09-11). 그러므로 **다음 `/design-sync`에서도
+  이 경고는 똑같이 뜰 것으로 예상됨 — 이미 검토 후 의도적으로 남겨둔
+  것이니 다시 조사하거나 사용자에게 재질문하지 말고 이 노트를 근거로
+  그냥 넘어갈 것.**
+- **미분류(unclassified) 토큰 8종 — 로컬에서 고칠 수 있는 항목이 아님을
+  확인함.** 마찬가지로 render-check 지적. 전부 Tailwind 내부 변수(`--tw-*`,
+  `--default-transition-*`)로, 우리가 실제로 정의한 디자인 토큰(`--ink`,
+  `--brand-yellow` 등)이 아니라 Tailwind가 유틸리티 클래스 내부적으로 쓰는
+  것. `package-build.mjs`/`.design-sync/config.json`(package shape) 스키마를
+  확인해봤는데 토큰을 "종류(kind)"별로 분류/제외하는 설정 필드가 없음 —
+  이 분류는 로컬 빌드 도구가 아니라 업로드 후 claude.ai/design 앱이
+  서버 쪽에서 자체 점검할 때 나오는 결과라서, 우리 쪽 config로 손댈
+  방법이 없어 보임. 무해한 정보성 경고로 보고 다음 sync에서도 그냥
+  넘어갈 것(사용자에게 매번 재질문하지 말 것).
+- Templates(`templates/account-pages`, `templates/admin-dashboard`,
+  `templates/compact-ticket-row`, `templates/component-improvements`,
+  `templates/gutter-animation`, `templates/home-overview`,
+  `templates/landing-intro`, `templates/square-card-campaign-detail-page`,
+  `templates/square-card-list`, `templates/square-ticket-card`)는 사용자가
+  claude.ai/design 쪽에서 직접 만든 것으로, `.design-sync/entry.mjs`가
+  다루는 `components/**` 경로와 무관함 — sync가 `components/**`만 writes
+  대상으로 잡는 한 이 템플릿들은 영향받지 않음(2026-09-11 재동기화 시
+  원격 파일 목록으로 재확인함, 전부 보존됨). 이 중 실제 코드로 포팅된
+  것: `square-ticket-card`/`square-card-list`/`square-card-campaign-detail-page`
+  → `CampaignCard`/`CampaignListTab`/`CampaignDetailPage` 정사각형 카드
+  리디자인, `component-improvements` → CampaignCard 배지/BackButton/
+  InlineSortFilter/EmptyState 4건. 나머지(`account-pages`,
+  `admin-dashboard`, `compact-ticket-row`, `gutter-animation`,
+  `home-overview`, `landing-intro`)는 아직 미포팅 — 실제 코드 없음.

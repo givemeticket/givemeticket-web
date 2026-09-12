@@ -21,6 +21,7 @@ export function saveScrollPosition(pathname: string) {
 }
 
 const CARD_LIST_PATHNAMES = new Set(["/mytickets", "/mycampaigns"]);
+const CAMPAIGN_CREATE_PATHNAME = "/campaigns/create";
 
 // 목록↔상세처럼 스크롤 오프셋 트릭(scrollOffsetStore.ts — 도착 화면이 스크롤이
 // 이미 맞은 것처럼 보이게 하는 방식)을 서로 지원하는 화면 사이의 전환인지 확인.
@@ -36,6 +37,17 @@ const CARD_LIST_PATHNAMES = new Set(["/mytickets", "/mycampaigns"]);
 // 걸려서 목록 스크롤이 예전 위치로 부적절하게 복원돼버리는 문제가 있었음(사용자
 // 피드백으로 확인). POP일 때만 허용하면, 진짜 "돌아가는" 경우에만 이 트릭이
 // 걸리고 탭 클릭 같은 정방향 이동은 걸리지 않게 됨.
+//
+// "/campaigns/create"(행사 추가)도 목록(카드 상세는 아니지만)과 같은 문제를
+// 겪어서 같은 트릭에 포함시킴 — "나의 행사" 목록을 스크롤을 내린 채로 "행사
+// 추가"로 이동하면, 이 트릭 없이는 RootLayout이 곧장 window.scrollTo(0, 0)을
+// 불러서 아직 화면에 남아있는(사라지는 중인) 목록이 애니메이션 시작 전에
+// 순간적으로 맨 위로 튀어 보였고, 뒤로 돌아올 때도 델레이된
+// window.scrollTo(0, 저장값)가 페이드가 다 끝난 뒤 눈에 띄게 스크롤을
+// 홱 되돌리는 것처럼 보였음(둘 다 사용자 피드백으로 확인). 목록→행사추가는
+// 항상 PUSH라 카드 상세와 동일하게 무조건 허용, 행사추가→목록은 카드 상세와
+// 동일하게 POP(뒤로가기)일 때만 허용함(그 화면에도 "돌아갈 목록"이 있는
+// 게 확실한 경우만).
 export function supportsScrollOffsetTrick(
   leavingPathname: string,
   arrivingPathname: string,
@@ -43,12 +55,14 @@ export function supportsScrollOffsetTrick(
 ): boolean {
   if (
     CARD_LIST_PATHNAMES.has(leavingPathname) &&
-    isCardDetailPathname(arrivingPathname)
+    (isCardDetailPathname(arrivingPathname) ||
+      arrivingPathname === CAMPAIGN_CREATE_PATHNAME)
   ) {
     return true;
   }
   if (
-    isCardDetailPathname(leavingPathname) &&
+    (isCardDetailPathname(leavingPathname) ||
+      leavingPathname === CAMPAIGN_CREATE_PATHNAME) &&
     CARD_LIST_PATHNAMES.has(arrivingPathname)
   ) {
     return navigationType === "POP";

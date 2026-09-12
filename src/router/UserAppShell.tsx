@@ -2,6 +2,7 @@ import { useState, useSyncExternalStore } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { BrandLogo } from "@/shared/components/BrandLogo";
 import { HeaderTabs } from "@/features/dashboard/components/HeaderTabs";
+import { HeaderLiveClock } from "@/features/dashboard/components/HeaderLiveClock";
 import { UserMenu } from "@/features/auth/components/UserMenu";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useLogout } from "@/features/auth/hooks/useLogout";
@@ -34,12 +35,11 @@ import { useBlockUserScroll } from "@/shared/animation/hooks/useBlockUserScroll"
 // 안내 화면이 그대로 보이면서도, UserAppShell 인스턴스 자체는 절대
 // 리마운트되지 않음.
 //
-// 탭(나의 티켓/나의 행사)도 원래 DashboardLayout 안에서 대시보드 라우트일 때만
-// 조건부로 보이던 걸 여기로 옮겨서 항상 보이게 함(HeaderTabs.tsx 참고) — 어느
-// 화면에서든 바로 대시보드로 이동할 수 있는 전역 내비게이션으로 성격이 바뀜.
-// 활성 탭 표시(밑줄 등)는 일부러 안 둠 — 상세/수정/신청자목록 같은 하위 화면에선
-// 어느 탭도 "정답"이 아니라서, 억지로 하나를 활성으로 고르는 대신 아예 활성 표시
-// 자체를 없앰. "지금 어디 있는지"는 대신 각 목록 페이지 자신의 제목이 알려줌.
+// 탭(홈/찜한 행사/나의 티켓/나의 행사)도 원래 DashboardLayout 안에서 대시보드
+// 라우트일 때만 조건부로 보이던 걸 여기로 옮겨서 항상 보이게 함(HeaderTabs.tsx
+// 참고) — 어느 화면에서든 바로 대시보드로 이동할 수 있는 전역 내비게이션으로
+// 성격이 바뀜. 활성 탭 표시(아이콘+알약 배경)는 HeaderTabs.tsx가 담당함 —
+// 자세한 이력/이유는 그 파일 주석 참고.
 //
 // 비로그인 상태에서도(예: 공유 링크로 캠페인 상세를 보는 게스트) 아바타/탭은 항상
 // 보이고, 탭을 누르면 ProtectedRoute가 알아서 로그인으로 보냈다가 되돌려줌
@@ -119,36 +119,51 @@ export function UserAppShell() {
           더해지는 것뿐이라, 다른 곳을 손볼 필요가 없음).
 
           구분선(border-b)은 header 자신이 아니라, 안쪽에 새로 둔 div에
-          줌 — header는 px-6짜리 패딩이 있는 상자라, header 자체에 테두리를
-          주면 패딩 바깥쪽(전체 폭)까지 꽉 차게 그려져서, 그 아래 각
-          페이지의 실제 콘텐츠 폭(패딩을 뺀 나머지)보다 선이 더 넓어 보이는
-          어긋남이 있었음. 로고/아바타를 담는 안쪽 div는 header의 패딩
-          안쪽에서 실제 콘텐츠 폭만큼만 차지하므로, 그 div에 테두리를
-          주면 페이지 콘텐츠와 정확히 같은 폭으로 맞춰짐.
+          줌 — 안쪽 div가 header의 좌우 패딩(px-6) 안쪽 영역을 그대로
+          차지하므로, 그 div에 테두리를 주면 패딩을 뺀 실제 콘텐츠 폭에
+          정확히 맞춰짐(header 자체에 테두리를 주면 패딩 바깥쪽까지
+          꽉 차게 그려짐).
 
-          max-w는 원래 앱 전체가 공유하던 max-w-2xl(672px)이었는데, 스퀘어
-          카드 리디자인으로 DashboardLayout/CampaignDetailPage가
-          880px(max-w-220)로 넓어지면서 그 두 페이지에서 헤더가 콘텐츠보다
-          좁아 보이는 어긋남이 생겨 헤더도 같은 880px로 맞춤. 다만
-          CampaignSubPageShell(수정/생성/신청자목록)과 LandingPage는 아직
-          672px 그대로라, 반대로 그 페이지들에서는 헤더가 콘텐츠보다 넓어
-          보이는 어긋남이 새로 생김 — 모든 페이지의 목표 폭이 정리되기
-          전까지는 일단 감수함(트레이드오프). */}
-      <header className="sticky top-0 z-40 mx-auto w-full max-w-220 bg-(--ink) px-6 pt-8">
+          예전엔 header 자체를 max-w-220(880px)으로 페이지 콘텐츠 폭에
+          맞춰서, 헤더와 그 아래 각 페이지 콘텐츠의 좌우 경계선이 시각적으로
+          한 줄로 이어지게 했었음. 그런데 templates/home-overview 템플릿은
+          헤더를 항상 화면 끝까지 꽉 채우는 형태였고, 사용자가 이 쪽을
+          택함(2026-09-12) — 그래서 max-w를 없애고 header가 항상 w-full로
+          화면 전체 폭을 채우게 바꿈. 그 결과 헤더와 아래 페이지 콘텐츠(대부분
+          880px으로 가운데 정렬됨)의 좌우 경계가 더 이상 한 줄로 안
+          맞는데, 이건 이번 변경으로 의도된 트레이드오프임. */}
+      <header className="sticky top-0 z-40 w-full bg-(--ink) px-6 pt-8">
         {/* border-(--line) 대신 rgba를 직접 줌 — --line은 인풋/카드 등 앱 전체가
             공유하는 토큰이라, 여기서 더 진하게 바꾸면 그 값을 쓰는 다른 모든
             테두리도 같이 진해짐. 이 헤더 구분선만 살짝 더 진하게 하려고
             별도 값(0.1 → 0.16)을 씀. */}
-        <div className="flex items-center gap-4 border-b-2 border-dashed border-[rgba(17,24,39,0.16)] pb-8">
-          <BrandLogo />
-          <HeaderTabs />
+        <div className="border-b-2 border-dashed border-[rgba(17,24,39,0.16)] pb-8">
+          {/* relative를 pb-8 있는 바깥 div가 아니라 이 안쪽 div에 둠 — 바깥
+              div에 두면 absolute 시계의 top-1/2가 pb-8(구분선 아래 여백)까지
+              포함한 전체 높이 기준으로 계산돼서, 로고/탭보다 아래로 처져
+              보였음. 이 안쪽 div는 패딩이 없어서, 그 높이가 곧 로고/탭/아바타
+              콘텐츠 자체의 높이라 top-1/2가 정확히 그 콘텐츠들과 같은
+              세로 중앙에 맞음. */}
+          <div className="relative flex items-center gap-4">
+            <BrandLogo />
+            <HeaderTabs />
 
-          <div className="ml-auto flex items-center">
-            <UserMenu
-              me={me ?? null}
-              onLogout={logout}
-              onWithdraw={() => setIsWithdrawConfirmOpen(true)}
-            />
+            {/* templates/home-overview 참고 — 헤더 한가운데 실시간(서버 보정)
+                시계. absolute + 부모 relative로 중앙 고정해서, 좌측
+                로고+탭/우측 아바타의 폭이 로그인 상태 등에 따라 달라져도
+                항상 헤더 정중앙에 위치함(flex 자식으로 두면 양쪽 폭 차이만큼
+                중앙에서 밀려남). */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+              <HeaderLiveClock />
+            </div>
+
+            <div className="ml-auto flex items-center">
+              <UserMenu
+                me={me ?? null}
+                onLogout={logout}
+                onWithdraw={() => setIsWithdrawConfirmOpen(true)}
+              />
+            </div>
           </div>
         </div>
       </header>
