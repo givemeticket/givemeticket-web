@@ -7,17 +7,12 @@ import { formatDateTimeKo } from "@/shared/lib/formatDate";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { Trash2, SearchX, Check } from "lucide-react";
 import { BackButton } from "@/shared/components/BackButton";
-import { SecondaryButton } from "@/shared/components/buttons/SecondaryButton";
-import { FixedWidthLabel } from "@/shared/components/buttons/FixedWidthLabel";
 import { FullPageMessage } from "@/shared/components/feedback/FullPageMessage";
 import { LoadingFade } from "@/shared/components/feedback/LoadingFade";
 import { CampaignCard } from "../components/CampaignCard";
-import { CampaignInfoGrid } from "../components/CampaignInfoGrid";
+import { CampaignDetailInfoColumn } from "../components/CampaignDetailInfoColumn";
 import { getCampaignCardBackground } from "../lib/campaignCardBackground";
 import { PAGE_TRANSITION_DURATION } from "@/shared/animation/animationDurations";
-import { OwnerPanel } from "../components/OwnerPanel";
-import { ApplySection } from "../components/ApplySection";
-import { CopyLinkButton } from "../components/CopyLinkButton";
 import { useCampaignDetailData } from "../hooks/useCampaignDetailData";
 import { useShowCardLayoutId } from "../hooks/useShowCardLayoutId";
 import { useCampaignActions } from "../hooks/useCampaignActions";
@@ -29,6 +24,40 @@ import { FadeSlide } from "@/shared/animation/components/FadeSlide";
 import { markReturningCampaign } from "@/shared/animation/pageTransition/returningCardStore";
 import { useScrollOffsetSnap } from "@/shared/animation/pageTransition/useScrollOffsetSnap";
 import { getScrollPosition } from "@/shared/animation/pageTransition/scrollPositionStore";
+
+type ConfirmAction = "cancel" | "delete" | "close" | null;
+
+// "취소/삭제/종료" 확인창 3종의 문구/버튼 라벨/danger 여부를 한데 모음 — 원래
+// ConfirmDialog의 각 prop마다 confirmAction을 따로따로 3항 연산자로 비교하고
+// 있었는데, 어차피 하나의 액션에 종속된 문구들이라 여기서 한 번에 묶는 게
+// 더 읽기 쉬움. "cancel"과 null(모달이 닫혀있을 때) 둘 다 같은 기본 문구를
+// 쓰므로 default 분기로 합침 — 어차피 null일 땐 ConfirmDialog가 isOpen=false라
+// 이 문구 자체가 화면에 안 보임.
+function getConfirmDialogCopy(action: ConfirmAction) {
+  if (action === "delete") {
+    return {
+      title: "정말 삭제하시겠어요?",
+      description: "신청자가 있어도 전부 취소되고, 되돌릴 수 없어요.",
+      confirmLabel: "삭제",
+      danger: true,
+    };
+  }
+  if (action === "close") {
+    return {
+      title: "신청을 종료하시겠어요?",
+      description:
+        "새 신청만 막히고, 이미 확정된 신청은 그대로 유지돼요. 되돌릴 수 없어요.",
+      confirmLabel: "종료",
+      danger: false,
+    };
+  }
+  return {
+    title: "신청을 취소하시겠어요?",
+    description: undefined,
+    confirmLabel: "확인",
+    danger: false,
+  };
+}
 
 export function CampaignDetailPage() {
   const { shortCode } = useParams<{ shortCode: string }>();
@@ -86,22 +115,20 @@ export function CampaignDetailPage() {
     handleDelete,
     handleClose,
   } = useCampaignActions({
-      campaign,
-      shortCode,
-      isAuthenticated,
-      navigate,
-      refetch,
-      refetchStock,
-      cameFrom,
-      setIsNavigatingToNonCardPage,
-    });
+    campaign,
+    shortCode,
+    isAuthenticated,
+    navigate,
+    refetch,
+    refetchStock,
+    cameFrom,
+    setIsNavigatingToNonCardPage,
+  });
 
   // "취소/삭제/종료"는 되돌릴 수 없거나 영향이 커서 확인창을 거침. 어떤 액션을
   // 확인 중인지만 여기 담아두고, 실제 실행은 확인 버튼을 눌러야 함 (버튼 onClick에서
   // 바로 confirm()을 부르던 예전 방식과 달리, 다이얼로그가 뜬 뒤 비동기로 결정됨)
-  const [confirmAction, setConfirmAction] = useState<
-    "cancel" | "delete" | "close" | null
-  >(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
 
   // 삭제됨/못찾음은 콘텐츠랑 크로스페이드될 필요 없는 완전히 종결된 상태라 그대로 조기 반환.
   // "불러오는 중"은 아래 return의 LoadingFade가 담당함 (로딩→콘텐츠 크로스페이드를 위해선
@@ -138,54 +165,57 @@ export function CampaignDetailPage() {
       </title>
       <LoadingFade isLoading={!cardSource && isLoading}>
         {cardSource && (
-        <div className="relative h-full pt-8 pb-10 text-(--paper)">
-          {/* 배경색 전용 레이어. 이것도 독립적으로 페이드시켜야 함 — 안 그러면 상세 페이지가
+          <div className="relative h-full pt-8 pb-10 text-(--paper)">
+            {/* 배경색 전용 레이어. 이것도 독립적으로 페이드시켜야 함 — 안 그러면 상세 페이지가
               사라지는 동안에도 이 불투명한 배경이 화면 전체를 계속 덮고 있어서, 그 밑에서
               동시에 나타나고 있는 목록 화면이 거의 끝까지 안 보이다가 마지막 순간에야
               갑자기 드러나는 문제가 생김. 카드의 자식이 아닌 별개 형제 요소라 카드엔 영향 없음. */}
-          <FadeSlide className="absolute inset-0 -z-10 bg-(--ink)" slide={false} />
+            <FadeSlide
+              className="absolute inset-0 -z-10 bg-(--ink)"
+              slide={false}
+            />
 
-          <div
-            // 폭을 max-w-2xl(672px)에서 max-w-220(880px)으로 넓힘 — 카드(264px
-            // 고정)+정보 컬럼 2단 레이아웃이 여유 있게 보이려면 필요함
-            // (DashboardLayout.tsx의 그리드 폭 변경과 같은 값 — 우연히 딱
-            // 맞아떨어져서 두 페이지가 같은 폭을 공유함). UserAppShell.tsx
-            // 전역 헤더도 이제 같은 880px로 넓혀서, 이 페이지에서 헤더와
-            // 콘텐츠 폭이 정확히 일치함.
-            className="mx-auto max-w-220 px-6"
-            style={
-              isScrollOffsetActive && pendingScrollOffset !== null
-                ? { marginTop: pendingScrollOffset }
-                : undefined
-            }
-          >
-            {/* 카드 위쪽 — < 티켓정보. 카드와 형제 요소라 카드의 투명도엔 영향 없음 */}
-            <FadeSlide>
-              <div className="flex items-center gap-1">
-                {/* 스크롤 오프셋 보정은 이제 RootLayout(UserApp.tsx)이 모든
+            <div
+              // 폭을 max-w-2xl(672px)에서 max-w-220(880px)으로 넓힘 — 카드(264px
+              // 고정)+정보 컬럼 2단 레이아웃이 여유 있게 보이려면 필요함
+              // (DashboardLayout.tsx의 그리드 폭 변경과 같은 값 — 우연히 딱
+              // 맞아떨어져서 두 페이지가 같은 폭을 공유함). UserAppShell.tsx
+              // 전역 헤더도 이제 같은 880px로 넓혀서, 이 페이지에서 헤더와
+              // 콘텐츠 폭이 정확히 일치함.
+              className="mx-auto max-w-220 px-6"
+              style={
+                isScrollOffsetActive && pendingScrollOffset !== null
+                  ? { marginTop: pendingScrollOffset }
+                  : undefined
+              }
+            >
+              {/* 카드 위쪽 — < 티켓정보. 카드와 형제 요소라 카드의 투명도엔 영향 없음 */}
+              <FadeSlide>
+                <div className="flex items-center gap-1">
+                  {/* 스크롤 오프셋 보정은 이제 RootLayout(UserApp.tsx)이 모든
                     목록↔상세 전환에서 일괄적으로 계산해줌 — 예전엔 이 버튼을
                     누르는 순간 직접 markPendingScrollOffset을 호출했어야 했지만,
                     그러면 브라우저 자체의 뒤로가기/앞으로가기(이 버튼을 거치지
                     않는 경우)엔 보정이 안 걸리는 문제가 있었음. */}
-                {cameFrom && (
-                  <BackButton
-                    fallback={`/${cameFrom}`}
-                    onBeforeNavigate={() => {
-                      // showCardLayoutId가 꺼져있으면(새로고침 등으로 들어와
-                      // 카드가 애초에 layoutId 없이 페이드만 하는 중) 표시할
-                      // 게 없음 — 목록 쪽에 짝 없는 "이동 중" 신호만 잘못
-                      // 전달하게 됨.
-                      if (showCardLayoutId && cardSource) {
-                        markReturningCampaign(cardSource.id);
-                      }
-                    }}
-                  />
-                )}
-                <h1 className="text-lg font-bold">티켓정보</h1>
-              </div>
-            </FadeSlide>
+                  {cameFrom && (
+                    <BackButton
+                      fallback={`/${cameFrom}`}
+                      onBeforeNavigate={() => {
+                        // showCardLayoutId가 꺼져있으면(새로고침 등으로 들어와
+                        // 카드가 애초에 layoutId 없이 페이드만 하는 중) 표시할
+                        // 게 없음 — 목록 쪽에 짝 없는 "이동 중" 신호만 잘못
+                        // 전달하게 됨.
+                        if (showCardLayoutId && cardSource) {
+                          markReturningCampaign(cardSource.id);
+                        }
+                      }}
+                    />
+                  )}
+                  <h1 className="text-lg font-bold">티켓정보</h1>
+                </div>
+              </FadeSlide>
 
-            {/* 데스크톱(640px 이상) 2단 레이아웃 — 왼쪽 264px 카드 + 오른쪽
+              {/* 데스크톱(640px 이상) 2단 레이아웃 — 왼쪽 264px 카드 + 오른쪽
                 정보 컬럼. 카드/정보 두 블록 각각의 내부 로직(placeholder
                 즉시 렌더링, layoutId 애니메이션, hasActiveApplication 분기
                 등)은 전혀 안 건드리고 이 grid로 감싸기만 함. 모바일(640px
@@ -194,14 +224,14 @@ export function CampaignDetailPage() {
                 claude.ai/design Mobile Screens 목업의 "행사 소개" 섹션과
                 요소 재배치는 이번 범위에서 제외(별도 승인 필요), 기존 순서를
                 그대로 유지한 채 구조만 접음. */}
-            <div className="mt-4 grid grid-cols-1 items-start gap-6 sm:grid-cols-[264px_minmax(0,1fr)] sm:gap-10">
-              {/* [캠페인 카드] — 목록 카드와 같은 layoutId로 이동 애니메이션만 독립적으로 진행.
+              <div className="mt-4 grid grid-cols-1 items-start gap-6 sm:grid-cols-[264px_minmax(0,1fr)] sm:gap-10">
+                {/* [캠페인 카드] — 목록 카드와 같은 layoutId로 이동 애니메이션만 독립적으로 진행.
                   진짜 상세 데이터가 아직이면 넘겨받은 목록 데이터(cardSource)로 즉시 그림.
                   showCardLayoutId가 꺼져있으면(새로고침으로 들어온 최초 마운트, 또는 카드
                   없는 페이지로 이동 중) layoutId를 아예 안 주고, 대신 카드도 다른 요소들처럼
                   페이드로 처리함. */}
-              <FadeSlide disabled={showCardLayoutId}>
-                {/* 상세 페이지의 카드는 목록과 달리 클릭/호버 동작이 없고
+                <FadeSlide disabled={showCardLayoutId}>
+                  {/* 상세 페이지의 카드는 목록과 달리 클릭/호버 동작이 없고
                     (눌러서 어디로 이동할 이유가 없음), animateMove 개념 자체도
                     없음(목록처럼 "이동해야 하는 카드"와 "밀리기만 하는 카드"를
                     구분할 필요가 없어서) — 항상 PAGE_TRANSITION_DURATION으로
@@ -210,172 +240,80 @@ export function CampaignDetailPage() {
                     이유 참고). 목록 카드와 완전히 같은 264px 고정 폭이라(스퀘어
                     티켓 카드 리디자인으로 목록/상세 카드 크기를 통일함),
                     layoutId 전환이 확대/축소 없이 순수 위치 이동만 함. */}
-                <motion.div
-                  layoutId={
-                    showCardLayoutId
-                      ? getCampaignCardLayoutId(cardSource.id)
-                      : undefined
-                  }
-                  transition={{
-                    layout: {
-                      duration: hasSnappedScrollOffset
-                        ? 0
-                        : PAGE_TRANSITION_DURATION,
-                      ease: "easeInOut" as const,
-                    },
-                  }}
-                  // 모바일(640px 미만)은 풀폭 와이드 카드, 데스크톱은 기존
-                  // 264px 고정폭 — CampaignListTab.tsx의 목록 카드와 항상
-                  // 같은 폭이어야 layoutId 전환 때 확대/축소가 안 생김.
-                  className="flex w-full flex-col overflow-hidden rounded-xl text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)] sm:w-66"
-                  style={{
-                    backgroundColor: getCampaignCardBackground(
-                      cardSource.status,
-                    ),
-                  }}
-                >
-                  <CampaignCard
-                    title={cardSource.title}
-                    status={cardSource.status}
-                    soldOut={soldOut}
-                    openAtLabel={`${formatDateTimeKo(cardSource.openAt)} 오픈`}
-                    remainingStock={
-                      cardSource.totalStock != null && hasStockValue
-                        ? remainingStock
+                  <motion.div
+                    layoutId={
+                      showCardLayoutId
+                        ? getCampaignCardLayoutId(cardSource.id)
                         : undefined
                     }
-                    totalStock={cardSource.totalStock ?? undefined}
-                    ownerNickname={cardSource.owner.nickname}
-                    ownerProfileImageUrl={cardSource.owner.profileImageUrl}
-                    imageUrl={cardImageUrl}
-                  />
-                </motion.div>
-              </FadeSlide>
+                    transition={{
+                      layout: {
+                        duration: hasSnappedScrollOffset
+                          ? 0
+                          : PAGE_TRANSITION_DURATION,
+                        ease: "easeInOut" as const,
+                      },
+                    }}
+                    // 모바일(640px 미만)은 풀폭 와이드 카드, 데스크톱은 기존
+                    // 264px 고정폭 — CampaignListTab.tsx의 목록 카드와 항상
+                    // 같은 폭이어야 layoutId 전환 때 확대/축소가 안 생김.
+                    className="flex w-full flex-col overflow-hidden rounded-xl text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)] sm:w-66"
+                    style={{
+                      backgroundColor: getCampaignCardBackground(
+                        cardSource.status,
+                      ),
+                    }}
+                  >
+                    <CampaignCard
+                      title={cardSource.title}
+                      status={cardSource.status}
+                      soldOut={soldOut}
+                      openAtLabel={`${formatDateTimeKo(cardSource.openAt)} 오픈`}
+                      remainingStock={
+                        cardSource.totalStock != null && hasStockValue
+                          ? remainingStock
+                          : undefined
+                      }
+                      totalStock={cardSource.totalStock ?? undefined}
+                      ownerNickname={cardSource.owner.nickname}
+                      ownerProfileImageUrl={cardSource.owner.profileImageUrl}
+                      imageUrl={cardImageUrl}
+                    />
+                  </motion.div>
+                </FadeSlide>
 
-              {/* 오른쪽 정보 컬럼 — 제목/오픈·주최·잔여 정보/관리아이콘/신청영역/에러문구.
+                {/* 오른쪽 정보 컬럼 — 제목/오픈·주최·잔여 정보/관리아이콘/신청영역/에러문구.
                   카드와 형제 요소(그리드 안 두 번째 트랙)라 카드의 투명도엔 영향 없음.
-                  여긴 viewerRole/myApplication처럼 진짜 상세 데이터가 있어야만 정확히
-                  그릴 수 있어서, campaign(진짜 데이터)이 도착하기 전까진 간단한
-                  대기 문구만 보여줌 */}
-              <FadeSlide>
-                {!campaign ? (
-                  <p className="text-sm text-(--muted)">불러오는 중...</p>
-                ) : (
-                  <div className="flex w-full flex-col items-start gap-5">
-                    {/* claude.ai/design Mobile Screens 목업(행사 상세)은 이
-                        제목을 따로 안 보여줌 — 위 카드(모바일 와이드
-                        레이아웃)가 이미 배지+제목 줄을 갖고 있어서 중복이라
-                        모바일에서는 숨김. 데스크톱은 카드가 264px로 작아서
-                        이 큰 제목이 여전히 필요하니 기존대로 유지. 순서
-                        번호(order)는 데스크톱 기준(1~5)만 명시하고 h2 자체는
-                        기본값 0이라 모바일에서 숨겨지는 것과 무관하게 항상
-                        맨 앞자리를 유지함. */}
-                    <h2 className="hidden text-2xl font-bold text-pretty sm:block">
-                      {campaign.title}
-                    </h2>
-
-                    {/* 링크 복사(누구나) + 관리 아이콘(수정/삭제/종료, 관리자만) — 같은 줄.
-                        모바일에서는 목업처럼 카드 바로 아래(정보 그리드보다 위)로
-                        순서만 옮김 — 정렬/간격은 OwnerPanel.tsx가 데스크톱과
-                        동일하게(왼쪽 정렬 + 일정 간격) 그리므로 폭은 내용에
-                        맞춤(w-full 불필요). */}
-                    <div className="order-1 sm:order-3">
-                      {campaign.viewerRole === "OWNER" ? (
-                        <OwnerPanel
-                          campaign={campaign}
-                          isActing={isActing}
-                          onDelete={() => setConfirmAction("delete")}
-                          onClose={() => setConfirmAction("close")}
-                          onBeforeNavigateToNonCardPage={() =>
-                            setIsNavigatingToNonCardPage(true)
-                          }
-                          leadingContent={
-                            <CopyLinkButton
-                              url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
-                              align="left"
-                            />
-                          }
-                        />
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <CopyLinkButton
-                            url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
-                            align="left"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 신청하기 / 신청취소 — 역할과 무관하게 공통 처리 (관리자도 신청 가능).
-                        모바일에서는 목업처럼 관리 아이콘 바로 아래·가운데 정렬로,
-                        데스크톱은 기존대로 정보 그리드 아래·왼쪽 정렬 유지. */}
-                    <div className="order-2 self-center sm:order-4 sm:self-auto">
-                      {hasActiveApplication && campaign.myApplication ? (
-                        <div className="flex flex-col items-center gap-3 sm:items-start">
-                          <p className="text-sm text-(--muted)">
-                            신청시각:{" "}
-                            <span className="font-semibold text-(--paper)">
-                              {myApplicationDetail?.appliedAt
-                                ? formatDateTimeKo(
-                                    myApplicationDetail.appliedAt,
-                                  )
-                                : "불러오는 중..."}
-                            </span>
-                          </p>
-                          {campaign.status !== "CLOSED" && (
-                            <SecondaryButton
-                              onClick={() => setConfirmAction("cancel")}
-                              disabled={isActing}
-                            >
-                              {/* minWidthText는 신청하기/카운트다운 버튼과 동일하게
-                                  "00:00:00" — 같은 자리에서 바뀌는 버튼은 아니지만,
-                                  시각적으로 나란히/번갈아 보이는 액션 버튼들의 너비를
-                                  통일해 둠(ApplySection.tsx 참고). */}
-                              <FixedWidthLabel
-                                text={isActing ? "처리 중..." : "신청 취소"}
-                                minWidthText="00:00:00"
-                              />
-                            </SecondaryButton>
-                          )}
-                        </div>
-                      ) : (
-                        <ApplySection
-                          campaign={campaign}
-                          hasStockValue={hasStockValue}
-                          isActing={isActing}
-                          onApply={handleApply}
-                          onCampaignOpened={() => {
-                            refetch();
-                            setActionError("");
-                          }}
-                        />
-                      )}
-                    </div>
-
-                    <div className="order-3 w-full sm:order-2">
-                      <CampaignInfoGrid
-                        openAtLabel={formatDateTimeKo(campaign.openAt)}
-                        ownerNickname={campaign.owner.nickname}
-                        ownerProfileImageUrl={campaign.owner.profileImageUrl}
-                        remainingStock={
-                          hasStockValue ? remainingStock : undefined
-                        }
-                        totalStock={campaign.totalStock ?? undefined}
-                      />
-                    </div>
-
-                    {actionError && (
-                      <p className="order-4 text-xs text-(--warn) sm:order-5">
-                        {actionError}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </FadeSlide>
+                  내용 자체는 CampaignDetailInfoColumn.tsx로 분리함 — 카드 쪽
+                  layoutId/motion 애니메이션과 무관한 순수 콘텐츠라 분리해도
+                  안전함(반대로 카드를 감싸는 motion.div는 일부러 이 페이지에
+                  그대로 둠 — animation.md 30번). */}
+                <FadeSlide>
+                  <CampaignDetailInfoColumn
+                    campaign={campaign}
+                    hasActiveApplication={hasActiveApplication}
+                    myApplicationDetail={myApplicationDetail}
+                    hasStockValue={hasStockValue}
+                    remainingStock={remainingStock}
+                    isActing={isActing}
+                    actionError={actionError}
+                    onApply={handleApply}
+                    onCampaignOpened={() => {
+                      refetch();
+                      setActionError("");
+                    }}
+                    onCancelClick={() => setConfirmAction("cancel")}
+                    onDeleteClick={() => setConfirmAction("delete")}
+                    onCloseClick={() => setConfirmAction("close")}
+                    onBeforeNavigateToNonCardPage={() =>
+                      setIsNavigatingToNonCardPage(true)
+                    }
+                  />
+                </FadeSlide>
+              </div>
             </div>
-          </div>
 
-          {/* 스크롤 오프셋(margin-top)이 정확한 위치 보정을 담당하는 동안, 그 아래 실제
+            {/* 스크롤 오프셋(margin-top)이 정확한 위치 보정을 담당하는 동안, 그 아래 실제
               콘텐츠(카드 포함)가 layoutId 애니메이션 완료 시점에 순간적으로 살짝
               짧아지면서 문서 전체 스크롤 가능 높이가 오프셋만큼도 못 채우게 되는
               문제가 있었음(margin-top 자체는 그대로 유지되는데도 scrollHeight가
@@ -385,78 +323,60 @@ export function CampaignDetailPage() {
               margin-top 없이) 문서 맨 끝에 여유 공간만 추가로 확보해서, 콘텐츠가
               얼마나 짧아지든 전체 문서가 절대 이 밑으로는 안 줄어들게 함.
               브라우저가 스크롤을 강제로 잘라낼 일이 없어짐. */}
-          {isScrollOffsetActive && pendingScrollOffset !== null && (
-            <div aria-hidden style={{ height: viewportHeightAtMount }} />
-          )}
+            {isScrollOffsetActive && pendingScrollOffset !== null && (
+              <div aria-hidden style={{ height: viewportHeightAtMount }} />
+            )}
 
-          <ConfirmDialog
-            isOpen={confirmAction !== null}
-            title={
-              confirmAction === "delete"
-                ? "정말 삭제하시겠어요?"
-                : confirmAction === "close"
-                  ? "신청을 종료하시겠어요?"
-                  : "신청을 취소하시겠어요?"
-            }
-            description={
-              confirmAction === "delete"
-                ? "신청자가 있어도 전부 취소되고, 되돌릴 수 없어요."
-                : confirmAction === "close"
-                  ? "새 신청만 막히고, 이미 확정된 신청은 그대로 유지돼요. 되돌릴 수 없어요."
-                  : undefined
-            }
-            confirmLabel={
-              confirmAction === "delete"
-                ? "삭제"
-                : confirmAction === "close"
-                  ? "종료"
-                  : "확인"
-            }
-            danger={confirmAction === "delete"}
-            onConfirm={() => {
-              const action = confirmAction;
-              setConfirmAction(null);
-              if (action === "delete") handleDelete();
-              else if (action === "close") handleClose();
-              else if (action === "cancel") handleCancel();
-            }}
-            onCancel={() => setConfirmAction(null)}
-          />
+            <ConfirmDialog
+              isOpen={confirmAction !== null}
+              {...getConfirmDialogCopy(confirmAction)}
+              onConfirm={() => {
+                const action = confirmAction;
+                setConfirmAction(null);
+                if (action === "delete") handleDelete();
+                else if (action === "close") handleClose();
+                else if (action === "cancel") handleCancel();
+              }}
+              onCancel={() => setConfirmAction(null)}
+            />
 
-          {/* 신청 성공 안내 — ConfirmDialog와 달리 취소 버튼 없이 확인 하나만
+            {/* 신청 성공 안내 — ConfirmDialog와 달리 취소 버튼 없이 확인 하나만
               있는 단순 안내라 Modal을 직접 써서 구성함. */}
-          <Modal
-            isOpen={showAppliedModal}
-            onClose={() => setShowAppliedModal(false)}
-          >
-            <div
-              className="w-full max-w-xs rounded-2xl border p-5"
-              style={{ backgroundColor: "var(--ink)", borderColor: "var(--line)" }}
+            <Modal
+              isOpen={showAppliedModal}
+              onClose={() => setShowAppliedModal(false)}
             >
-              <div className="flex items-center gap-2">
-                {/* 윤곽선 아이콘 대신 배경까지 색으로 채운 아이콘 — 원(--success)
+              <div
+                className="w-full max-w-xs rounded-2xl border p-5"
+                style={{
+                  backgroundColor: "var(--ink)",
+                  borderColor: "var(--line)",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  {/* 윤곽선 아이콘 대신 배경까지 색으로 채운 아이콘 — 원(--success)
                     안에 대비되는 색(--on-brand)의 체크 표시. FullPageMessage의
                     "원형 배경 + 아이콘" 조합과 같은 패턴이되, 거긴 옅은
                     ink-soft 배경에 아이콘만 색이 있고 여긴 원 자체가 진한
                     색으로 꽉 차 있다는 점이 다름(성공 상태를 더 강조). */}
-                <div
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
-                  style={{ backgroundColor: "var(--success)" }}
-                >
-                  <Check size={14} strokeWidth={3} color="var(--on-brand)" />
+                  <div
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: "var(--success)" }}
+                  >
+                    <Check size={14} strokeWidth={3} color="var(--on-brand)" />
+                  </div>
+                  <h2 className="text-base font-bold text-(--paper)">
+                    신청되었습니다.
+                  </h2>
                 </div>
-                <h2 className="text-base font-bold text-(--paper)">
-                  신청되었습니다.
-                </h2>
+                <div className="mt-5 flex justify-end">
+                  <PrimaryButton onClick={() => setShowAppliedModal(false)}>
+                    확인
+                  </PrimaryButton>
+                </div>
               </div>
-              <div className="mt-5 flex justify-end">
-                <PrimaryButton onClick={() => setShowAppliedModal(false)}>
-                  확인
-                </PrimaryButton>
-              </div>
-            </div>
-          </Modal>
-        </div>
+            </Modal>
+          </div>
         )}
       </LoadingFade>
     </>

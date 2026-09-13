@@ -40,18 +40,9 @@ export function ConfirmDialog({
 
         <div className="mt-5 flex justify-end gap-2">
           <SecondaryButton onClick={onCancel}>{cancelLabel}</SecondaryButton>
-          {danger ? (
-            <button
-              type="button"
-              onClick={onConfirm}
-              className="rounded-full px-4 py-3 text-sm font-semibold text-(--on-brand)"
-              style={{ backgroundColor: "var(--warn)" }}
-            >
-              {confirmLabel}
-            </button>
-          ) : (
-            <PrimaryButton onClick={onConfirm}>{confirmLabel}</PrimaryButton>
-          )}
+          <PrimaryButton onClick={onConfirm} danger={danger}>
+            {confirmLabel}
+          </PrimaryButton>
         </div>
       </div>
     </Modal>

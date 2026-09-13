@@ -153,7 +153,9 @@ export function CampaignApplicantsPage() {
               >
                 <p className="text-xs text-(--muted)">정원</p>
                 <p className="mt-0.5 text-lg font-extrabold text-(--paper)">
-                  {campaign.totalStock != null ? `${campaign.totalStock}명` : "-"}
+                  {campaign.totalStock != null
+                    ? `${campaign.totalStock}명`
+                    : "-"}
                 </p>
               </div>
             </div>
@@ -229,9 +231,7 @@ export function CampaignApplicantsPage() {
                   </span>
                   <Avatar src={a.profileImageUrl} name={a.nickname} size={36} />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {a.nickname}
-                    </p>
+                    <p className="truncate text-sm font-medium">{a.nickname}</p>
                     <p className="text-xs text-(--muted)">
                       {formatDateTimeKo(a.appliedAt)} 신청
                     </p>

@@ -1,20 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "motion/react";
-import { getServerTimeOffset } from "@/shared/lib/serverTime";
+import { useServerNow } from "@/shared/hooks/useServerNow";
 
 // 헤더 가운데 실시간 시계 위젯(templates/home-overview 참고). 클라이언트
-// 로컬 시계 대신 서버 시각(serverTime.ts)으로 보정해서 보여줌 — 선착순
+// 로컬 시계 대신 서버 시각(useServerNow.ts)으로 보정해서 보여줌 — 선착순
 // 서비스 특성상 "지금이 정확히 몇 시인지"가 신뢰의 문제라, 클라이언트 시계가
 // 어긋나 있어도(흔한 일) 화면엔 항상 서버 기준 시각이 보이게 함.
-//
-// CountdownApplyButton.tsx와 똑같은 패턴을 그대로 씀: offset을 state가 아니라
-// ref로 들고 있음 — state였다면 오차 측정 API 응답이 도착해서 offset이
-// 갱신될 때마다 아래 setInterval 이펙트가 재실행되며 타이머가 재시작돼,
-// 화면 숫자가 최대 1초 가까이 멈춰있는 것처럼 보이는 버그가 있었음. ref로
-// 두면 값이 갱신돼도 리렌더/이펙트 재실행이 없어서, 타이머는 처음 그대로
-// 쭉 이어지고 매 틱마다 그 시점의 최신 오차만 조용히 반영됨.
 export function HeaderLiveClock() {
-  const offsetRef = useRef(0);
+  const serverNow = useServerNow();
   const [now, setNow] = useState(() => Date.now());
   // claude.ai/design Mobile Screens 템플릿엔 있었는데 처음 포팅할 때
   // 빠뜨렸던 자리별 롤오버 애니메이션(아래 ClockDigit 참고) — prefers-reduced-motion을
@@ -23,25 +16,11 @@ export function HeaderLiveClock() {
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
-    let cancelled = false;
-    getServerTimeOffset()
-      .then((offset) => {
-        if (!cancelled) offsetRef.current = offset;
-      })
-      .catch(() => {
-        // 실패하면 로컬 시계(오차 0)로 계속 진행 — 시계가 아예 안 뜨는
-        // 것보단 나음(CountdownApplyButton과 동일한 방침).
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
     const timer = setInterval(() => {
-      setNow(Date.now() + offsetRef.current);
+      setNow(serverNow());
     }, 1000);
     return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const { hh, mm, ss } = splitClock(now);

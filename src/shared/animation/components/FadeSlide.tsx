@@ -19,14 +19,21 @@ interface FadeSlideProps extends HTMLMotionProps<"div"> {
  * 값은 전부 기존과 동일하게 유지함 — duration은 PAGE_TRANSITION_DURATION 하나로
  * 항상 통일돼 있어야 스크롤 오프셋 보정(scrollOffsetStore.ts)이 "언제 다 끝나는지"를
  * 정확히 알 수 있어서(animationDurations.ts 참고). */
-export function FadeSlide({ disabled, slide = true, ...props }: FadeSlideProps) {
+export function FadeSlide({
+  disabled,
+  slide = true,
+  ...props
+}: FadeSlideProps) {
   const animationProps = disabled
     ? {}
     : {
         initial: { opacity: 0, y: slide ? 8 : 0 },
         animate: { opacity: 1, y: 0 },
         exit: { opacity: 0, y: slide ? -8 : 0 },
-        transition: { duration: PAGE_TRANSITION_DURATION, ease: "easeInOut" as const },
+        transition: {
+          duration: PAGE_TRANSITION_DURATION,
+          ease: "easeInOut" as const,
+        },
       };
 
   return <motion.div {...animationProps} {...props} />;

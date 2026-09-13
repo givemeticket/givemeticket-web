@@ -129,7 +129,7 @@ export function CampaignCard({
             </p>
           </div>
 
-          <div className="campaign-image-placeholder flex h-[58px] w-[84px] items-center justify-center overflow-hidden rounded-lg">
+          <div className="campaign-image-placeholder flex h-14.5 w-21 items-center justify-center overflow-hidden rounded-lg">
             {imageUrl ? (
               <img
                 src={imageUrl}
@@ -141,7 +141,7 @@ export function CampaignCard({
             )}
           </div>
 
-          <div className="flex min-h-[58px] min-w-0 flex-col justify-center gap-2">
+          <div className="flex min-h-14.5 min-w-0 flex-col justify-center gap-2">
             {ownerNickname && (
               <div className="flex min-w-0 items-center gap-1.5">
                 <Avatar
@@ -163,7 +163,7 @@ export function CampaignCard({
             index.css 참고 — 가로 버전을 90도 돌린 것과 같은 효과). */}
         {showStub && (
           <div
-            className="relative flex w-[70px] shrink-0 flex-col items-center justify-center gap-0.5 px-2 py-2.5"
+            className="relative flex w-17.5 shrink-0 flex-col items-center justify-center gap-0.5 px-2 py-2.5"
             style={{ backgroundColor: meta.bg }}
           >
             <div

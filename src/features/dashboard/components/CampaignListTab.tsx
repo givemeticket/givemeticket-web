@@ -91,8 +91,8 @@ export function CampaignListTab({
   // 카드에도 이동 애니메이션을 걸어줌(returningCardStore.ts, 한 번 읽으면
   // 소모됨). 그 외(새로 클릭, 새로고침, 브라우저 자체 뒤로/앞으로가기 등)엔
   // 값이 없어서 null로 시작하고, 클릭할 때마다 그때그때 덮어씀.
-  const [transitioningId, setTransitioningId] = useState<number | null>(
-    () => consumeReturningCampaignId(),
+  const [transitioningId, setTransitioningId] = useState<number | null>(() =>
+    consumeReturningCampaignId(),
   );
 
   // "이동 중" 카드를 다시 일반 카드로 되돌리는 시점 — 로컬 타이머로 직접
@@ -237,7 +237,10 @@ export function CampaignListTab({
             <motion.button
               layoutId={getCampaignCardLayoutId(c.id)}
               transition={{
-                layout: { duration: listLayoutDuration, ease: "easeInOut" as const },
+                layout: {
+                  duration: listLayoutDuration,
+                  ease: "easeInOut" as const,
+                },
               }}
               // CSS transition-transform 대신 Framer Motion 자체의
               // whileHover/whileTap을 씀 — CSS 트랜지션이 transform을 건드리면,
@@ -246,7 +249,10 @@ export function CampaignListTab({
               // 속성을 동시에 조작하며 충돌함(카드가 두 개로 보이던 원인).
               whileHover={
                 !isDeleted
-                  ? { scale: 1.01, boxShadow: "0 10px 24px rgba(17,24,39,0.12)" }
+                  ? {
+                      scale: 1.01,
+                      boxShadow: "0 10px 24px rgba(17,24,39,0.12)",
+                    }
                   : undefined
               }
               whileTap={!isDeleted ? { scale: 0.99 } : undefined}

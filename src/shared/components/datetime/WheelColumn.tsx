@@ -177,10 +177,7 @@ export function WheelColumn({
       // — scrollend 경로(위 handleScrollEnd)에서 이미 겪은 문제와 동일해서,
       // 같은 해결책인 commitRef를 통해 항상 최신 로직으로 호출함.
       if (settleTimeoutRef.current) clearTimeout(settleTimeoutRef.current);
-      settleTimeoutRef.current = setTimeout(
-        () => commitRef.current(idx),
-        150,
-      );
+      settleTimeoutRef.current = setTimeout(() => commitRef.current(idx), 150);
     });
   }
 

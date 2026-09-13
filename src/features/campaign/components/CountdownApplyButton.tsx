@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { getServerTimeOffset } from "@/shared/lib/serverTime";
+import { useServerNow } from "@/shared/hooks/useServerNow";
 import { PrimaryButton } from "@/shared/components/buttons/PrimaryButton";
 import { FixedWidthLabel } from "@/shared/components/buttons/FixedWidthLabel";
 
 // 오픈 전(SCHEDULED) 상태일 때 쓰는 카운트다운 버튼.
-// 서버 시각으로 오차를 보정하고, 클릭하면 실제 신청 API를 그대로 호출함
-// (오픈 여부의 최종 판단은 항상 백엔드가 함 — 이 카운트다운은 표시용일 뿐).
+// 서버 시각(useServerNow.ts)으로 오차를 보정하고, 클릭하면 실제 신청 API를
+// 그대로 호출함(오픈 여부의 최종 판단은 항상 백엔드가 함 — 이 카운트다운은
+// 표시용일 뿐).
 export function CountdownApplyButton({
   openAt,
   isActing,
@@ -17,34 +18,12 @@ export function CountdownApplyButton({
   onClick: () => void;
   onExpire: () => void;
 }) {
-  // offset을 state가 아니라 ref로 들고 있음 — state였다면, 오차 측정 API 응답이
-  // 도착해서 offset이 갱신될 때마다 아래 setInterval 이펙트가 [openAt, offset]
-  // 의존성 때문에 타이머를 통째로 재시작했음. 재시작된 타이머는 그 순간부터 다시
-  // 1초를 꽉 채워야 다음 틱이 오니까, 화면 숫자가 최대 2초 가까이 멈춰있는 것처럼
-  // 보이는 버그가 있었음. ref로 바꾸면 값이 갱신돼도 리렌더/이펙트 재실행이 없어서,
-  // 타이머는 처음 그대로 쭉 이어지고 매 틱마다 그 시점의 최신 오차만 조용히 반영됨.
-  const offsetRef = useRef(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    getServerTimeOffset()
-      .then((o) => {
-        if (!cancelled) offsetRef.current = o;
-      })
-      .catch(() => {
-        // 실패하면 그냥 로컬 시계(오차 0)로 계속 진행 — 카운트다운이 안 뜨는 것보단 나음
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const serverNow = () => Date.now() + offsetRef.current;
+  const serverNow = useServerNow();
 
   // 마운트되는 첫 렌더링 시점엔 서버 시각 오차 응답이 아직 온 적이 없어서
-  // offsetRef.current가 항상 0(초기값)임이 보장됨 — 그래서 여기선 굳이
-  // serverNow()(ref 읽기)를 안 부르고 오차 0으로 직접 계산해도 결과가 같음.
-  // 렌더링 중엔 ref를 읽으면 안 된다는 규칙(react-hooks/refs) 때문.
+  // 오차가 항상 0(초기값)임이 보장됨 — 그래서 여기선 굳이 serverNow()(ref
+  // 읽기)를 안 부르고 오차 0으로 직접 계산해도 결과가 같음. 렌더링 중엔
+  // ref를 읽으면 안 된다는 규칙(react-hooks/refs) 때문.
   const [remainingMs, setRemainingMs] = useState(
     () => new Date(openAt).getTime() - Date.now(),
   );

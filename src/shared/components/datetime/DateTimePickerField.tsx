@@ -1,18 +1,12 @@
 import { useRef, useState } from "react";
-import {
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  CircleAlert,
-  Undo2,
-} from "lucide-react";
+import { Calendar, CircleAlert, Undo2 } from "lucide-react";
 import {
   WheelColumn,
   ROW_HEIGHT,
   WHEEL_PADDING,
   type WheelColumnHandle,
 } from "./WheelColumn";
-import { IconButton } from "../buttons/IconButton";
+import { MonthCalendar } from "./MonthCalendar";
 import { Tooltip } from "../overlay/Tooltip";
 import { Modal } from "../overlay/Modal";
 import {
@@ -38,8 +32,6 @@ interface DateTimePickerFieldProps {
    * (1) 달력에 이 날짜를 별도 표시하고 (2) 닫힌 라벨에 되돌리기 버튼을 보여줌 */
   originalValue?: string;
 }
-
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
 function formatDateLabel(value: string): string {
   const d = new Date(value);
@@ -121,10 +113,6 @@ export function DateTimePickerField({
     setIsOpen(false);
   }
 
-  const year = viewMonth.getFullYear();
-  const month = viewMonth.getMonth();
-  const firstDayOfWeek = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
   const minSelectableDate = minDate ? new Date(minDate) : new Date();
   minSelectableDate.setHours(0, 0, 0, 0);
 
@@ -140,11 +128,6 @@ export function DateTimePickerField({
     : null;
   const showOriginalMarker =
     originalDate && originalDate.getTime() !== today.getTime();
-
-  const cells: (number | null)[] = [
-    ...Array(firstDayOfWeek).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
 
   const displayValue = value || toValue(draftDate, draftHour, draftMinute);
 
@@ -210,71 +193,14 @@ export function DateTimePickerField({
           className="w-full max-w-xs rounded-2xl border p-4"
           style={{ backgroundColor: "var(--ink)", borderColor: "var(--line)" }}
         >
-          {/* 월 이동 헤더 */}
-          <div className="flex items-center justify-between">
-            <IconButton
-              onClick={() => setViewMonth(new Date(year, month - 1, 1))}
-              label="이전 달"
-              size="sm"
-            >
-              <ChevronLeft size={16} />
-            </IconButton>
-            <span className="text-sm font-semibold text-(--paper)">
-              {year}년 {month + 1}월
-            </span>
-            <IconButton
-              onClick={() => setViewMonth(new Date(year, month + 1, 1))}
-              label="다음 달"
-              size="sm"
-            >
-              <ChevronRight size={16} />
-            </IconButton>
-          </div>
-
-          {/* 요일 헤더 */}
-          <div className="mt-3 grid grid-cols-7 gap-1 text-center text-xs text-(--muted)">
-            {WEEKDAYS.map((w) => (
-              <span key={w}>{w}</span>
-            ))}
-          </div>
-
-          {/* 날짜 그리드 */}
-          <div className="mt-1 grid grid-cols-7 gap-1">
-            {cells.map((day, idx) => {
-              if (day === null) return <span key={idx} />;
-              const cellDate = new Date(year, month, day);
-              const isPast = cellDate < minSelectableDate;
-              const isSelected = cellDate.getTime() === draftDate.getTime();
-              const isOriginal =
-                showOriginalMarker &&
-                originalDate &&
-                cellDate.getTime() === originalDate.getTime();
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  disabled={isPast}
-                  onClick={() => setDraftDate(cellDate)}
-                  className="aspect-square rounded-full text-sm disabled:opacity-30"
-                  style={
-                    isSelected
-                      ? {
-                          backgroundColor: "var(--brand-blue)",
-                          color: "var(--on-brand)",
-                        }
-                      : isOriginal
-                        ? {
-                            color: "var(--paper)",
-                            boxShadow: "inset 0 0 0 1.5px var(--brand-blue)",
-                          }
-                        : { color: "var(--paper)" }
-                  }
-                >
-                  {day}
-                </button>
-              );
-            })}
-          </div>
+          <MonthCalendar
+            viewMonth={viewMonth}
+            onViewMonthChange={setViewMonth}
+            selectedDate={draftDate}
+            onSelectDate={setDraftDate}
+            minSelectableDate={minSelectableDate}
+            markedDate={showOriginalMarker ? originalDate : null}
+          />
 
           {/* 시간 타임휠 */}
           <div className="relative mt-4 flex justify-center gap-1">

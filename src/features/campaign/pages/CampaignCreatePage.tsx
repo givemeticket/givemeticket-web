@@ -3,8 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { createCampaign } from "../api/campaignApi";
 import { CampaignFormFields } from "../components/CampaignFormFields";
 import { CampaignSubPageShell } from "../components/CampaignSubPageShell";
+import { CampaignSubmitForm } from "../components/CampaignSubmitForm";
 import { nowAsDatetimeLocalValue } from "@/shared/lib/formatDate";
-import { PrimaryButton } from "@/shared/components/buttons/PrimaryButton";
 import { useScrollOffsetSnap } from "@/shared/animation/pageTransition/useScrollOffsetSnap";
 import { getScrollPosition } from "@/shared/animation/pageTransition/scrollPositionStore";
 
@@ -88,11 +88,17 @@ export function CampaignCreatePage() {
             : undefined
         }
       >
-        <CampaignSubPageShell title="행사 추가" backButtonFallback="/mycampaigns">
-          <form
+        <CampaignSubPageShell
+          title="행사 추가"
+          backButtonFallback="/mycampaigns"
+        >
+          <CampaignSubmitForm
             onSubmit={handleSubmit}
-            className="mt-8 flex flex-col gap-6 rounded-2xl border p-6"
-            style={{ borderColor: "var(--line)" }}
+            errorMessage={errorMessage}
+            isSubmitting={isSubmitting}
+            isFormValid={isFormValid}
+            submitLabel="추가"
+            submittingLabel="추가 중..."
           >
             <CampaignFormFields
               title={title}
@@ -102,20 +108,7 @@ export function CampaignCreatePage() {
               openAt={openAt}
               onOpenAtChange={setOpenAt}
             />
-
-            {errorMessage && (
-              <p className="text-xs text-(--warn)">{errorMessage}</p>
-            )}
-
-            <div className="self-end">
-              <PrimaryButton
-                type="submit"
-                disabled={!isFormValid || isSubmitting}
-              >
-                {isSubmitting ? "추가 중..." : "추가"}
-              </PrimaryButton>
-            </div>
-          </form>
+          </CampaignSubmitForm>
         </CampaignSubPageShell>
       </div>
 

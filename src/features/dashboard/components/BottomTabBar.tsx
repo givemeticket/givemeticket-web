@@ -20,7 +20,10 @@ export function BottomTabBar() {
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 flex sm:hidden"
-      style={{ backgroundColor: "var(--ink)", borderTop: "1px solid var(--line)" }}
+      style={{
+        backgroundColor: "var(--ink)",
+        borderTop: "1px solid var(--line)",
+      }}
     >
       {/* env(safe-area-inset-bottom) — iOS 홈 인디케이터가 있는 기기에서
           탭 바가 그 위에 딱 붙어 가려지지 않도록 안전 영역만큼 아래
