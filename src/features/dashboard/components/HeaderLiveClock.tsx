@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "motion/react";
 import { getServerTimeOffset } from "@/shared/lib/serverTime";
 
 // 헤더 가운데 실시간 시계 위젯(templates/home-overview 참고). 클라이언트
@@ -15,6 +16,11 @@ import { getServerTimeOffset } from "@/shared/lib/serverTime";
 export function HeaderLiveClock() {
   const offsetRef = useRef(0);
   const [now, setNow] = useState(() => Date.now());
+  // claude.ai/design Mobile Screens 템플릿엔 있었는데 처음 포팅할 때
+  // 빠뜨렸던 자리별 롤오버 애니메이션(아래 ClockDigit 참고) — prefers-reduced-motion을
+  // 존중해야 해서(index.css의 다른 애니메이션들과 같은 원칙) motion/react의
+  // useReducedMotion으로 확인함.
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     let cancelled = false;
@@ -38,6 +44,9 @@ export function HeaderLiveClock() {
     return () => clearInterval(timer);
   }, []);
 
+  const { hh, mm, ss } = splitClock(now);
+  const animate = !prefersReducedMotion;
+
   return (
     <div
       className="flex items-center gap-2 rounded-full border px-3.5 py-1.5"
@@ -55,17 +64,79 @@ export function HeaderLiveClock() {
         />
       </span>
       <span
-        className="text-sm font-bold tabular-nums"
+        className="flex items-center text-sm font-bold tabular-nums"
         style={{ color: "var(--paper)" }}
       >
-        {formatClock(now)}
+        <ClockDigit value={hh[0]} animate={animate} />
+        <ClockDigit value={hh[1]} animate={animate} />
+        <span className="px-[0.04em] opacity-50">:</span>
+        <ClockDigit value={mm[0]} animate={animate} />
+        <ClockDigit value={mm[1]} animate={animate} />
+        <span className="px-[0.04em] opacity-50">:</span>
+        <ClockDigit value={ss[0]} animate={animate} />
+        <ClockDigit value={ss[1]} animate={animate} />
       </span>
     </div>
   );
 }
 
-function formatClock(epochMs: number): string {
+// 한 자리(0~9) 전용 "롤오버" 애니메이션 셀. claude.ai/design 템플릿은 바닐라
+// DOM으로 이전 숫자를 clone하고 애니메이션이 끝나면 직접 remove했는데, 여긴
+// 그 동작을 리액트 상태로 옮김: 값이 바뀌면 이전 레이어는 "나가는 중"으로
+// 표시해 gmtOut을 재생하고, 새 레이어는 기본(gmtIn)으로 추가함. 나가는
+// 레이어는 자기 애니메이션이 끝나는 순간(onAnimationEnd) 스스로 배열에서
+// 빠짐 — 부모가 타이밍을 따로 잴 필요가 없음.
+function ClockDigit({ value, animate }: { value: string; animate: boolean }) {
+  const [layers, setLayers] = useState<
+    { key: number; value: string; leaving: boolean }[]
+  >(() => [{ key: 0, value, leaving: false }]);
+  const nextKeyRef = useRef(1);
+
+  useEffect(() => {
+    setLayers((prev) => {
+      const current = prev[prev.length - 1];
+      if (current.value === value) return prev;
+
+      // 애니메이션을 껐을 땐(reduced motion) 레이어를 쌓지 않고 그대로
+      // 교체함 — animationend가 아예 안 일어나는 애니메이션에 기대어
+      // 정리하면 이전 레이어가 영원히 안 지워지고 쌓이기만 하기 때문.
+      if (!animate) {
+        return [{ key: nextKeyRef.current++, value, leaving: false }];
+      }
+
+      return [
+        ...prev.map((layer) => ({ ...layer, leaving: true })),
+        { key: nextKeyRef.current++, value, leaving: false },
+      ];
+    });
+  }, [value, animate]);
+
+  return (
+    <span className="relative inline-block h-[1.25em] w-[0.6em] overflow-hidden align-bottom">
+      {layers.map((layer) => (
+        <span
+          key={layer.key}
+          className={`absolute inset-x-0 top-0 flex h-full items-center justify-center ${
+            animate ? (layer.leaving ? "gmt-digit-out" : "gmt-digit-in") : ""
+          }`}
+          onAnimationEnd={() => {
+            if (!layer.leaving) return;
+            setLayers((prev) => prev.filter((l) => l.key !== layer.key));
+          }}
+        >
+          {layer.value}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function splitClock(epochMs: number): { hh: string; mm: string; ss: string } {
   const d = new Date(epochMs);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return {
+    hh: pad(d.getHours()),
+    mm: pad(d.getMinutes()),
+    ss: pad(d.getSeconds()),
+  };
 }

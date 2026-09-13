@@ -40,6 +40,10 @@ export function OwnerPanel({
   const isClosed = campaign.status === "CLOSED";
 
   return (
+    // 모바일도 데스크톱과 동일하게 왼쪽 정렬 + 일정한 간격(gap-2)만 유지함 —
+    // 한때 목업처럼 화면 폭에 맞춰 양 끝으로 벌어지게(justify-between) 했었는데,
+    // 화면 폭이 넓어질수록 아이콘 사이 간격이 과하게 벌어져 어색해서 되돌림
+    // (사용자 피드백, 2026-09).
     <div className="flex items-center gap-2">
       {/* 이 줄 전체가 페이지 왼쪽 여백에 바로 붙어있어서(특히 좁은 화면), 중앙
           정렬 툴팁은 왼쪽이 화면 밖으로 잘릴 위험이 있음 — 그래서 이 줄의

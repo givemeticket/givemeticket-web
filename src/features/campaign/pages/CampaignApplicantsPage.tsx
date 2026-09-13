@@ -119,10 +119,44 @@ export function CampaignApplicantsPage() {
             backButtonFallback={`/campaigns/${shortCode}`}
             backButtonForceFallback={!cameFromDetail}
           >
+            {/* "총 N명"은 바로 아래 통계 카드(신청 카드)와 내용이 겹쳐서
+                모바일/데스크톱 모두에서 없앰 — 검색 중일 때의 결과 수만
+                남김. */}
             <p className="mt-1 text-sm text-(--muted)">
-              {campaign.title} · 총 {applicantsResult?.totalCount ?? 0}명
+              {campaign.title}
               {normalizedQuery && ` · 검색 결과 ${visibleApplicants.length}명`}
             </p>
+
+            {/* 신청/정원 통계 카드 — claude.ai/design Mobile Screens 목업에
+                새로 추가된 요소. 이미 갖고 있는 데이터(totalCount, campaign의
+                totalStock)로만 채우므로 별도 API 없이 데스크톱/모바일 공통
+                적용함. */}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <div
+                className="rounded-[10px] border p-3"
+                style={{
+                  borderColor: "var(--line)",
+                  backgroundColor: "var(--ink-soft)",
+                }}
+              >
+                <p className="text-xs text-(--muted)">신청</p>
+                <p className="mt-0.5 text-lg font-extrabold text-(--paper)">
+                  {applicantsResult?.totalCount ?? 0}명
+                </p>
+              </div>
+              <div
+                className="rounded-[10px] border p-3"
+                style={{
+                  borderColor: "var(--line)",
+                  backgroundColor: "var(--ink-soft)",
+                }}
+              >
+                <p className="text-xs text-(--muted)">정원</p>
+                <p className="mt-0.5 text-lg font-extrabold text-(--paper)">
+                  {campaign.totalStock != null ? `${campaign.totalStock}명` : "-"}
+                </p>
+              </div>
+            </div>
 
             {applicants.length > 0 && (
               <div className="mt-4 flex items-center gap-2">
@@ -137,7 +171,9 @@ export function CampaignApplicantsPage() {
                 >
                   <ArrowUpDown size={16} strokeWidth={2} />
                 </IconButton>
-                <div className="relative w-48">
+                {/* 모바일에서는 남는 폭을 다 차지하도록(flex-1) — 데스크톱
+                    고정폭(w-48)은 sm: 이상에서만 적용 */}
+                <div className="relative min-w-0 flex-1 sm:w-48 sm:flex-none">
                   <Search
                     size={15}
                     strokeWidth={2}
@@ -164,19 +200,20 @@ export function CampaignApplicantsPage() {
               </div>
             )}
 
-            {/* 한 줄에 3개씩 — 페이지 폭이 넓어지면서(CampaignSubPageShell.tsx
-                880px) 세로 1열로는 옆 여백이 너무 커 보여서 그리드로 바꿈.
-                빈 상태 문구는 그리드 아이템 하나가 아니라 전체 폭을 가로질러
-                보여야 해서 col-span-3을 따로 줌. */}
-            <div className="mt-4 grid grid-cols-3 gap-2">
+            {/* 한 줄에 3개씩(데스크톱) — 페이지 폭이 넓어지면서
+                (CampaignSubPageShell.tsx 880px) 세로 1열로는 옆 여백이 너무
+                커 보여서 그리드로 바꿈. 모바일(640px 미만)은 1열. 빈 상태
+                문구는 그리드 아이템 하나가 아니라 전체 폭을 가로질러 보여야
+                해서 col-span-full을 따로 줌. */}
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
               {applicants.length === 0 && (
-                <p className="col-span-3 py-16 text-center text-sm text-(--muted)">
+                <p className="col-span-full py-16 text-center text-sm text-(--muted)">
                   아직 신청자가 없어요.
                 </p>
               )}
 
               {applicants.length > 0 && visibleApplicants.length === 0 && (
-                <p className="col-span-3 py-16 text-center text-sm text-(--muted)">
+                <p className="col-span-full py-16 text-center text-sm text-(--muted)">
                   검색 결과가 없어요.
                 </p>
               )}

@@ -1,10 +1,7 @@
 import type { ComponentType } from "react";
-import { flushSync } from "react-dom";
 import { CalendarDays, Heart, Home, Ticket } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import { resetFilterState, type FilterTab } from "../lib/dashboardFilterStore";
-import { announceLeavingCardBehind } from "@/shared/animation/pageTransition/leavingCardBehindStore";
+import type { FilterTab } from "../lib/dashboardFilterStore";
+import { useTabLinkNavigation } from "../hooks/useTabLinkNavigation";
 
 // 원래 DashboardLayout(대시보드 라우트에서만 조건부로 렌더링) 안에 있던 탭을
 // UserAppShell의 고정 헤더로 옮겨서, 로그인/비로그인·페이지 종류와 무관하게
@@ -26,6 +23,13 @@ import { announceLeavingCardBehind } from "@/shared/animation/pageTransition/lea
 // 목적지로 되돌려줌(ProtectedRoute.tsx 참고) — 여기서 별도 처리 불필요.
 // "/"(홈)만 예외 — ProtectedRoute 없이도 로그인 여부에 따라 스스로 다른
 // 콘텐츠를 보여줌(RootRoute.tsx 참고).
+//
+// 모바일(640px 미만)에서는 이 헤더 탭 자체를 숨김(UserAppShell.tsx가
+// `hidden sm:block`으로 감쌈) — 로고+시계+검색+아바타까지 한 줄에 다
+// 넣을 자리가 없어서, claude.ai/design Mobile Screens 목업처럼 같은 4개
+// 목적지를 화면 하단 고정 탭 바(BottomTabBar.tsx)로 옮김. 활성 판정과
+// 클릭 시 동작(필터 리셋/같은 탭 재클릭 새로고침/layoutId 정리)은 두 곳이
+// 똑같아야 해서 useTabLinkNavigation 훅으로 공유함.
 export function HeaderTabs() {
   return (
     <div className="flex items-center gap-1">
@@ -63,36 +67,7 @@ function HeaderTabLink({
   label: string;
   icon: ComponentType<{ size?: number; strokeWidth?: number }>;
 }) {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const isActive = location.pathname === to;
-
-  function handleClick() {
-    if (tab) resetFilterState(tab);
-
-    if (location.pathname === to) {
-      // 이미 그 페이지에 있는데 같은 탭을 또 눌렀을 땐 navigate()를 불러도
-      // URL이 안 바뀌어서(location이 그대로라) 아무 일도 안 일어남 — 대신
-      // "새로 진입한 것처럼" 데이터를 다시 받아오고(react-query 캐시
-      // invalidate) 스크롤을 맨 위로 올림. 필터는 위에서 이미 리셋함.
-      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
-      window.scrollTo(0, 0);
-      return;
-    }
-
-    // 혹시 지금 캠페인 상세 페이지가 떠있다면(카드가 layoutId를 갖고 있는
-    // 상태라면), 그 카드의 짝이 도착할 탭 목록에 없을 수도 있음(예: "나의
-    // 행사"에만 있는 캠페인) — 미리 알 방법이 없어서 항상 "짝 없음"으로
-    // 가정하고 즉시 layoutId를 끄도록 알림. 안 그러면 카드가 방치되다가
-    // 다른 요소들 페이드가 다 끝나야 사라지는 버그가 생김(animation.md 3번).
-    // navigate()보다 먼저, flushSync로 동기적으로 반영되게 함(OwnerPanel의
-    // onBeforeNavigateToNonCardPage와 같은 이유).
-    flushSync(() => {
-      announceLeavingCardBehind();
-    });
-    navigate(to);
-  }
+  const { isActive, handleClick } = useTabLinkNavigation(to, tab);
 
   return (
     <button

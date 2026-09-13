@@ -233,6 +233,45 @@ button:not(:disabled) {
   background-size: 11px 4px;
 }
 
+/* 위 .stub-boundary/.stub-boundary-muted의 세로 버전 — 모바일 좁은 화면에서
+   CampaignCard.tsx가 쓰는 "와이드 티켓 카드"(이미지 왼쪽, 재고는 카드 맨
+   오른쪽 세로 스텁) 전용. 가로 버전을 그대로 90도 돌린 것과 같은 효과를
+   내되, 실제로 transform:rotate를 쓰지 않고 그라디언트 방향(to bottom →
+   to right)과 반복 방향(repeat-x → repeat-y), 점선 위치(top/bottom →
+   left/right)만 바꿔서 새로 그림 — claude.ai/design의 Mobile Screens
+   템플릿(와이드 티켓 카드) CSS를 그대로 포팅함. 원리는 .stub-boundary와
+   동일: 스텁(position:relative) 왼쪽에 2px 튀어나오게 배치해서(-left:2px,
+   width:4px) 카드 본문(왼쪽 절반)과 스텁(오른쪽 절반) 양쪽에 걸치게 함. */
+.stub-boundary-v {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='11'%3E%3Cline x1='1' y1='1' x2='1' y2='6.5' stroke='%23b6bcc6' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='11'%3E%3Cline x1='1' y1='1' x2='1' y2='6.5' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"),
+    linear-gradient(
+      to right,
+      var(--ink-soft) 0 50%,
+      var(--stub-boundary-color) 50% 100%
+    );
+  background-repeat: repeat-y, repeat-y, no-repeat;
+  background-position:
+    left center,
+    right center,
+    0 0;
+  background-size:
+    2px 11px,
+    2px 11px,
+    auto;
+}
+
+/* .stub-boundary-muted의 세로 버전 — 종료/삭제됨처럼 스텁 배경이 카드 본문과
+   같은 톤일 때, 위/아래(여긴 좌/우) 구분 없이 굵은 회색 점선 하나만 그림. */
+.stub-boundary-v-muted {
+  background-color: var(--stub-boundary-color);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='11'%3E%3Cline x1='2' y1='1' x2='2' y2='6.5' stroke='%23b6bcc6' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: repeat-y;
+  background-position: center;
+  background-size: 4px 11px;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .stamp-anim {
     animation: stampDown 0.8s cubic-bezier(0.2, 0.85, 0.25, 1.2) both;
@@ -259,6 +298,18 @@ button:not(:disabled) {
   .clock-pulse {
     opacity: 0;
     animation: ringPulse 2s ease-out infinite;
+  }
+  /* 헤더 실시간 시계(HeaderLiveClock.tsx)의 숫자 자리마다 붙는 "롤오버"
+     애니메이션 — claude.ai/design Mobile Screens 템플릿의 시계 위젯 CSS를
+     그대로 포팅함. 숫자가 바뀌는 순간 새 숫자는 아래에서 위로 밀고 들어오고
+     (gmtIn), 이전 숫자는 위로 밀려나가며 사라짐(gmtOut) — 두 애니메이션이
+     한 자리(overflow:hidden) 안에서 겹쳐 재생되어 숫자가 굴러 넘어가는
+     느낌을 냄. */
+  .gmt-digit-in {
+    animation: gmtIn 0.44s cubic-bezier(0.22, 0.68, 0.24, 1);
+  }
+  .gmt-digit-out {
+    animation: gmtOut 0.44s cubic-bezier(0.22, 0.68, 0.24, 1) forwards;
   }
   .tk-body {
     animation: tks-body var(--tk-cycle, 1.8s) cubic-bezier(0.4, 0, 0.35, 1)
@@ -379,6 +430,28 @@ button:not(:disabled) {
   }
   100% {
     transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+@keyframes gmtIn {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes gmtOut {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-100%);
     opacity: 0;
   }
 }

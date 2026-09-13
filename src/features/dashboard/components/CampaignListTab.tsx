@@ -33,6 +33,13 @@ interface CampaignListTabProps {
    * 탭(HeaderTabs.tsx)엔 활성 표시가 없어서, "지금 어느 목록을 보고 있는지"를
    * 여기서 대신 알려줌 */
   pageTitle: string;
+  /** 제목 앞에 붙는 아이콘 — 탭(HeaderTabs.tsx/BottomTabBar.tsx)에서 이
+   * 목적지를 가리킬 때 쓰는 것과 같은 아이콘을 넘겨서, "지금 어느 탭
+   * 안에 들어와 있는지"가 제목만 봐도 탭과 바로 연결되게 함. 빈 상태
+   * 안내에 쓰는 emptyIcon(아래)과는 별개 — 그쪽은 "행사가 없을 때"의
+   * 안내용 그림이라 아이콘이 다를 수 있음(예: 나의 행사는 탭에서
+   * CalendarDays, 빈 상태에서는 CalendarPlus). */
+  titleIcon: ReactNode;
   emptyIcon: ReactNode;
   emptyTitle: string;
   emptyDescription: string;
@@ -55,6 +62,7 @@ interface CampaignListTabProps {
 export function CampaignListTab({
   scope,
   pageTitle,
+  titleIcon,
   emptyIcon,
   emptyTitle,
   emptyDescription,
@@ -195,7 +203,11 @@ export function CampaignListTab({
       // 행사가 1~2개뿐이면 auto-fill이 만든 3개 트랙 중 일부가 비어서 카드가
       // 왼쪽으로 쏠려 보임 — justify-center로 실제 채워진 트랙들을 가운데
       // 정렬해서 이 경우에도 자연스럽게 보이게 함.
-      <div className="grid grid-cols-[repeat(auto-fill,264px)] justify-center gap-5">
+      //
+      // 640px 미만(모바일)은 이 고정폭 그리드 대신 1열 풀폭 — 아래 카드
+      // wrapper의 w-full과 짝이며, CampaignCard.tsx 내부의 와이드 레이아웃
+      // 전환과 같은 sm: 기준선을 씀.
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,264px)] sm:justify-center sm:gap-5">
         {visibleCampaigns.map((c) => {
           const isTransitioning = c.id === transitioningId;
           const isDeleted = c.status === "DELETED";
@@ -240,7 +252,9 @@ export function CampaignListTab({
               whileTap={!isDeleted ? { scale: 0.99 } : undefined}
               type="button"
               disabled={isDeleted}
-              className="flex w-66 flex-col overflow-hidden rounded-xl text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)] transition-shadow duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) disabled:cursor-default"
+              // 모바일(640px 미만)은 풀폭 와이드 카드, 데스크톱은 기존 264px
+              // 고정폭 — CampaignCard.tsx 내부의 레이아웃 전환과 짝을 이룸.
+              className="flex w-full flex-col overflow-hidden rounded-xl text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)] transition-shadow duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-(--brand-blue) disabled:cursor-default sm:w-66"
               style={{ backgroundColor: getCampaignCardBackground(c.status) }}
               onClick={() => {
                 // setTransitioningId만 하고 바로 navigate하면, 그 상태 변경이 화면에
@@ -306,8 +320,12 @@ export function CampaignListTab({
           CampaignSubPageShell의 title 스타일과 통일. 아래 정렬 필터 줄과 같이
           FadeSlide로 감싸서, 탭을 전환할 때(매번 새로 마운트됨) 둘이 같이
           페이드인되도록 함 — 안 그러면 필터 줄만 페이드되고 제목은 그냥
-          뚝 나타나서 어색했음. */}
-      <FadeSlide>
+          뚝 나타나서 어색했음. 아이콘(titleIcon)은 헤더/하단 탭이 이 목적지를
+          가리킬 때 쓰는 것과 같은 아이콘 — 제목만 보고도 탭과 바로
+          이어지게 함(text-(--muted)로 톤을 낮춰서 제목 글자보다 튀지
+          않게 함). */}
+      <FadeSlide className="flex items-center gap-2">
+        <span className="text-(--muted)">{titleIcon}</span>
         <h1 className="text-lg font-bold">{pageTitle}</h1>
       </FadeSlide>
 

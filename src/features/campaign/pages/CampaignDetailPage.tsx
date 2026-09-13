@@ -185,13 +185,16 @@ export function CampaignDetailPage() {
               </div>
             </FadeSlide>
 
-            {/* 데스크톱 2단 레이아웃 — 왼쪽 264px 카드 + 오른쪽 정보 컬럼.
-                카드/정보 두 블록 각각의 내부 로직(placeholder 즉시 렌더링,
-                layoutId 애니메이션, hasActiveApplication 분기 등)은 전혀 안
-                건드리고 이 grid로 감싸기만 함. 모바일 전용 레이아웃은 아직
-                없어서(후속 작업), 좁은 화면에서는 이 2단 구성이 그대로
-                찌그러질 수 있음 — 이번 범위에서 의도적으로 감수함. */}
-            <div className="mt-4 grid grid-cols-[264px_minmax(0,1fr)] items-start gap-10">
+            {/* 데스크톱(640px 이상) 2단 레이아웃 — 왼쪽 264px 카드 + 오른쪽
+                정보 컬럼. 카드/정보 두 블록 각각의 내부 로직(placeholder
+                즉시 렌더링, layoutId 애니메이션, hasActiveApplication 분기
+                등)은 전혀 안 건드리고 이 grid로 감싸기만 함. 모바일(640px
+                미만)은 1열로 접어서 카드(와이드 레이아웃, 아래 motion.div의
+                sm:w-66 참고) 위 → 정보 컬럼 아래로 순서 그대로 쌓음 —
+                claude.ai/design Mobile Screens 목업의 "행사 소개" 섹션과
+                요소 재배치는 이번 범위에서 제외(별도 승인 필요), 기존 순서를
+                그대로 유지한 채 구조만 접음. */}
+            <div className="mt-4 grid grid-cols-1 items-start gap-6 sm:grid-cols-[264px_minmax(0,1fr)] sm:gap-10">
               {/* [캠페인 카드] — 목록 카드와 같은 layoutId로 이동 애니메이션만 독립적으로 진행.
                   진짜 상세 데이터가 아직이면 넘겨받은 목록 데이터(cardSource)로 즉시 그림.
                   showCardLayoutId가 꺼져있으면(새로고침으로 들어온 최초 마운트, 또는 카드
@@ -221,7 +224,10 @@ export function CampaignDetailPage() {
                       ease: "easeInOut" as const,
                     },
                   }}
-                  className="flex w-66 flex-col overflow-hidden rounded-xl text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)]"
+                  // 모바일(640px 미만)은 풀폭 와이드 카드, 데스크톱은 기존
+                  // 264px 고정폭 — CampaignListTab.tsx의 목록 카드와 항상
+                  // 같은 폭이어야 layoutId 전환 때 확대/축소가 안 생김.
+                  className="flex w-full flex-col overflow-hidden rounded-xl text-left shadow-[0_2px_8px_rgba(17,24,39,0.14)] sm:w-66"
                   style={{
                     backgroundColor: getCampaignCardBackground(
                       cardSource.status,
@@ -255,89 +261,113 @@ export function CampaignDetailPage() {
                 {!campaign ? (
                   <p className="text-sm text-(--muted)">불러오는 중...</p>
                 ) : (
-                  <div className="flex flex-col items-start gap-5">
-                    <h2 className="text-2xl font-bold text-pretty">
+                  <div className="flex w-full flex-col items-start gap-5">
+                    {/* claude.ai/design Mobile Screens 목업(행사 상세)은 이
+                        제목을 따로 안 보여줌 — 위 카드(모바일 와이드
+                        레이아웃)가 이미 배지+제목 줄을 갖고 있어서 중복이라
+                        모바일에서는 숨김. 데스크톱은 카드가 264px로 작아서
+                        이 큰 제목이 여전히 필요하니 기존대로 유지. 순서
+                        번호(order)는 데스크톱 기준(1~5)만 명시하고 h2 자체는
+                        기본값 0이라 모바일에서 숨겨지는 것과 무관하게 항상
+                        맨 앞자리를 유지함. */}
+                    <h2 className="hidden text-2xl font-bold text-pretty sm:block">
                       {campaign.title}
                     </h2>
 
-                    <CampaignInfoGrid
-                      openAtLabel={formatDateTimeKo(campaign.openAt)}
-                      ownerNickname={campaign.owner.nickname}
-                      ownerProfileImageUrl={campaign.owner.profileImageUrl}
-                      remainingStock={hasStockValue ? remainingStock : undefined}
-                      totalStock={campaign.totalStock ?? undefined}
-                    />
-
-                    {/* 링크 복사(누구나) + 관리 아이콘(수정/삭제/종료, 관리자만) — 같은 줄 */}
-                    {campaign.viewerRole === "OWNER" ? (
-                      <OwnerPanel
-                        campaign={campaign}
-                        isActing={isActing}
-                        onDelete={() => setConfirmAction("delete")}
-                        onClose={() => setConfirmAction("close")}
-                        onBeforeNavigateToNonCardPage={() =>
-                          setIsNavigatingToNonCardPage(true)
-                        }
-                        leadingContent={
+                    {/* 링크 복사(누구나) + 관리 아이콘(수정/삭제/종료, 관리자만) — 같은 줄.
+                        모바일에서는 목업처럼 카드 바로 아래(정보 그리드보다 위)로
+                        순서만 옮김 — 정렬/간격은 OwnerPanel.tsx가 데스크톱과
+                        동일하게(왼쪽 정렬 + 일정 간격) 그리므로 폭은 내용에
+                        맞춤(w-full 불필요). */}
+                    <div className="order-1 sm:order-3">
+                      {campaign.viewerRole === "OWNER" ? (
+                        <OwnerPanel
+                          campaign={campaign}
+                          isActing={isActing}
+                          onDelete={() => setConfirmAction("delete")}
+                          onClose={() => setConfirmAction("close")}
+                          onBeforeNavigateToNonCardPage={() =>
+                            setIsNavigatingToNonCardPage(true)
+                          }
+                          leadingContent={
+                            <CopyLinkButton
+                              url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
+                              align="left"
+                            />
+                          }
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2">
                           <CopyLinkButton
                             url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
                             align="left"
                           />
-                        }
-                      />
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <CopyLinkButton
-                          url={`${window.location.origin}/campaigns/${campaign.shortCode}`}
-                          align="left"
-                        />
-                      </div>
-                    )}
+                        </div>
+                      )}
+                    </div>
 
                     {/* 신청하기 / 신청취소 — 역할과 무관하게 공통 처리 (관리자도 신청 가능).
-                        예전엔 카드 아래 중앙 정렬이었는데, 이제 오른쪽 컬럼 안이라 나머지
-                        요소들과 같은 왼쪽 정렬로 바꿈. */}
-                    {hasActiveApplication && campaign.myApplication ? (
-                      <div className="flex flex-col items-start gap-3">
-                        <p className="text-sm text-(--muted)">
-                          신청시각:{" "}
-                          <span className="font-semibold text-(--paper)">
-                            {myApplicationDetail?.appliedAt
-                              ? formatDateTimeKo(myApplicationDetail.appliedAt)
-                              : "불러오는 중..."}
-                          </span>
-                        </p>
-                        {campaign.status !== "CLOSED" && (
-                          <SecondaryButton
-                            onClick={() => setConfirmAction("cancel")}
-                            disabled={isActing}
-                          >
-                            {/* minWidthText는 신청하기/카운트다운 버튼과 동일하게
-                                "00:00:00" — 같은 자리에서 바뀌는 버튼은 아니지만,
-                                시각적으로 나란히/번갈아 보이는 액션 버튼들의 너비를
-                                통일해 둠(ApplySection.tsx 참고). */}
-                            <FixedWidthLabel
-                              text={isActing ? "처리 중..." : "신청 취소"}
-                              minWidthText="00:00:00"
-                            />
-                          </SecondaryButton>
-                        )}
-                      </div>
-                    ) : (
-                      <ApplySection
-                        campaign={campaign}
-                        hasStockValue={hasStockValue}
-                        isActing={isActing}
-                        onApply={handleApply}
-                        onCampaignOpened={() => {
-                          refetch();
-                          setActionError("");
-                        }}
+                        모바일에서는 목업처럼 관리 아이콘 바로 아래·가운데 정렬로,
+                        데스크톱은 기존대로 정보 그리드 아래·왼쪽 정렬 유지. */}
+                    <div className="order-2 self-center sm:order-4 sm:self-auto">
+                      {hasActiveApplication && campaign.myApplication ? (
+                        <div className="flex flex-col items-center gap-3 sm:items-start">
+                          <p className="text-sm text-(--muted)">
+                            신청시각:{" "}
+                            <span className="font-semibold text-(--paper)">
+                              {myApplicationDetail?.appliedAt
+                                ? formatDateTimeKo(
+                                    myApplicationDetail.appliedAt,
+                                  )
+                                : "불러오는 중..."}
+                            </span>
+                          </p>
+                          {campaign.status !== "CLOSED" && (
+                            <SecondaryButton
+                              onClick={() => setConfirmAction("cancel")}
+                              disabled={isActing}
+                            >
+                              {/* minWidthText는 신청하기/카운트다운 버튼과 동일하게
+                                  "00:00:00" — 같은 자리에서 바뀌는 버튼은 아니지만,
+                                  시각적으로 나란히/번갈아 보이는 액션 버튼들의 너비를
+                                  통일해 둠(ApplySection.tsx 참고). */}
+                              <FixedWidthLabel
+                                text={isActing ? "처리 중..." : "신청 취소"}
+                                minWidthText="00:00:00"
+                              />
+                            </SecondaryButton>
+                          )}
+                        </div>
+                      ) : (
+                        <ApplySection
+                          campaign={campaign}
+                          hasStockValue={hasStockValue}
+                          isActing={isActing}
+                          onApply={handleApply}
+                          onCampaignOpened={() => {
+                            refetch();
+                            setActionError("");
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    <div className="order-3 w-full sm:order-2">
+                      <CampaignInfoGrid
+                        openAtLabel={formatDateTimeKo(campaign.openAt)}
+                        ownerNickname={campaign.owner.nickname}
+                        ownerProfileImageUrl={campaign.owner.profileImageUrl}
+                        remainingStock={
+                          hasStockValue ? remainingStock : undefined
+                        }
+                        totalStock={campaign.totalStock ?? undefined}
                       />
-                    )}
+                    </div>
 
                     {actionError && (
-                      <p className="text-xs text-(--warn)">{actionError}</p>
+                      <p className="order-4 text-xs text-(--warn) sm:order-5">
+                        {actionError}
+                      </p>
                     )}
                   </div>
                 )}

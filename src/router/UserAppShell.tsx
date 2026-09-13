@@ -1,7 +1,9 @@
 import { useState, useSyncExternalStore } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Search } from "lucide-react";
 import { BrandLogo } from "@/shared/components/BrandLogo";
 import { HeaderTabs } from "@/features/dashboard/components/HeaderTabs";
+import { BottomTabBar } from "@/features/dashboard/components/BottomTabBar";
 import { HeaderLiveClock } from "@/features/dashboard/components/HeaderLiveClock";
 import { UserMenu } from "@/features/auth/components/UserMenu";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -146,7 +148,12 @@ export function UserAppShell() {
               세로 중앙에 맞음. */}
           <div className="relative flex items-center gap-4">
             <BrandLogo />
-            <HeaderTabs />
+            {/* 모바일(640px 미만)에서는 숨김 — 자리가 부족해서 같은 4개
+                탭을 화면 하단 고정 탭 바(BottomTabBar.tsx)로 대신 옮김.
+                HeaderTabs.tsx 상단 주석 참고. */}
+            <div className="hidden sm:block">
+              <HeaderTabs />
+            </div>
 
             {/* templates/home-overview 참고 — 헤더 한가운데 실시간(서버 보정)
                 시계. absolute + 부모 relative로 중앙 고정해서, 좌측
@@ -157,7 +164,20 @@ export function UserAppShell() {
               <HeaderLiveClock />
             </div>
 
-            <div className="ml-auto flex items-center">
+            <div className="ml-auto flex items-center gap-1">
+              {/* claude.ai/design Mobile Screens 목업의 검색 아이콘 —
+                  /search 라우트는 이미 있음(SearchResultsPage, 아직
+                  q 쿼리파라미터만 읽는 placeholder). 모바일 전용은 아니고
+                  데스크톱에도 그대로 둠 — 지금까지 헤더 어디에도 검색
+                  진입점이 없었어서 화면 크기와 무관하게 유용함. */}
+              <button
+                type="button"
+                onClick={() => navigate("/search")}
+                aria-label="검색"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-(--muted) transition-colors hover:bg-(--ink-soft) hover:text-(--paper)"
+              >
+                <Search size={17} strokeWidth={1.8} />
+              </button>
               <UserMenu
                 me={me ?? null}
                 onLogout={logout}
@@ -172,10 +192,14 @@ export function UserAppShell() {
           안 그러면(예: 아래 페이지들이 각자 min-h-screen을 쓰면) 헤더 높이만큼
           화면 전체 높이가 이중으로 잡혀서, 콘텐츠가 짧아도 헤더 높이만큼 여분의
           스크롤이 생기는 문제가 있었음. 아래 페이지들은 이제 이 영역 안에서
-          h-full로 이 남은 공간을 채우면 됨(min-h-screen 대신). */}
-      <div className="flex-1">
+          h-full로 이 남은 공간을 채우면 됨(min-h-screen 대신). 모바일에서만
+          pb-16을 더 줘서, 화면 하단에 고정된 BottomTabBar에 마지막 내용이
+          가려지지 않게 함(데스크톱은 그 바 자체가 없으니 sm:pb-0). */}
+      <div className="flex-1 pb-16 sm:pb-0">
         <Outlet />
       </div>
+
+      <BottomTabBar />
 
       <ConfirmDialog
         isOpen={isWithdrawConfirmOpen}
