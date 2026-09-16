@@ -19,7 +19,7 @@ export function BrandLogo() {
       className="flex items-center gap-2"
     >
       <img src="/favicon-transparent-512.png" alt="" className="h-7 w-7" />
-      <span className="flex flex-col text-xs leading-tight font-semibold tracking-[0.25em] text-(--muted)">
+      <span className="flex flex-col text-xs leading-tight font-semibold font-[Martian_Mono,monospace] text-(--muted)">
         <span>GIVEME</span>
         <span>TICKET</span>
       </span>

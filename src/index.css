@@ -1,5 +1,34 @@
 @import "tailwindcss";
 @import "pretendard/dist/web/static/pretendard.css";
+/* BrandLogo의 "GIVEMETICKET" 로고 텍스트 전용 폰트(OFL 라이선스). 실제로 쓰는
+   문자(영문 대문자)만 있는 latin 서브셋 + 로고가 쓰는 굵기(600, font-semibold)만
+   가져와서 불필요한 파일 다운로드를 줄임. */
+@import "@fontsource/martian-mono/latin-600.css";
+
+/* features/landing(다크 티켓월 인트로 화면, templates/landing-ticket-intro
+   포팅) 전용 폰트 4종. 전부 OFL 라이선스, 전부 실제로 쓰는 굵기/서브셋만
+   가져옴(위 martian-mono와 같은 원칙) — 그 화면을 벗어나면 전혀 안 쓰이는
+   폰트라 다른 화면 로딩 속도에는 영향 없음.
+   - Martian Mono 800: 히어로/헤더/클로징의 "GIVEME TICKET" 워드마크
+     (앞의 600은 BrandLogo용, 이 화면은 더 굵은 800을 씀)
+   - Archivo 600/700: 서버 시계 숫자, "SERVER"/"SCROLL" 라벨, 하단 저작권
+   - Gothic A1 700/900: 태그라인, 섹션 캡션 제목 — 한글이 있어서 korean
+     서브셋이 필수이고, 같은 문장에 섞인 숫자/구두점을 위해 latin도 같이 가져옴
+   - Playfair Display 600(+italic): 티켓월 카드 안 장식용 행사명/가격 텍스트
+   - Outfit 400/500/600: 티켓월 카드 안 나머지 텍스트(구분/좌석 정보 등)의
+     기본 폰트 */
+@import "@fontsource/martian-mono/latin-800.css";
+@import "@fontsource/archivo/latin-600.css";
+@import "@fontsource/archivo/latin-700.css";
+@import "@fontsource/gothic-a1/korean-700.css";
+@import "@fontsource/gothic-a1/korean-900.css";
+@import "@fontsource/gothic-a1/latin-700.css";
+@import "@fontsource/gothic-a1/latin-900.css";
+@import "@fontsource/playfair-display/latin-600.css";
+@import "@fontsource/playfair-display/latin-600-italic.css";
+@import "@fontsource/outfit/latin-400.css";
+@import "@fontsource/outfit/latin-500.css";
+@import "@fontsource/outfit/latin-600.css";
 
 /* index.html의 <link rel="preload">와 짝을 이루는 @font-face — 가장 많이 쓰이는
    두 굵기(기본 400, font-semibold 600)만, pretendard.css가 참조하는 (빌드마다
@@ -87,6 +116,19 @@ html {
     width: 0;
     height: 0;
   }
+}
+
+/* features/landing/pages/LandingPage.tsx가 마운트돼 있는 동안만 document.documentElement에
+   붙이는 클래스. 이 화면은 스크롤이 "얼마나 내렸는지 보여주는 진행 표시"가
+   아니라 스크롤 인터랙션 시퀀스를 움직이는 용도라, 옆에 스크롤바가 보이는
+   게 오히려 몰입을 깨서 숨김(스크롤 동작 자체는 그대로 됨 — 이 두 규칙은
+   시각적으로만 숨기고 스크롤 기능을 막지는 않음). 클래스로 범위를 좁혀서
+   다른 화면의 스크롤바 스타일(위 html 규칙)에는 영향 없음. */
+html.landing-no-scrollbar {
+  scrollbar-width: none;
+}
+html.landing-no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 @supports not selector(::-webkit-scrollbar) {
   html {
@@ -453,6 +495,32 @@ button:not(:disabled) {
   to {
     transform: translateY(-100%);
     opacity: 0;
+  }
+}
+
+/* features/landing/components/TicketWallBg.tsx 전용 — 카드 열이 위/아래로
+   무한 루프 스크롤되는 애니메이션. 각 열은 똑같은 카드 묶음을 두 벌(half)
+   이어붙여서 정확히 그 절반(50%) 만큼 이동하면 처음과 끝이 이어지게 함(반복
+   이음새가 안 보이는 이유). 위로 도는 열(atw-up)과 아래로 도는 열(atw-down)이
+   번갈아 있어야 시각적으로 자연스러워서 방향을 반대로 둔 키프레임 두 개가
+   필요함. 실제로 이 애니메이션을 켜는지 여부는 TicketWallBg.tsx가
+   useReducedMotion()으로 직접 판단해서 style.animation 자체를 안 주는
+   방식이라(다른 반복 애니메이션들처럼 클래스+@media로 끄는 대신), 여기
+   키프레임은 위 @media 블록 밖에 둠. */
+@keyframes atw-up {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+@keyframes atw-down {
+  from {
+    transform: translateY(-50%);
+  }
+  to {
+    transform: translateY(0);
   }
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "motion/react";
 import { useServerNow } from "@/shared/hooks/useServerNow";
+import { splitClock } from "@/shared/lib/splitClock";
 
 // 헤더 가운데 실시간 시계 위젯(templates/home-overview 참고). 클라이언트
 // 로컬 시계 대신 서버 시각(useServerNow.ts)으로 보정해서 보여줌 — 선착순
@@ -65,7 +66,15 @@ export function HeaderLiveClock() {
 // 표시해 gmtOut을 재생하고, 새 레이어는 기본(gmtIn)으로 추가함. 나가는
 // 레이어는 자기 애니메이션이 끝나는 순간(onAnimationEnd) 스스로 배열에서
 // 빠짐 — 부모가 타이밍을 따로 잴 필요가 없음.
-function ClockDigit({ value, animate }: { value: string; animate: boolean }) {
+// features/landing의 서버 시계(templates/landing-ticket-intro도 같은 자리별
+// 롤오버 애니메이션을 씀)도 이 컴포넌트를 그대로 재사용함 — export함.
+export function ClockDigit({
+  value,
+  animate,
+}: {
+  value: string;
+  animate: boolean;
+}) {
   const [layers, setLayers] = useState<
     { key: number; value: string; leaving: boolean }[]
   >(() => [{ key: 0, value, leaving: false }]);
@@ -110,12 +119,3 @@ function ClockDigit({ value, animate }: { value: string; animate: boolean }) {
   );
 }
 
-function splitClock(epochMs: number): { hh: string; mm: string; ss: string } {
-  const d = new Date(epochMs);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return {
-    hh: pad(d.getHours()),
-    mm: pad(d.getMinutes()),
-    ss: pad(d.getSeconds()),
-  };
-}

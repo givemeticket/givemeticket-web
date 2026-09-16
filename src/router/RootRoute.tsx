@@ -1,6 +1,6 @@
 import { useLayoutEffect } from "react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { LandingPage } from "@/features/auth/pages/LandingPage";
+import { LandingPage } from "@/features/landing/pages/LandingPage";
 import { HomeTab } from "@/features/dashboard/components/HomeTab";
 import { DashboardLayout } from "@/features/dashboard/pages/DashboardLayout";
 import { LoadingScreen } from "@/shared/components/feedback/LoadingScreen";
