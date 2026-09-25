@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { InlineSortFilter } from "@/features/dashboard/components/InlineSortFilter";
+import { InlineSortFilter } from "@/features/campaignList/components/InlineSortFilter";
 
 // 완전히 controlled 컴포넌트라 로컬 state로 감싸서 실제로 클릭해볼 수 있게 함.
 // MyTicketsTab.tsx가 실제로 넘기는 정렬 옵션 그대로 사용.

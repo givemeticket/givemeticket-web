@@ -1,7 +1,7 @@
 import { flushSync } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { resetFilterState, type FilterTab } from "../lib/dashboardFilterStore";
+import { resetFilterState, type FilterTab } from "@/features/campaignList/lib/dashboardFilterStore";
 import { announceLeavingCardBehind } from "@/shared/animation/pageTransition/leavingCardBehindStore";
 
 // 헤더 탭(HeaderTabs.tsx)과 모바일 하단 탭 바(BottomTabBar.tsx)가 겉모습만

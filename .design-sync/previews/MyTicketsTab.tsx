@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { MotionGlobalConfig } from "motion/react";
-import { MyTicketsTab } from "@/features/dashboard/components/MyTicketsTab";
+import { MyTicketsTab } from "@/features/campaignList/components/MyTicketsTab";
 import type { CampaignItem } from "@/features/campaign/api/campaignApi";
 
 // CampaignListTab.tsx 미리보기와 같은 이유(FadeSlide 마운트 페이드인이 정적

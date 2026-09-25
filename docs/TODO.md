@@ -3,7 +3,9 @@
 ## 회원 관리
 - [ ] 회원탈퇴 버튼 — 지금은 테스트용 임시 버튼, 나중에 제대로 된 화면(탈퇴 사유 입력 등)으로 교체
 - [ ] `/search` 검색 기능 실제 구현 — 지금은 `q` 쿼리파라미터만 읽어서 보여주는
-  placeholder
+  placeholder. 구현할 때 `features/landing/components/LandingSearchField.tsx`
+  (검색어 입력 → `/search?q=` 이동 폼)를 `features/search`로 옮겨서 헤더
+  검색과 같이 쓰기로 함(지금은 landing만 써서 그대로 둠)
 
 ## 애니메이션/인터랙션
 - [ ] **스크롤 연동 소개 화면("/", `features/landing`) — 제품 화면 5개 슬롯을

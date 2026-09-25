@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { MotionGlobalConfig } from "motion/react";
 import { Ticket, CalendarPlus } from "lucide-react";
-import { CampaignListTab } from "@/features/dashboard/components/CampaignListTab";
+import { CampaignListTab } from "@/features/campaignList/components/CampaignListTab";
 import type { CampaignItem } from "@/features/campaign/api/campaignApi";
 
 // CampaignListTab은 내부에서 FadeSlide(motion/react)로 콘텐츠를 마운트 시

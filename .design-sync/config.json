@@ -46,10 +46,10 @@
     "CampaignFormFields": "src/features/campaign/components/CampaignFormFields.tsx",
     "CampaignSubPageShell": "src/features/campaign/components/CampaignSubPageShell.tsx",
     "HeaderTabs": "src/features/dashboard/components/HeaderTabs.tsx",
-    "InlineSortFilter": "src/features/dashboard/components/InlineSortFilter.tsx",
-    "MyTicketsTab": "src/features/dashboard/components/MyTicketsTab.tsx",
-    "MyCampaignsTab": "src/features/dashboard/components/MyCampaignsTab.tsx",
-    "CampaignListTab": "src/features/dashboard/components/CampaignListTab.tsx",
+    "InlineSortFilter": "src/features/campaignList/components/InlineSortFilter.tsx",
+    "MyTicketsTab": "src/features/campaignList/components/MyTicketsTab.tsx",
+    "MyCampaignsTab": "src/features/campaignList/components/MyCampaignsTab.tsx",
+    "CampaignListTab": "src/features/campaignList/components/CampaignListTab.tsx",
     "UserMenu": "src/features/auth/components/UserMenu.tsx"
   }
 }

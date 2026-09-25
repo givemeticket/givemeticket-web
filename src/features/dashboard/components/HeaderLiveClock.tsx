@@ -1,48 +1,23 @@
-import { useEffect, useRef, useState } from "react";
-import { useReducedMotion } from "motion/react";
-import { useServerNow } from "@/shared/hooks/useServerNow";
-import { splitClock } from "@/shared/lib/splitClock";
+import { useServerClock } from "@/shared/hooks/useServerClock";
+import { ClockDigit } from "@/shared/components/clock/ClockDigit";
+import { LiveDot } from "@/shared/components/clock/LiveDot";
 
 // 헤더 가운데 실시간 시계 위젯(templates/home-overview 참고). 클라이언트
 // 로컬 시계 대신 서버 시각(useServerNow.ts)으로 보정해서 보여줌 — 선착순
 // 서비스 특성상 "지금이 정확히 몇 시인지"가 신뢰의 문제라, 클라이언트 시계가
 // 어긋나 있어도(흔한 일) 화면엔 항상 서버 기준 시각이 보이게 함.
+// 틱 타이머/reduced motion 확인은 useServerClock.ts, 자리별 롤오버 애니메이션은
+// ClockDigit.tsx(claude.ai/design Mobile Screens 템플릿엔 있었는데 처음 포팅할 때
+// 빠뜨렸던 것)가 담당하고, 여기엔 헤더 전용 레이아웃/색상만 남음.
 export function HeaderLiveClock() {
-  const serverNow = useServerNow();
-  const [now, setNow] = useState(() => Date.now());
-  // claude.ai/design Mobile Screens 템플릿엔 있었는데 처음 포팅할 때
-  // 빠뜨렸던 자리별 롤오버 애니메이션(아래 ClockDigit 참고) — prefers-reduced-motion을
-  // 존중해야 해서(index.css의 다른 애니메이션들과 같은 원칙) motion/react의
-  // useReducedMotion으로 확인함.
-  const prefersReducedMotion = useReducedMotion();
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(serverNow());
-    }, 1000);
-    return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const { hh, mm, ss } = splitClock(now);
-  const animate = !prefersReducedMotion;
+  const { hh, mm, ss, animate } = useServerClock();
 
   return (
     <div
       className="flex items-center gap-2 rounded-full border px-3.5 py-1.5"
       style={{ borderColor: "var(--line)", backgroundColor: "var(--ink-soft)" }}
     >
-      {/* "연결됨"을 나타내는 점 + 계속 퍼지는 파문(clock-pulse, index.css) */}
-      <span className="relative flex h-1.75 w-1.75">
-        <i
-          className="absolute inset-0 rounded-full"
-          style={{ backgroundColor: "var(--success)" }}
-        />
-        <i
-          className="clock-pulse absolute inset-0 rounded-full"
-          style={{ backgroundColor: "var(--success)" }}
-        />
-      </span>
+      <LiveDot />
       <span
         className="flex items-center text-sm font-bold tabular-nums"
         style={{ color: "var(--paper)" }}
@@ -59,63 +34,3 @@ export function HeaderLiveClock() {
     </div>
   );
 }
-
-// 한 자리(0~9) 전용 "롤오버" 애니메이션 셀. claude.ai/design 템플릿은 바닐라
-// DOM으로 이전 숫자를 clone하고 애니메이션이 끝나면 직접 remove했는데, 여긴
-// 그 동작을 리액트 상태로 옮김: 값이 바뀌면 이전 레이어는 "나가는 중"으로
-// 표시해 gmtOut을 재생하고, 새 레이어는 기본(gmtIn)으로 추가함. 나가는
-// 레이어는 자기 애니메이션이 끝나는 순간(onAnimationEnd) 스스로 배열에서
-// 빠짐 — 부모가 타이밍을 따로 잴 필요가 없음.
-// features/landing의 서버 시계(templates/landing-ticket-intro도 같은 자리별
-// 롤오버 애니메이션을 씀)도 이 컴포넌트를 그대로 재사용함 — export함.
-export function ClockDigit({
-  value,
-  animate,
-}: {
-  value: string;
-  animate: boolean;
-}) {
-  const [layers, setLayers] = useState<
-    { key: number; value: string; leaving: boolean }[]
-  >(() => [{ key: 0, value, leaving: false }]);
-  const nextKeyRef = useRef(1);
-
-  useEffect(() => {
-    setLayers((prev) => {
-      const current = prev[prev.length - 1];
-      if (current.value === value) return prev;
-
-      // 애니메이션을 껐을 땐(reduced motion) 레이어를 쌓지 않고 그대로
-      // 교체함 — animationend가 아예 안 일어나는 애니메이션에 기대어
-      // 정리하면 이전 레이어가 영원히 안 지워지고 쌓이기만 하기 때문.
-      if (!animate) {
-        return [{ key: nextKeyRef.current++, value, leaving: false }];
-      }
-
-      return [
-        ...prev.map((layer) => ({ ...layer, leaving: true })),
-        { key: nextKeyRef.current++, value, leaving: false },
-      ];
-    });
-  }, [value, animate]);
-
-  return (
-    <span className="relative inline-block h-[1.25em] w-[0.6em] overflow-hidden align-bottom">
-      {layers.map((layer) => (
-        <span
-          key={layer.key}
-          className={`absolute inset-x-0 top-0 flex h-full items-center justify-center ${
-            animate ? (layer.leaving ? "gmt-digit-out" : "gmt-digit-in") : ""
-          }`}
-          onAnimationEnd={() => {
-            if (!layer.leaving) return;
-            setLayers((prev) => prev.filter((l) => l.key !== layer.key));
-          }}
-        >
-          {layer.value}
-        </span>
-      ))}
-    </span>
-  );
-}
-

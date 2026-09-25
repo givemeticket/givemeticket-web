@@ -69,10 +69,15 @@ src/
 ├── features/
 │   ├── auth/       # OAuth 로그인(카카오/네이버), 인증 상태
 │   ├── campaign/   # 캠페인(행사) CRUD, 신청/취소, 신청자 관리
-│   ├── dashboard/  # "나의 티켓" / "나의 행사" 탭
+│   ├── campaignList/ # 캠페인 목록 기능("나의 티켓"/"나의 행사" 탭, 정렬·필터 UI와 필터 스토어)
+│   ├── dashboard/  # 탭 공유 레이아웃(DashboardLayout) + 탭 내비게이션(헤더 탭/하단 탭 바/헤더 시계), 홈·찜 탭 placeholder
+│   ├── landing/    # 비로그인 "/" 소개 화면
+│   ├── search/     # 검색 (placeholder)
 │   └── admin/       # 어드민 (미개발, placeholder)
 └── shared/        # feature 간 공유 컴포넌트/훅/유틸(axios client, 각종 store 등)
 ```
+
+feature끼리 서로 import하는 건 최소화합니다. 두 개 이상의 feature가 쓰고 특정 도메인에 묶이지 않는 코드는 `shared/`로 옮깁니다(예: 서버 시계용 `shared/hooks/useServerClock.ts`, `shared/components/clock/`). 쓰는 곳이 하나뿐인 코드는 미리 `shared/`로 올리지 않습니다. 현재 남아 있는 의도된 feature 간 의존은 `dashboard → campaignList`(탭 클릭 시 필터 초기화) 및 `campaignList → campaign`(카드 컴포넌트/layoutId) 방향입니다.
 
 각 feature는 필요에 따라 `api/ components/ hooks/ lib/ pages/` 하위 구조를 따릅니다. **별도의 전역 `types/` 디렉토리는 없고**, 도메인 타입은 해당 feature의 `api/*.ts` 파일에 API 함수와 함께 정의됩니다 (예: `features/campaign/api/campaignApi.ts`의 `CampaignDetail`, `CampaignItem` 등). 경로 별칭 `@/*` → `./src/*` (vite.config.ts, tsconfig.app.json).
 

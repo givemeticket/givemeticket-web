@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import { CalendarDays, Heart, Home, Ticket } from "lucide-react";
-import type { FilterTab } from "../lib/dashboardFilterStore";
+import type { FilterTab } from "@/features/campaignList/lib/dashboardFilterStore";
 import { useTabLinkNavigation } from "../hooks/useTabLinkNavigation";
 
 // 원래 DashboardLayout(대시보드 라우트에서만 조건부로 렌더링) 안에 있던 탭을

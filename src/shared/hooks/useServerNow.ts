@@ -16,7 +16,7 @@ import { getServerTimeOffset } from "@/shared/lib/serverTime";
  *
  * 반환하는 함수 자체는 매 렌더 새로 만들어지는 새 참조라 useEffect
  * deps에 넣기엔 안 맞음 — setInterval 콜백처럼 "호출되는 시점의 최신 오차"만
- * 필요한 곳에서 그때그때 불러 쓰는 용도로 씀(HeaderLiveClock.tsx/
+ * 필요한 곳에서 그때그때 불러 쓰는 용도로 씀(useServerClock.ts/
  * CountdownApplyButton.tsx 사용 예 참고).
  */
 export function useServerNow(): () => number {

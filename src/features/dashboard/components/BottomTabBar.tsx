@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import { CalendarDays, Heart, Home, Ticket } from "lucide-react";
-import type { FilterTab } from "../lib/dashboardFilterStore";
+import type { FilterTab } from "@/features/campaignList/lib/dashboardFilterStore";
 import { useTabLinkNavigation } from "../hooks/useTabLinkNavigation";
 
 // claude.ai/design의 Mobile Screens 템플릿에 있는 화면 하단 고정 탭 바 —
